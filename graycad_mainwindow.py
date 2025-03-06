@@ -26,7 +26,7 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(path.abspath(path.join(path.dirname(__file__), "/assets/TaskbarIcon.png"))))
 
         # Load the UI from a file in this path
-        self.ui = uic.loadUi(path.abspath(path.join(path.dirname(__file__))) + "/interface.ui", self)
+        self.ui = uic.loadUi(path.abspath(path.join(path.dirname(__file__))) + "/assets/interface.ui", self)
         
         # Connect the button to the method
         self.ui.button_build_resonator.clicked.connect(self.open_resonator_window)
@@ -40,7 +40,7 @@ class MainWindow(QMainWindow):
     def open_resonator_window(self):
         """Open a new window when the button is clicked"""
         self.resonator_window = QMainWindow(self)
-        self.ui_resonator = uic.loadUi(path.abspath(path.join(path.dirname(__file__), "resonator_window.ui")), self.resonator_window)
+        self.ui_resonator = uic.loadUi(path.abspath(path.join(path.dirname(__file__), "assets/resonator_window.ui")), self.resonator_window)
         self.resonator_window.setWindowTitle("Build Resonator")
         self.resonator_window.show()
 

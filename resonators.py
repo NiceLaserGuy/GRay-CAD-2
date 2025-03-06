@@ -62,6 +62,12 @@ class Resonator:
                                                 self.matrices.free_space(n0, l1),
                                                 self.matrices.free_space(nc, lc/2)))))))))))
 
+        
+    def waist_sagittal(self, z):
+        """Calculate the sagittal waist of a resonator in the center of the crystal"""
+        # TODO: Implement the waist calculation
+        return 0
+        
     
     def get_input(self):
         self.target_sag = float(self.ui_resonator.edit_target_waist_sag.text())*1e-6
@@ -101,14 +107,15 @@ class Resonator:
         toolbox.register("select", tools.selTournament, tournsize=3)
         toolbox.register("evaluate", evaluate)
 
-        population = toolbox.population(n=50)
-        ngen = 40
+        population = toolbox.population(n=100)
+        ngen = 100
         cxpb = 0.5
         mutpb = 0.2
 
         algorithms.eaSimple(population, toolbox, cxpb, mutpb, ngen, verbose=True)
 
         best_individual = tools.selBest(population, 1)[0]
-        print("Best individual is: %s\nwith fitness: %s" % (best_individual, best_individual.fitness.values))
+        print("l1: %s\nl2: %s\nl3: %s\ntheta: %s\nwith fitness: %s" % (best_individual[0], best_individual[1], best_individual[2], best_individual[3], best_individual.fitness.values))
+
 
         return best_individual
