@@ -20,3 +20,13 @@ class Matrices:
     def curved_mirror_sagittal(self, radius_of_curvature, theta):
         """ABCD matrix for a mirror in the sagittal direction"""
         return np.array([[1, 0], [-2 * np.cos(np.radians(theta)) / radius_of_curvature, 1]])
+    
+    def stability(self, r1, r2, d, n1, n2):
+        """Calculate the stability of a resonator"""
+        m = self.resonator_matrix(r1, r2, d, n1, n2)
+        return m[0, 0] + m[1, 1] - 2
+    
+    def q_parameter(self, r1, r2, d, n1, n2):
+        """Calculate the q-parameter of a resonator"""
+        m = self.resonator_matrix(r1, r2, d, n1, n2)
+        return (m[0, 1] * n2 - m[1, 0]) / (m[0, 0] - m[1, 1])
