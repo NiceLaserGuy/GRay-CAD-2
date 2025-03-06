@@ -1,2 +1,2 @@
-# Laser-Q-Factor-Optimizier-LQO-
+# GRay-CAD 2
 In development - added soon
