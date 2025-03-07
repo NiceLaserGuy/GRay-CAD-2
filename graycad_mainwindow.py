@@ -12,6 +12,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QMainWindow, QPushButton, QDialog, QMessageBox, QFileDialog
 from resonators import Resonator
 from matrices import Matrices
+from resonator_window import ResonatorWindow
 
 import pyqtgraph as pg
 import logging
@@ -20,6 +21,7 @@ class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.res = Resonator()
+        self.resonator_window = ResonatorWindow()
         self.mat = Matrices()
 
         # Set window icon
@@ -29,26 +31,13 @@ class MainWindow(QMainWindow):
         self.ui = uic.loadUi(path.abspath(path.join(path.dirname(__file__))) + "/assets/interface.ui", self)
         
         # Connect the button to the method
-        self.ui.button_build_resonator.clicked.connect(self.open_resonator_window)
+        self.ui.button_build_resonator.clicked.connect(self.resonator_window.open_resonator_window)
 
         # Connect menu actions to methods
         self.ui.action_Open.triggered.connect(self.action_open)
         self.ui.action_Save.triggered.connect(self.action_save)
         self.ui.action_Save_as.triggered.connect(self.action_save_as)
         self.ui.action_Exit.triggered.connect(self.action_exit)
-
-    def open_resonator_window(self):
-        """Open a new window when the button is clicked"""
-        self.resonator_window = QMainWindow(self)
-        self.ui_resonator = uic.loadUi(path.abspath(path.join(path.dirname(__file__), "assets/resonator_window.ui")), self.resonator_window)
-        self.resonator_window.setWindowTitle("Build Resonator")
-        self.resonator_window.show()
-
-        # Pass the ui_resonator reference to the Resonator instance
-        self.res.set_ui_resonator(self.ui_resonator)
-
-        # Connect the button to the method after ui_resonator is initialized
-        self.ui_resonator.button_evaluate_resonator.clicked.connect(self.res.evaluate_resonator)
 
     def action_open(self):
         """Open a file dialog to select a file to open"""

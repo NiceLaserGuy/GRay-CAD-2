@@ -1,0 +1,45 @@
+{
+    "components": [
+      {
+        "type": "MIRROR",
+        "name": "100.0 mm Zyl",
+        "manufacturer": "n/a",
+        "properties": {
+          "CURVATURE_IN_TANGENTIAL": Infinity,
+          "CURVATURE_IN_SAGITTAL": 100,
+          "IS_ROUND": 0.0
+        }
+      },
+      {
+        "type": "MIRROR",
+        "name": "75.0 mm Zyl",
+        "manufacturer": "n/a",
+        "properties": {
+          "CURVATURE_IN_TANGENTIAL": Infinity,
+          "CURVATURE_IN_SAGITTAL": 75,
+          "IS_ROUND": 0.0
+        }
+      },
+      {
+        "type": "MIRROR",
+        "name": "50.0 mm Zyl",
+        "manufacturer": "n/a",
+        "properties": {
+          "CURVATURE_IN_TANGENTIAL": Infinity,
+          "CURVATURE_IN_SAGITTAL": 50,
+          "IS_ROUND": 0.0
+        }
+      },
+      {
+        "type": "MIRROR",
+        "name": "25.0 mm Zyl",
+        "manufacturer": "n/a",
+        "properties": {
+          "CURVATURE_IN_TANGENTIAL": Infinity,
+          "CURVATURE_IN_SAGITTAL": 25,
+          "IS_ROUND": 0.0
+        }
+      }
+    ],
+    "name": "Mirrors"
+  }

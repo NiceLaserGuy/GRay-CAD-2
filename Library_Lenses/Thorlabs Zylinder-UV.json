@@ -1,0 +1,311 @@
+{
+  "components": [
+    {
+      "type": "LENS",
+      "name": "10.0 mm Zyl",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": 0.004599999999999999,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.459999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.009998232620592977,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.459999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "12.7 mm Zyl",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": 0.005799999999999999,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.459999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.012606467217269405,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.459999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "30.0 mm Zyl",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": 0.0138,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.459999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.029994697861778937,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.459999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "8.0 mm Zyl",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": 0.0036999999999999993,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.459999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.008042056673085655,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.459999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "75.0 mm Zyl",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": 0.034499999999999996,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.459999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.07498674465444734,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.459999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "-10.0 mm Zyl",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": -0.004599999999999999,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.459999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": -0.009998232620592977,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.459999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "-12.7 mm  Zyl",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": -0.005799999999999999,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.459999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": -0.012606467217269405,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.459999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "-30.0 mm  Zyl",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": -0.0138,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.459999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": -0.029994697861778937,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.459999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "-25.0 mm Zyl",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": -0.011499999999999998,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.459999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": -0.024995581551482442,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.459999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "-75.0 mm Zyl",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": -0.034499999999999996,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.459999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": -0.07498674465444734,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.459999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "25.4 mm Zyl",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": 0.011699999999999997,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.459999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.02543028731759518,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.459999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "-50.0 mm Zyl",
+      "manufacturer": "Edmund Optics",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": -0.022929999999999996,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.875999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": -0.05001501300479148,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.875999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "50.0 mm Zyl",
+      "manufacturer": "Edmund Optics",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": 0.022929999999999996,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.875999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.05001501300479148,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.875999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "100.0 mm Zyl",
+      "manufacturer": "Edmund Optics",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": 45.849999999999994,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.875999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 100.00821396727821,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.875999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "25.0 mm Zyl",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": 0.011499999999999998,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.459999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.024995581551482442,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.459999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "-8.0 mm Zyl",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": -0.0036999999999999997,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.459999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": -0.008042056673085655,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.459999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "-25.4 mm  Zyl",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": -0.011699999999999997,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.459999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": -0.02543028731759518,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.459999999999999E-7,
+        "MATERIAL": 3.0,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 0.0
+      }
+    }
+  ],
+  "name": "Thorlabs Zylinder-UV"
+}

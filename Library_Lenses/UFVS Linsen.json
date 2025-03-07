@@ -1,0 +1,347 @@
+{
+  "components": [
+    {
+      "type": "LENS",
+      "name": "75S",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 2.5369999999999995E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.06824999999999998,
+        "CURVATURE_OUT_SAGITTAL": -0.06899907800610557,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": 0.06899907800610557,
+        "DESIGN_MODE": 0.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": -Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 2.536999999999999E-7,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "50T",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": 0.04585784876713478,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 2.5369999999999995E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": Infinity,
+        "CURVATURE_OUT_SAGITTAL": -Infinity,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": 0.04535999999999999,
+        "CURVATURE_IN_SAGITTAL": Infinity,
+        "DESIGN_MODE": 0.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": -0.04585784876713478,
+        "WAVELENGTH_DESIGN_SAGITTAL": 2.5369999999999995E-7,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "150",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": 0.1999750252523757,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 0.2536999999999999,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.13649999999999998,
+        "CURVATURE_OUT_SAGITTAL": -0.1999750252523757,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": 0.13649999999999998,
+        "CURVATURE_IN_SAGITTAL": 0.1999750252523757,
+        "DESIGN_MODE": 0.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": -0.1999750252523757,
+        "WAVELENGTH_DESIGN_SAGITTAL": 0.2536999999999999,
+        "IS_ROUND": 1.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "30S",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 2.5369999999999995E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.027299999999999998,
+        "CURVATURE_OUT_SAGITTAL": -0.027599631202442233,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": 0.027599631202442233,
+        "DESIGN_MODE": 0.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": -Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 2.536999999999999E-7,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "30T",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": 0.027599631202442233,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 2.5369999999999995E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": Infinity,
+        "CURVATURE_OUT_SAGITTAL": -Infinity,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": 0.027299999999999998,
+        "CURVATURE_IN_SAGITTAL": Infinity,
+        "DESIGN_MODE": 0.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": -0.027599631202442233,
+        "WAVELENGTH_DESIGN_SAGITTAL": 2.5369999999999995E-7,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "25S",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 2.5369999999999995E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.022749999999999992,
+        "CURVATURE_OUT_SAGITTAL": -0.022999692668701853,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": 0.022999692668701853,
+        "DESIGN_MODE": 0.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": -Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 2.5369999999999995E-7,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "50S",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 2.536999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.045359999999999984,
+        "CURVATURE_OUT_SAGITTAL": -0.04585784876713477,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": 0.04585784876713477,
+        "DESIGN_MODE": 0.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": -Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 2.536999999999999E-7,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "-25S",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 0.2536999999999999,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": -0.022749999999999996,
+        "CURVATURE_OUT_SAGITTAL": 0.03332917087539595,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": -0.03332917087539595,
+        "DESIGN_MODE": 0.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": -Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 0.2536999999999999,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "-25T",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": -0.022999692668701853,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 2.536999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": Infinity,
+        "CURVATURE_OUT_SAGITTAL": -Infinity,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": -0.022749999999999992,
+        "CURVATURE_IN_SAGITTAL": Infinity,
+        "DESIGN_MODE": 0.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": 0.022999692668701853,
+        "WAVELENGTH_DESIGN_SAGITTAL": 2.5369999999999995E-7,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "75T",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": 0.09998751262618782,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 0.2536999999999999,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": Infinity,
+        "CURVATURE_OUT_SAGITTAL": -Infinity,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": 0.06824999999999998,
+        "CURVATURE_IN_SAGITTAL": Infinity,
+        "DESIGN_MODE": 0.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": -0.09998751262618782,
+        "WAVELENGTH_DESIGN_SAGITTAL": 0.2536999999999999,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "75S",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 2.5369999999999995E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.06824999999999998,
+        "CURVATURE_OUT_SAGITTAL": -0.06899907800610557,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": 0.06899907800610557,
+        "DESIGN_MODE": 0.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": -Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 2.536999999999999E-7,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "75T",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": 0.09998751262618782,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 0.2536999999999999,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": Infinity,
+        "CURVATURE_OUT_SAGITTAL": -Infinity,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": 0.06824999999999998,
+        "CURVATURE_IN_SAGITTAL": Infinity,
+        "DESIGN_MODE": 0.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": -0.09998751262618782,
+        "WAVELENGTH_DESIGN_SAGITTAL": 0.2536999999999999,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "50T",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": 0.04585784876713478,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 2.5369999999999995E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": Infinity,
+        "CURVATURE_OUT_SAGITTAL": -Infinity,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": 0.04535999999999999,
+        "CURVATURE_IN_SAGITTAL": Infinity,
+        "DESIGN_MODE": 0.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": -0.04585784876713478,
+        "WAVELENGTH_DESIGN_SAGITTAL": 2.5369999999999995E-7,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "50S",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 2.536999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.045359999999999984,
+        "CURVATURE_OUT_SAGITTAL": -0.04585784876713477,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": 0.04585784876713477,
+        "DESIGN_MODE": 0.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": -Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 2.536999999999999E-7,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "100",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": 0.04599999999999999,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 2.5369999999999995E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.060667477319473584,
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": 0.060667477319473584,
+        "CURVATURE_IN_SAGITTAL": 0.04599999999999999,
+        "DESIGN_MODE": 3.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 2.5369999999999995E-7,
+        "IS_ROUND": 1.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "25T",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": 0.03332917087539594,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 0.2536999999999999,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": Infinity,
+        "CURVATURE_OUT_SAGITTAL": -Infinity,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": 0.022749999999999992,
+        "CURVATURE_IN_SAGITTAL": Infinity,
+        "DESIGN_MODE": 0.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": -0.03332917087539594,
+        "WAVELENGTH_DESIGN_SAGITTAL": 0.2536999999999999,
+        "IS_ROUND": 0.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "200",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": 0.09199999999999998,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.875999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.2006707892036989,
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": 0.2006707892036989,
+        "CURVATURE_IN_SAGITTAL": 0.09199999999999998,
+        "DESIGN_MODE": 4.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.875999999999999E-7,
+        "IS_ROUND": 1.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "50",
+      "manufacturer": "",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": 0.022999999999999996,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 2.5369999999999995E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.04550060798960519,
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": 0.04550060798960519,
+        "CURVATURE_IN_SAGITTAL": 0.022999999999999996,
+        "DESIGN_MODE": 3.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 2.5369999999999995E-7,
+        "IS_ROUND": 1.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "75",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_IN_TANGENTIAL": 0.034499999999999996,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.875999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": 0.0752515459513871,
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": 0.0752515459513871,
+        "CURVATURE_IN_SAGITTAL": 0.034499999999999996,
+        "DESIGN_MODE": 3.0,
+        "MATERIAL": 3.0,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.875999999999999E-7,
+        "IS_ROUND": 1.0
+      }
+    }
+  ],
+  "name": "UFVS Linsen"
+}

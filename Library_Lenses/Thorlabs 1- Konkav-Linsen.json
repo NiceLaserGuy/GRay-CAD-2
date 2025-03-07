@@ -1,0 +1,77 @@
+{
+  "components": [
+    {
+      "type": "LENS",
+      "name": "-50",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": -0.025699999999999997,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": -0.025699999999999997,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": -0.04972925248029453,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.875999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": -0.04972925248029453,
+        "MATERIAL": 2.0,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.875999999999999E-7,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 1.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "-75",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": -0.038599999999999995,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": -0.038599999999999995,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": -0.07469062823888595,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.875999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": -0.07469062823888595,
+        "MATERIAL": 2.0,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.875999999999999E-7,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 1.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "-100",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": -0.05149999999999999,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": -0.05149999999999999,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": -0.09965200399747735,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.875999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": -0.09965200399747735,
+        "MATERIAL": 2.0,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.875999999999999E-7,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 1.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "-25",
+      "manufacturer": "Thorlabs",
+      "properties": {
+        "CURVATURE_OUT_SAGITTAL": Infinity,
+        "CURVATURE_IN_TANGENTIAL": -0.025699999999999997,
+        "CURVATURE_OUT_TANGENTIAL": Infinity,
+        "CURVATURE_IN_SAGITTAL": -0.025699999999999997,
+        "FOCAL_LENGTH_DESIGN_SAGITTAL": -0.04972925248029453,
+        "WAVELENGTH_DESIGN_SAGITTAL": 5.875999999999999E-7,
+        "FOCAL_LENGTH_DESIGN_TANGENTIAL": -0.04972925248029453,
+        "MATERIAL": 2.0,
+        "WAVELENGTH_DESIGN_TANGENTIAL": 5.875999999999999E-7,
+        "DESIGN_MODE": 3.0,
+        "IS_ROUND": 1.0
+      }
+    }
+  ],
+  "name": "Thorlabs 1\" Konkav-Linsen"
+}
