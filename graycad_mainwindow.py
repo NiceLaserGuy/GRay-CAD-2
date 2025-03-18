@@ -4,12 +4,12 @@
 @author: Jens Gumm, TU Darmstadt, LQO-Group
 """
 
-from PyQt6 import uic
+from PyQt5 import uic
 from pyqtgraph import *
 from os import path
-from PyQt6.QtCore import *
-from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import QMainWindow, QPushButton, QDialog, QMessageBox, QFileDialog
+from PyQt5.QtCore import *
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QMainWindow, QPushButton, QDialog, QMessageBox, QFileDialog
 from resonators import Resonator
 from matrices import Matrices
 

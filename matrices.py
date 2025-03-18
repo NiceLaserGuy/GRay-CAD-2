@@ -39,19 +39,19 @@ class Matrices:
             np.dot(
                 self.free_space(l1, n0),
                 np.dot(
-                    self.curved_mirror_tangential(r1_tan, theta),
+                    self.curved_mirror_tangential(r2_tan, theta),
                     np.dot(
                         self.free_space(l2, n0),
                         np.dot(
-                            self.curved_mirror_tangential(r2_tan, theta),
+                            self.curved_mirror_tangential(r1_tan, theta),
                             np.dot(
                                 self.free_space(l3, n0),
                                 np.dot(
-                                    self.curved_mirror_tangential(r2_tan, theta),
+                                    self.curved_mirror_tangential(r1_tan, theta),
                                     np.dot(
                                         self.free_space(l2, n0),
                                         np.dot(
-                                            self.curved_mirror_tangential(r1_tan, theta),
+                                            self.curved_mirror_tangential(r2_tan, theta),
                                             np.dot(
                                                 self.free_space(l1, n0),
                                                 self.free_space(lc / 2, nc),
@@ -75,19 +75,19 @@ class Matrices:
             np.dot(
                 self.free_space(l1, n0),
                 np.dot(
-                    self.curved_mirror_sagittal(r1_sag, theta),
+                    self.curved_mirror_sagittal(r2_sag, theta),
                     np.dot(
                         self.free_space(l2, n0),
                         np.dot(
-                            self.curved_mirror_sagittal(r2_sag, theta),
+                            self.curved_mirror_sagittal(r1_sag, theta),
                             np.dot(
                                 self.free_space(l3, n0),
                                 np.dot(
-                                    self.curved_mirror_sagittal(r2_sag, theta),
+                                    self.curved_mirror_sagittal(r1_sag, theta),
                                     np.dot(
                                         self.free_space(l2, n0),
                                         np.dot(
-                                            self.curved_mirror_sagittal(r1_sag, theta),
+                                            self.curved_mirror_sagittal(r2_sag, theta),
                                             np.dot(
                                                 self.free_space(l1, n0),
                                                 self.free_space(lc / 2, nc),
