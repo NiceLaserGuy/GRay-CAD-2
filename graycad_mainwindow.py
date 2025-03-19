@@ -49,6 +49,7 @@ class MainWindow(QMainWindow):
 
         # Connect the button to the method after ui_resonator is initialized
         self.ui_resonator.button_evaluate_resonator.clicked.connect(self.res.evaluate_resonator)
+        self.ui_resonator.button_abort_resonator.clicked.connect(self.res.stop_optimization)
 
     def action_open(self):
         """Open a file dialog to select a file to open"""

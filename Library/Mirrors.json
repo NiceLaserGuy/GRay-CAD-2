@@ -46,27 +46,27 @@
       "manufacturer": "",
       "properties": {
         "CURVATURE_TANGENTIAL": 0.1,
-        "CURVATURE_SAGITTAL": 1e15,
+        "CURVATURE_SAGITTAL": 1e30,
         "IS_ROUND": 0.0
       }
     },
     {
       "type": "MIRROR",
-      "name": "cylindrical r=100mm",
+      "name": "cylindrical r=200mm",
       "manufacturer": "",
       "properties": {
         "CURVATURE_TANGENTIAL": 0.2,
-        "CURVATURE_SAGITTAL": 1e15,
+        "CURVATURE_SAGITTAL": 1e30,
         "IS_ROUND": 0.0
       }
     },
     {
       "type": "MIRROR",
-      "name": "cylindrical r=100mm",
+      "name": "cylindrical r=250mm",
       "manufacturer": "",
       "properties": {
         "CURVATURE_TANGENTIAL": 0.25,
-        "CURVATURE_SAGITTAL": 1e15,
+        "CURVATURE_SAGITTAL": 1e30,
         "IS_ROUND": 0.0
       }
     },
@@ -76,7 +76,7 @@
       "manufacturer": "",
       "properties": {
         "CURVATURE_TANGENTIAL": 0.1,
-        "CURVATURE_SAGITTAL": 1e15,
+        "CURVATURE_SAGITTAL": 1e30,
         "IS_ROUND": 0.0
       }
     }
