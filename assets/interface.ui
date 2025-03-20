@@ -42,7 +42,7 @@
      </font>
     </property>
     <property name="styleSheet">
-     <string notr="true">background-color: rgba(255, 255, 255, 50)</string>
+     <string notr="true">background-color: rgba(186, 189, 182, 50);</string>
     </property>
     <property name="text">
      <string>Modematcher</string>
@@ -67,7 +67,7 @@
      </font>
     </property>
     <property name="styleSheet">
-     <string notr="true">background-color: rgba(255, 255, 255, 50)</string>
+     <string notr="true">background-color: rgba(186, 189, 182, 50);</string>
     </property>
     <property name="text">
      <string>Get Focus Waist</string>
@@ -92,7 +92,7 @@
      </font>
     </property>
     <property name="styleSheet">
-     <string notr="true">background-color: rgba(255, 255, 255, 50)</string>
+     <string notr="true">background-color: rgba(186, 189, 182, 50);</string>
     </property>
     <property name="text">
      <string>Build Resonator</string>
@@ -108,7 +108,7 @@
      <x>0</x>
      <y>0</y>
      <width>863</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
    <property name="tabletTracking">
@@ -123,12 +123,19 @@
     <addaction name="action_Save_as"/>
     <addaction name="action_Exit"/>
    </widget>
+   <widget class="QMenu" name="menu_Edit">
+    <property name="title">
+     <string>&amp;Edit</string>
+    </property>
+    <addaction name="action_Library"/>
+   </widget>
    <addaction name="menu_File"/>
+   <addaction name="menu_Edit"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="action_Open">
    <property name="text">
-    <string>&amp;Open</string>
+    <string>&amp;Open Project</string>
    </property>
   </action>
   <action name="action_Save">
@@ -144,6 +151,11 @@
   <action name="action_Save_as">
    <property name="text">
     <string>Save as ...</string>
+   </property>
+  </action>
+  <action name="action_Library">
+   <property name="text">
+    <string>&amp;Library</string>
    </property>
   </action>
  </widget>

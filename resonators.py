@@ -2,20 +2,51 @@ import json
 import numpy as np
 from deap import base, creator, tools
 from os import path
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtWidgets import QMainWindow
+from PyQt5 import uic
+from PyQt5.QtCore import QThread, pyqtSignal, QObject
 from resonator_types import BowTie
 
-class Resonator:
+class Resonator(QObject):
     """
     Main class for resonator optimization using Particle Swarm Optimization (PSO).
     Handles mirror configurations and resonator calculations.
     """
     
-    def __init__(self):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.resonator_window = None
         self.resonator_type = BowTie()  # Initialize resonator type as BowTie
         self.ui_resonator = None  # Initialize ui_resonator as None
         self.mirror_curvatures = []
 
+    def open_resonator_window(self):
+        """
+        Creates and shows the resonator configuration window.
+        Sets up the UI and connects the necessary signals.
+        """
+        # Create new window instance without parent
+        self.resonator_window = QMainWindow()
+        
+        # Load the resonator UI
+        self.ui_resonator = uic.loadUi(
+            path.abspath(path.join(path.dirname(__file__), 
+            "assets/resonator_window.ui")), 
+            self.resonator_window
+        )
+        
+        # Configure and show the window
+        self.resonator_window.setWindowTitle("Resonator Configuration")
+        self.resonator_window.show()
+
+        # Connect resonator instance to UI
+        self.set_ui_resonator(self.ui_resonator)
+
+        # Connect resonator window buttons
+        self.ui_resonator.button_evaluate_resonator.clicked.connect(
+            self.evaluate_resonator)
+        self.ui_resonator.button_abort_resonator.clicked.connect(
+            self.stop_optimization)
     def load_mirror_data(self, filepath):
         """
         Loads mirror data from a JSON file.
@@ -43,11 +74,11 @@ class Resonator:
                 is_round = properties.get("IS_ROUND", 0.0)
                 
                 # Normale Variante speichern
-                self.mirror_curvatures.append((curvature_sagittal, curvature_tangential, is_round))
+                self.mirror_curvatures.append((curvature_sagittal*1e3, curvature_tangential*1e3, is_round))
                 
                 # Für nicht-runde Spiegel zusätzlich die getauschte Variante speichern
                 if is_round == 0.0:
-                    self.mirror_curvatures.append((curvature_tangential, curvature_sagittal, is_round))
+                    self.mirror_curvatures.append((curvature_tangential*1e3, curvature_sagittal*1e3, is_round))
                     
         # Debugging-Ausgabe
         if not self.mirror_curvatures:
@@ -65,11 +96,11 @@ class Resonator:
         Returns:
             numpy.array: Array containing [target_sag, target_tan, nc, lc, n_prop, wavelength]
         """
-        self.target_sag = float(self.ui_resonator.edit_target_waist_sag.text())*1e-6
-        self.target_tan = float(self.ui_resonator.edit_target_waist_tan.text())*1e-6
+        self.target_sag = float(self.ui_resonator.edit_target_waist_sag.text())*1e-3
+        self.target_tan = float(self.ui_resonator.edit_target_waist_tan.text())*1e-3
         self.nc = float(self.ui_resonator.edit_crystal_refractive_index.text())
-        self.lc = float(self.ui_resonator.edit_crystal_length.text())*1e-3
-        self.wavelength = float(self.ui_resonator.edit_wavelength.text())*1e-6
+        self.lc = float(self.ui_resonator.edit_crystal_length.text())
+        self.wavelength = float(self.ui_resonator.edit_wavelength.text())*1e-3
         self.n_prop = 1
 
         return np.array([self.target_sag, self.target_tan, self.nc, self.lc, self.n_prop, self.wavelength])
@@ -82,12 +113,13 @@ class Resonator:
         Returns:
             tuple: (l1_min, l1_max, l3_min, l3_max, theta_min, theta_max)
         """
-        l1_min = float(self.ui_resonator.edit_lower_bound_l1.text()) * 1e-3
-        l1_max = float(self.ui_resonator.edit_upper_bound_l1.text()) * 1e-3
-        l3_min = float(self.ui_resonator.edit_lower_bound_l3.text()) * 1e-3
-        l3_max = float(self.ui_resonator.edit_upper_bound_l3.text()) * 1e-3
+        l1_min = float(self.ui_resonator.edit_lower_bound_l1.text())
+        l1_max = float(self.ui_resonator.edit_upper_bound_l1.text())
+        l3_min = float(self.ui_resonator.edit_lower_bound_l3.text())
+        l3_max = float(self.ui_resonator.edit_upper_bound_l3.text())
         theta_min = np.deg2rad(float(self.ui_resonator.edit_lower_bound_theta.text())/2)
         theta_max = np.deg2rad(float(self.ui_resonator.edit_upper_bound_theta.text())/2)
+    
         return l1_min, l1_max, l3_min, l3_max, theta_min, theta_max
     
     def get_optimization_parameters(self):
@@ -105,7 +137,8 @@ class Resonator:
         pmax = float(self.ui_resonator.edit_pmax.text())
         smin = float(self.ui_resonator.edit_smin.text())
         smax = float(self.ui_resonator.edit_smax.text())
-        return population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax
+        mutation_probability = float(self.ui_resonator.edit_mutation_probability.text())
+        return population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability
 
     def evaluate_resonator(self):
         # Load mirror data and get input parameters
@@ -115,7 +148,7 @@ class Resonator:
             raise ValueError("Die Liste 'mirror_curvatures' ist leer. Überprüfen Sie die Datei 'Mirrors.json'.")
         
         # Get optimization parameters
-        population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax = self.get_optimization_parameters()
+        population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability = self.get_optimization_parameters()
         
         inputs = self.get_input()
         target_sag, target_tan, nc, lc, n_prop, wavelength = inputs
@@ -153,11 +186,23 @@ class Resonator:
             b_sag = np.abs(roundtrip_matrix_sag[0, 1])
             b_tan = np.abs(roundtrip_matrix_tan[0, 1])
             
-            # Calculate waist sizes
-            waist_sag = np.sqrt(((b_sag * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_sag**2)))))
-            waist_tan = np.sqrt(((b_tan * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_tan**2)))))
-            
-            # Calculate fitness value based on waist size ratios
+            # Berechnung der Waist-Größen mit Sicherheitsprüfung
+            if 1 - m_sag**2 <= 0:
+                waist_sag = 1e6  # Bestrafe instabile Resonatoren
+            else:
+                waist_sag = np.sqrt(((b_sag * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_sag**2)))))
+
+            if 1 - m_tan**2 <= 0:
+                waist_tan = 1e6  # Bestrafe instabile Resonatoren
+            else:
+                waist_tan = np.sqrt(((b_tan * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_tan**2)))))
+
+            # Calculate fitness value based on waist size ratios and stability
+
+            # Check for unstable resonators
+            if abs(m_sag) > 1 or abs(m_tan) > 1:
+                return 1e6,
+        
             # Different weights are applied depending on which waist is smaller
             if waist_sag < waist_tan:
                 fitness_value = np.sqrt(
@@ -181,9 +226,6 @@ class Resonator:
                     1/100 * (m_sag**2 + m_tan**2)  # Penalty for unstable resonators
                 )
                 return fitness_value,
-    
-            if abs(m_sag) > 1 or abs(m_tan) > 1:
-                return 1e6,
 
         # Definition der generate Funktion
         def generate(size, pmin, pmax, smin, smax):
@@ -216,15 +258,16 @@ class Resonator:
             return particle
 
         # Definition der update_particle Funktion
-        def update_particle(part, best, phi1, phi2):
+        def update_particle(part, best, phi1, phi2, mutation_probability):
             """
-            Updates particle position and velocity.
+            Updates particle position and velocity with optional mutation.
             
             Args:
                 part: Particle to update
                 best: Global best position
                 phi1: Personal best weight
                 phi2: Global best weight
+                mutation_probability: Probability of mutation (default: 10%)
             """
             u1 = np.random.uniform(0, phi1, len(part))
             u2 = np.random.uniform(0, phi2, len(part))
@@ -250,11 +293,24 @@ class Resonator:
                 for i, (p, v) in enumerate(zip(part, part.speed))
             ]
 
+            # Mutation: Zufällige Änderung mit einer kleinen Wahrscheinlichkeit
+            for i in range(len(part)):
+                if np.random.rand() < mutation_probability:
+                    if i == 0:  # l1
+                        part[i] = np.random.uniform(l1_min, l1_max)
+                    elif i == 1:  # l3
+                        part[i] = np.random.uniform(l3_min, l3_max)
+                    elif i == 2:  # theta
+                        part[i] = np.random.uniform(theta_min, theta_max)
+                    else:  # mirror indices
+                        part[i] = np.random.randint(0, len(self.mirror_curvatures))
+
         # DEAP setup for PSO with optimization parameters
         toolbox = base.Toolbox()
         toolbox.register("particle", generate, size=5, pmin=pmin, pmax=pmax, smin=smin, smax=smax)
         toolbox.register("population", tools.initRepeat, list, toolbox.particle)
-        toolbox.register("update", update_particle, phi1=phi1, phi2=phi2)
+        # Registrierung der update_particle-Funktion mit mutation_probability
+        toolbox.register("update", update_particle, phi1=phi1, phi2=phi2, mutation_probability=mutation_probability)
         toolbox.register("evaluate", objective)
 
         # Create population with population_number
@@ -304,20 +360,20 @@ class Resonator:
         waist_sag = np.sqrt(((b_sag * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_sag**2)))))
         waist_tan = np.sqrt(((b_tan * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_tan**2)))))
 
-        r1_sag = "Infinity" if r1_sag >= 1e+15 else r1_sag * 1e3
-        r1_tan = "Infinity" if r1_tan >= 1e+15 else r1_tan * 1e3
-        r2_sag = "Infinity" if r2_sag >= 1e+15 else r2_sag * 1e3
-        r2_tan = "Infinity" if r2_tan >= 1e+15 else r2_tan * 1e3
+        r1_sag = "Infinity" if r1_sag >= 1e+15 else r1_sag
+        r1_tan = "Infinity" if r1_tan >= 1e+15 else r1_tan
+        r2_sag = "Infinity" if r2_sag >= 1e+15 else r2_sag
+        r2_tan = "Infinity" if r2_tan >= 1e+15 else r2_tan
 
         # Ausgabe der Ergebnisse
         print(f"Best solution found:")
-        print(f"l1: {np.round(l1*1e3,3)} mm")
-        print(f"l2: {np.round(((2 * l1) + lc + l3) / (2 * np.cos(2*theta))*1e3,3)} mm")
-        print(f"l3: {np.round(l3*1e3,3)} mm")
+        print(f"l1: {np.round(l1,3)} mm")
+        print(f"l2: {np.round(((2 * l1) + lc + l3) / (2 * np.cos(2*theta)),3)} mm")
+        print(f"l3: {np.round(l3,3)} mm")
         print(f"theta: {np.round(np.rad2deg(theta*2),3)} deg")
         print(f"r1_sag: {r1_sag} mm, r1_tan: {r1_tan} mm")
         print(f"r2_sag: {r2_sag} mm, r2_tan: {r2_tan} mm")
-        print(f"waist_sag: {np.round(waist_sag*1e6,3)} um, waist_tan: {np.round(waist_tan*1e6,3)} um")
+        print(f"waist_sag: {np.round(waist_sag*1e3,3)} um, waist_tan: {np.round(waist_tan*1e3,3)} um")
         print(f"m_sag: {np.round(m_sag,6)}, m_tan: {np.round(m_tan,6)}")
         print(f"Fitness: {np.round(best.fitness.values[0],6)}")
         return best

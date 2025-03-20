@@ -197,6 +197,34 @@
      <number>1</number>
     </property>
     <layout class="QGridLayout" name="gridLayout_3">
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_10">
+       <property name="text">
+        <string>Personal best weigth</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QLineEdit" name="edit_pmax">
+       <property name="text">
+        <string>10</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="edit_population_number">
+       <property name="text">
+        <string>250</string>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="1">
+      <widget class="QLineEdit" name="edit_smax">
+       <property name="text">
+        <string>20</string>
+       </property>
+      </widget>
+     </item>
      <item row="3" column="0">
       <widget class="QLabel" name="label_14">
        <property name="text">
@@ -204,10 +232,17 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_10">
+     <item row="4" column="1">
+      <widget class="QLineEdit" name="edit_pmin">
        <property name="text">
-        <string>Personal best weigth</string>
+        <string>0.01</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLineEdit" name="edit_phi1_float">
+       <property name="text">
+        <string>2.05</string>
        </property>
       </widget>
      </item>
@@ -218,24 +253,38 @@
        </property>
       </widget>
      </item>
-     <item row="6" column="1">
-      <widget class="QLineEdit" name="edit_smin">
+     <item row="6" column="0">
+      <widget class="QLabel" name="label_21">
        <property name="text">
-        <string>-2</string>
+        <string>Minimum velocity value</string>
        </property>
       </widget>
      </item>
-     <item row="4" column="1">
-      <widget class="QLineEdit" name="edit_pmin">
+     <item row="6" column="1">
+      <widget class="QLineEdit" name="edit_smin">
        <property name="text">
-        <string>0.001</string>
+        <string>-20</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="edit_generation_number">
+       <property name="text">
+        <string>500</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_11">
+       <property name="text">
+        <string>Population per generation</string>
        </property>
       </widget>
      </item>
      <item row="3" column="1">
       <widget class="QLineEdit" name="edit_phi2_float">
        <property name="text">
-        <string>3</string>
+        <string>2.05</string>
        </property>
       </widget>
      </item>
@@ -243,27 +292,6 @@
       <widget class="QLabel" name="label_17">
        <property name="text">
         <string>Minimum position value</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="1">
-      <widget class="QLineEdit" name="edit_pmax">
-       <property name="text">
-        <string>1</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QLineEdit" name="edit_generation_number">
-       <property name="text">
-        <string>200</string>
-       </property>
-      </widget>
-     </item>
-     <item row="6" column="0">
-      <widget class="QLabel" name="label_21">
-       <property name="text">
-        <string>Minimum velocity value</string>
        </property>
       </widget>
      </item>
@@ -281,31 +309,17 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_11">
+     <item row="8" column="0">
+      <widget class="QLabel" name="label_23">
        <property name="text">
-        <string>Population per generation</string>
+        <string>Mutation probability</string>
        </property>
       </widget>
      </item>
-     <item row="2" column="1">
-      <widget class="QLineEdit" name="edit_phi1_float">
+     <item row="8" column="1">
+      <widget class="QLineEdit" name="edit_mutation_probability">
        <property name="text">
-        <string>2.5</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="edit_population_number">
-       <property name="text">
-        <string>200</string>
-       </property>
-      </widget>
-     </item>
-     <item row="7" column="1">
-      <widget class="QLineEdit" name="edit_smax">
-       <property name="text">
-        <string>3</string>
+        <string>0.35</string>
        </property>
       </widget>
      </item>
@@ -341,6 +355,9 @@
       <height>111</height>
      </rect>
     </property>
+    <property name="styleSheet">
+     <string notr="true"/>
+    </property>
     <property name="frameShape">
      <enum>QFrame::Panel</enum>
     </property>
@@ -361,19 +378,22 @@
      <item row="0" column="2">
       <widget class="QLineEdit" name="edit_upper_bound_l1">
        <property name="text">
-        <string>70</string>
+        <string>100</string>
        </property>
       </widget>
      </item>
      <item row="0" column="1">
       <widget class="QLineEdit" name="edit_lower_bound_l1">
        <property name="text">
-        <string>65</string>
+        <string>40</string>
        </property>
       </widget>
      </item>
      <item row="0" column="0">
       <widget class="QLabel" name="label_18">
+       <property name="styleSheet">
+        <string notr="true"/>
+       </property>
        <property name="text">
         <string>lower/upper bound l1 / mm</string>
        </property>
@@ -389,21 +409,21 @@
      <item row="3" column="2">
       <widget class="QLineEdit" name="edit_upper_bound_theta">
        <property name="text">
-        <string>21</string>
+        <string>60</string>
        </property>
       </widget>
      </item>
      <item row="2" column="2">
       <widget class="QLineEdit" name="edit_upper_bound_l3">
        <property name="text">
-        <string>100</string>
+        <string>150</string>
        </property>
       </widget>
      </item>
      <item row="2" column="1">
       <widget class="QLineEdit" name="edit_lower_bound_l3">
        <property name="text">
-        <string>95</string>
+        <string>50</string>
        </property>
       </widget>
      </item>
@@ -413,7 +433,7 @@
         <string/>
        </property>
        <property name="text">
-        <string>18</string>
+        <string>15</string>
        </property>
       </widget>
      </item>
@@ -448,6 +468,9 @@
       <width>561</width>
       <height>221</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true"/>
     </property>
     <property name="text">
      <string/>
