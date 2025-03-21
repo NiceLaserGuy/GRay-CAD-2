@@ -7,11 +7,17 @@
     <x>0</x>
     <y>0</y>
     <width>977</width>
-    <height>679</height>
+    <height>771</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Resonator Designer</string>
+  </property>
+  <property name="toolTip">
+   <string/>
+  </property>
+  <property name="toolTipDuration">
+   <number>-1</number>
   </property>
   <property name="styleSheet">
    <string notr="true"/>
@@ -22,7 +28,7 @@
      <rect>
       <x>30</x>
       <y>30</y>
-      <width>361</width>
+      <width>411</width>
       <height>31</height>
      </rect>
     </property>
@@ -49,8 +55,8 @@
      <rect>
       <x>20</x>
       <y>110</y>
-      <width>291</width>
-      <height>131</height>
+      <width>451</width>
+      <height>191</height>
      </rect>
     </property>
     <property name="frameShape">
@@ -63,20 +69,6 @@
      <number>1</number>
     </property>
     <layout class="QGridLayout" name="gridLayout">
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>Target waist tangential in µm :</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="edit_target_waist_sag">
-       <property name="text">
-        <string>20</string>
-       </property>
-      </widget>
-     </item>
      <item row="1" column="0">
       <widget class="QLabel" name="label_2">
        <property name="text">
@@ -84,10 +76,24 @@
        </property>
       </widget>
      </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>Target waist tangential in µm :</string>
+       </property>
+      </widget>
+     </item>
      <item row="2" column="1">
       <widget class="QLineEdit" name="edit_target_waist_tan">
        <property name="text">
-        <string>20</string>
+        <string>577</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="edit_target_waist_sag">
+       <property name="text">
+        <string>21</string>
        </property>
       </widget>
      </item>
@@ -101,7 +107,35 @@
      <item row="0" column="1">
       <widget class="QLineEdit" name="edit_wavelength">
        <property name="text">
-        <string>0.532</string>
+        <string>0.514</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_9">
+       <property name="text">
+        <string>Crystal length mm:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_8">
+       <property name="text">
+        <string>Refractive index crystal:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLineEdit" name="edit_crystal_length">
+       <property name="text">
+        <string>10</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QLineEdit" name="edit_crystal_refractive_index">
+       <property name="text">
+        <string>1.675</string>
        </property>
       </widget>
      </item>
@@ -112,7 +146,7 @@
      <rect>
       <x>30</x>
       <y>90</y>
-      <width>161</width>
+      <width>311</width>
       <height>16</height>
      </rect>
     </property>
@@ -128,12 +162,175 @@
      <string>Light field parameters:</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label_6">
+   <widget class="QPushButton" name="button_evaluate_resonator">
     <property name="geometry">
      <rect>
-      <x>30</x>
-      <y>280</y>
-      <width>161</width>
+      <x>520</x>
+      <y>420</y>
+      <width>151</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgb(0, 255, 8);</string>
+    </property>
+    <property name="text">
+     <string>Evaluate</string>
+    </property>
+   </widget>
+   <widget class="QFrame" name="gridFrame_3">
+    <property name="geometry">
+     <rect>
+      <x>520</x>
+      <y>110</y>
+      <width>321</width>
+      <height>291</height>
+     </rect>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::Panel</enum>
+    </property>
+    <property name="frameShadow">
+     <enum>QFrame::Raised</enum>
+    </property>
+    <property name="lineWidth">
+     <number>1</number>
+    </property>
+    <layout class="QGridLayout" name="gridLayout_3">
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_10">
+       <property name="text">
+        <string>Personal best weigth</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QLineEdit" name="edit_pmax">
+       <property name="text">
+        <string>10</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="edit_population_number">
+       <property name="text">
+        <string>250</string>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="1">
+      <widget class="QLineEdit" name="edit_smax">
+       <property name="text">
+        <string>20</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_14">
+       <property name="text">
+        <string>Global best weigth</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QLineEdit" name="edit_pmin">
+       <property name="text">
+        <string>0.01</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLineEdit" name="edit_phi1_float">
+       <property name="text">
+        <string>2.05</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_12">
+       <property name="text">
+        <string>No. of generations</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="0">
+      <widget class="QLabel" name="label_21">
+       <property name="text">
+        <string>Minimum velocity value</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="1">
+      <widget class="QLineEdit" name="edit_smin">
+       <property name="text">
+        <string>-20</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="edit_generation_number">
+       <property name="text">
+        <string>500</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_11">
+       <property name="text">
+        <string>Population per generation</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLineEdit" name="edit_phi2_float">
+       <property name="text">
+        <string>2.05</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_17">
+       <property name="text">
+        <string>Minimum position value</string>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="0">
+      <widget class="QLabel" name="label_22">
+       <property name="text">
+        <string>Maximum velocity value</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0">
+      <widget class="QLabel" name="label_20">
+       <property name="text">
+        <string>Maximum position value</string>
+       </property>
+      </widget>
+     </item>
+     <item row="8" column="0">
+      <widget class="QLabel" name="label_23">
+       <property name="text">
+        <string>Mutation probability</string>
+       </property>
+      </widget>
+     </item>
+     <item row="8" column="1">
+      <widget class="QLineEdit" name="edit_mutation_probability">
+       <property name="text">
+        <string>0.35</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QLabel" name="label_13">
+    <property name="geometry">
+     <rect>
+      <x>530</x>
+      <y>90</y>
+      <width>311</width>
       <height>16</height>
      </rect>
     </property>
@@ -146,17 +343,20 @@
      </font>
     </property>
     <property name="text">
-     <string>Crystal parameters:</string>
+     <string>Optimization Parameters:</string>
     </property>
    </widget>
-   <widget class="QFrame" name="gridFrame_2">
+   <widget class="QFrame" name="gridFrame_4">
     <property name="geometry">
      <rect>
       <x>20</x>
-      <y>300</y>
-      <width>291</width>
-      <height>131</height>
+      <y>330</y>
+      <width>451</width>
+      <height>111</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true"/>
     </property>
     <property name="frameShape">
      <enum>QFrame::Panel</enum>
@@ -164,65 +364,179 @@
     <property name="frameShadow">
      <enum>QFrame::Raised</enum>
     </property>
-    <layout class="QGridLayout" name="gridLayout_2">
+    <property name="lineWidth">
+     <number>1</number>
+    </property>
+    <layout class="QGridLayout" name="gridLayout_4">
      <item row="2" column="0">
-      <widget class="QLabel" name="label_7">
+      <widget class="QLabel" name="label_16">
        <property name="text">
-        <string>Refractive index (extraordinary):</string>
+        <string>lower/upper bound l3 / mm</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="edit_crystal_refractive_index_ordinary">
+     <item row="0" column="2">
+      <widget class="QLineEdit" name="edit_upper_bound_l1">
        <property name="text">
-        <string>1.5</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_8">
-       <property name="text">
-        <string>Refractive index (ordinary):</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1">
-      <widget class="QLineEdit" name="edit_crystal_refractive_index_extraordinary">
-       <property name="text">
-        <string>1.5</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_9">
-       <property name="text">
-        <string>Crystal length mm:</string>
+        <string>100</string>
        </property>
       </widget>
      </item>
      <item row="0" column="1">
-      <widget class="QLineEdit" name="edit_crystal_length">
+      <widget class="QLineEdit" name="edit_lower_bound_l1">
        <property name="text">
-        <string>10</string>
+        <string>40</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_18">
+       <property name="styleSheet">
+        <string notr="true"/>
+       </property>
+       <property name="text">
+        <string>lower/upper bound l1 / mm</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_15">
+       <property name="text">
+        <string>lower/upper bound theta / deg</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="2">
+      <widget class="QLineEdit" name="edit_upper_bound_theta">
+       <property name="text">
+        <string>60</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="2">
+      <widget class="QLineEdit" name="edit_upper_bound_l3">
+       <property name="text">
+        <string>150</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLineEdit" name="edit_lower_bound_l3">
+       <property name="text">
+        <string>50</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLineEdit" name="edit_lower_bound_theta">
+       <property name="toolTip">
+        <string/>
+       </property>
+       <property name="text">
+        <string>15</string>
        </property>
       </widget>
      </item>
     </layout>
    </widget>
-   <widget class="QPushButton" name="button_evaluate_resonator">
+   <widget class="QLabel" name="label_19">
     <property name="geometry">
      <rect>
-      <x>100</x>
-      <y>450</y>
-      <width>101</width>
+      <x>30</x>
+      <y>310</y>
+      <width>311</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>MS Sans Serif</family>
+      <pointsize>10</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Geometrical bounds:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="graphic_resonator">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>510</y>
+      <width>561</width>
+      <height>221</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true"/>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>../../../../Downloads/resonator_layout.png</pixmap>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QProgressBar" name="progressBar_build_resonator">
+    <property name="geometry">
+     <rect>
+      <x>610</x>
+      <y>470</y>
+      <width>151</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="value">
+     <number>0</number>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="button_abort_resonator">
+    <property name="geometry">
+     <rect>
+      <x>690</x>
+      <y>420</y>
+      <width>151</width>
       <height>41</height>
      </rect>
     </property>
     <property name="styleSheet">
-     <string notr="true">background-color: rgb(0, 255, 8);</string>
+     <string notr="true">background-color: rgb(255, 0, 8);</string>
     </property>
     <property name="text">
-     <string>Evaluate</string>
+     <string>Abort</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_7">
+    <property name="geometry">
+     <rect>
+      <x>470</x>
+      <y>410</y>
+      <width>16</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="toolTip">
+     <string>Note: This angle is twice the angle of incidence!</string>
+    </property>
+    <property name="toolTipDuration">
+     <number>0</number>
+    </property>
+    <property name="frameShadow">
+     <enum>QFrame::Raised</enum>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>../../../../Downloads/info.png</pixmap>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
     </property>
    </widget>
   </widget>
