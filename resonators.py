@@ -207,44 +207,40 @@ class Resonator(QObject):
             if waist_sag < waist_tan:
                 fitness_value = np.sqrt(
                     2*((waist_sag - target_sag) / target_sag)**2 +  # Double weight for smaller waist
-                    ((waist_tan - target_tan) / target_tan)**2 +
-                    1/100 * (m_sag**2 + m_tan**2)  # Penalty for unstable resonators
+                    ((waist_tan - target_tan) / target_tan)**2
                 )
                 return fitness_value,
             if waist_sag > waist_tan:
                 fitness_value = np.sqrt(
                     ((waist_sag - target_sag) / target_sag)**2 +
-                    2*((waist_tan - target_tan) / target_tan)**2 +
-                    1/100 * (m_sag**2 + m_tan**2)  # Penalty for unstable resonators
+                    2*((waist_tan - target_tan) / target_tan)**2
                 )
                 return fitness_value,
 
             if waist_sag == waist_tan:
                 fitness_value = np.sqrt(
                     ((waist_sag - target_sag) / target_sag)**2 +
-                    ((waist_tan - target_tan) / target_tan)**2 +
-                    1/100 * (m_sag**2 + m_tan**2)  # Penalty for unstable resonators
+                    ((waist_tan - target_tan) / target_tan)**2
                 )
                 return fitness_value,
 
         # Definition der generate Funktion
-        def generate(size, pmin, pmax, smin, smax):
+        def generate(size, smin, smax):
             """
             Generates a new particle for PSO.
-            
+
             Args:
                 size (int): Number of parameters per particle
-                pmin (float): Minimum position value
-                pmax (float): Maximum position value
                 smin (float): Minimum velocity value
                 smax (float): Maximum velocity value
-            
+
             Returns:
                 Particle: New particle with random initial position and velocity
             """
-            # Grenzen für l1, l3 und theta aus dem UI
+            # Grenzen für l1, l3 und theta aus der UI
             l1_min, l1_max, l3_min, l3_max, theta_min, theta_max = self.getbounds()
 
+            # Initialisiere Partikelpositionen und Geschwindigkeiten
             particle = creator.Particle([
                 np.random.uniform(l1_min, l1_max) if i == 0 else
                 np.random.uniform(l3_min, l3_max) if i == 1 else
@@ -307,7 +303,7 @@ class Resonator(QObject):
 
         # DEAP setup for PSO with optimization parameters
         toolbox = base.Toolbox()
-        toolbox.register("particle", generate, size=5, pmin=pmin, pmax=pmax, smin=smin, smax=smax)
+        toolbox.register("particle", generate, size=5, smin=smin, smax=smax)
         toolbox.register("population", tools.initRepeat, list, toolbox.particle)
         # Registrierung der update_particle-Funktion mit mutation_probability
         toolbox.register("update", update_particle, phi1=phi1, phi2=phi2, mutation_probability=mutation_probability)
