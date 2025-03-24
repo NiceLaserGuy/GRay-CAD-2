@@ -10,7 +10,6 @@ class Libraries(QObject):
     Handles library functionality including window management
     and file operations for mirror configurations.
     """
-    
     def __init__(self, parent=None):
         """Initialize the Libraries class with a parent object."""
         super().__init__(parent)

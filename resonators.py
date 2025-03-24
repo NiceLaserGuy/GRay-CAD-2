@@ -1,11 +1,11 @@
 import json
 import numpy as np
 from deap import base, creator, tools
-from os import path
+from os import path, listdir
 from PyQt5.QtWidgets import QMainWindow
 from PyQt5 import uic
 from PyQt5.QtCore import QThread, pyqtSignal, QObject
-from resonator_types import BowTie
+from resonator_types import *
 
 class Resonator(QObject):
     """
@@ -47,6 +47,30 @@ class Resonator(QObject):
             self.evaluate_resonator)
         self.ui_resonator.button_abort_resonator.clicked.connect(
             self.stop_optimization)
+        self.select_library_source()
+        
+    def select_library_source(self):
+        """
+        Loads all files from the 'Library' folder and displays them in the comboBox_library_source.
+        """
+        # Path to the Library folder
+        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+
+        # Check if the folder exists
+        if not path.exists(library_path):
+            print(f"Library folder not found: {library_path}")
+            return
+
+        # Get a list of all files in the Library folder
+        files = [f for f in sorted(listdir(library_path)) if path.isfile(path.join(library_path, f))]
+
+        # Clear the comboBox before adding new items
+        self.ui_resonator.comboBox_library_source.clear()
+
+        # Add files to the comboBox
+        for file_name in files:
+            self.ui_resonator.comboBox_library_source.addItem(file_name)      
+
     def load_mirror_data(self, filepath):
         """
         Loads mirror data from a JSON file.
@@ -82,7 +106,7 @@ class Resonator(QObject):
                     
         # Debugging-Ausgabe
         if not self.mirror_curvatures:
-            raise ValueError("Die Liste 'mirror_curvatures' ist leer. Überprüfen Sie die Datei 'Mirrors.json'.")
+            raise ValueError("Die Liste 'mirror_curvatures' ist leer.")
         
     def set_ui_resonator(self, ui_resonator):
         """Set the ui_resonator reference"""
@@ -141,12 +165,20 @@ class Resonator(QObject):
         return population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability
 
     def evaluate_resonator(self):
-        # Load mirror data and get input parameters
-        self.load_mirror_data(path.abspath(path.join(path.dirname(__file__), "Library/Mirrors.json")))
-        
+        # Get the selected file from comboBox_library_source
+        selected_file = self.ui_resonator.comboBox_library_source.currentText()
+
+        # Path to the selected file
+        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+        selected_file_path = path.join(library_path, selected_file)
+        print(f"Selected file: {selected_file_path}")
+
+        # Load mirror data from the selected file
+        self.load_mirror_data(selected_file_path)
+
         if not self.mirror_curvatures:
-            raise ValueError("Die Liste 'mirror_curvatures' ist leer. Überprüfen Sie die Datei 'Mirrors.json'.")
-        
+            raise ValueError("Die Liste 'mirror_curvatures' ist leer. Überprüfen Sie die ausgewählte Datei.")
+
         # Get optimization parameters
         population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability = self.get_optimization_parameters()
         
