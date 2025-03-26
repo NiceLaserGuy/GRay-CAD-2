@@ -1,0 +1,16 @@
+{
+    "name": "neu",
+    "type": "LIBRARY",
+    "components": [
+        {
+            "type": "MIRROR",
+            "name": "new component",
+            "manufacturer": "",
+            "properties": {
+                "CURVATURE_TANGENTIAL": "",
+                "CURVATURE_SAGITTAL": "",
+                "IS_ROUND": ""
+            }
+        }
+    ]
+}

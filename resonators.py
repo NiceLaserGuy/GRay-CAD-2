@@ -5,7 +5,7 @@ from os import path, listdir
 from PyQt5.QtWidgets import QMainWindow
 from PyQt5 import uic
 from PyQt5.QtCore import QThread, pyqtSignal, QObject
-from resonator_types import *
+from Problems.resonator_types import *
 
 class Resonator(QObject):
     """
@@ -37,7 +37,7 @@ class Resonator(QObject):
         
         # Configure and show the window
         self.resonator_window.setWindowTitle("Resonator Configuration")
-        self.resonator_window.show()
+        self.resonator_window.showMaximized()
 
         # Connect resonator instance to UI
         self.set_ui_resonator(self.ui_resonator)
@@ -388,22 +388,21 @@ class Resonator(QObject):
         waist_sag = np.sqrt(((b_sag * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_sag**2)))))
         waist_tan = np.sqrt(((b_tan * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_tan**2)))))
 
-        r1_sag = "Infinity" if r1_sag >= 1e+15 else r1_sag
-        r1_tan = "Infinity" if r1_tan >= 1e+15 else r1_tan
-        r2_sag = "Infinity" if r2_sag >= 1e+15 else r2_sag
-        r2_tan = "Infinity" if r2_tan >= 1e+15 else r2_tan
+        r1_sag = "\u221e" if r1_sag >= 1e+15 else r1_sag
+        r1_tan = "\u221e" if r1_tan >= 1e+15 else r1_tan
+        r2_sag = "\u221e" if r2_sag >= 1e+15 else r2_sag
+        r2_tan = "\u221e" if r2_tan >= 1e+15 else r2_tan
 
         # Ausgabe der Ergebnisse
-        print(f"Best solution found:")
-        print(f"l1: {np.round(l1,3)} mm")
-        print(f"l2: {np.round(((2 * l1) + lc + l3) / (2 * np.cos(2*theta)),3)} mm")
-        print(f"l3: {np.round(l3,3)} mm")
-        print(f"theta: {np.round(np.rad2deg(theta*2),3)} deg")
-        print(f"r1_sag: {r1_sag} mm, r1_tan: {r1_tan} mm")
-        print(f"r2_sag: {r2_sag} mm, r2_tan: {r2_tan} mm")
-        print(f"waist_sag: {np.round(waist_sag*1e3,3)} um, waist_tan: {np.round(waist_tan*1e3,3)} um")
-        print(f"m_sag: {np.round(m_sag,6)}, m_tan: {np.round(m_tan,6)}")
-        print(f"Fitness: {np.round(best.fitness.values[0],6)}")
+        self.ui_resonator.label_length1.setText(f"={l1:.3f} mm")
+        self.ui_resonator.label_length2.setText(f"={(2*l1+lc+l3)/2*np.cos(theta):.3f} mm")
+        self.ui_resonator.label_length3.setText(f"={l3:.3f} mm")
+        self.ui_resonator.label_theta.setText(f"={np.rad2deg(theta):.3f} °")
+        self.ui_resonator.label_mirror1.setText(f"={r1_sag} mm / {r1_tan} mm")
+        self.ui_resonator.label_mirror2.setText(f"={r2_sag} mm / {r2_tan} mm")
+        self.ui_resonator.label_waist.setText(f"={waist_sag*1e3:.3f} µm / {waist_tan*1e3:.3f} µm")
+        self.ui_resonator.label_fitness.setText(f"={best.fitness.values[0]:.3f}")
+        self.ui_resonator.label_stability.setText(f"={m_sag:.3f} / {m_tan:.3f}")
         return best
 
     def generation_update(self, gen, best_fitness):

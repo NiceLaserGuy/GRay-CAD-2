@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>800</width>
-    <height>600</height>
+    <height>838</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -27,7 +27,7 @@
    <widget class="QPushButton" name="button_add_lib">
     <property name="geometry">
      <rect>
-      <x>20</x>
+      <x>140</x>
       <y>20</y>
       <width>41</width>
       <height>31</height>
@@ -49,7 +49,7 @@ background-color: rgb(186, 189, 182);</string>
    <widget class="QPushButton" name="button_delete_lib">
     <property name="geometry">
      <rect>
-      <x>70</x>
+      <x>190</x>
       <y>20</y>
       <width>41</width>
       <height>31</height>
@@ -72,9 +72,9 @@ background-color: rgb(186, 189, 182);</string>
     <property name="geometry">
      <rect>
       <x>20</x>
-      <y>320</y>
+      <y>340</y>
       <width>211</width>
-      <height>231</height>
+      <height>371</height>
      </rect>
     </property>
    </widget>
@@ -186,7 +186,7 @@ background-color: rgb(186, 189, 182);</string>
      <item row="1" column="0">
       <widget class="QLabel" name="label_5">
        <property name="text">
-        <string>Curvature</string>
+        <string>Curvature / m</string>
        </property>
       </widget>
      </item>
@@ -221,8 +221,8 @@ background-color: rgb(186, 189, 182);</string>
    <widget class="QPushButton" name="button_accept_changes">
     <property name="geometry">
      <rect>
-      <x>520</x>
-      <y>530</y>
+      <x>320</x>
+      <y>360</y>
       <width>121</width>
       <height>25</height>
      </rect>
@@ -234,14 +234,94 @@ background-color: rgb(186, 189, 182);</string>
    <widget class="QPushButton" name="button_close">
     <property name="geometry">
      <rect>
-      <x>660</x>
-      <y>530</y>
+      <x>460</x>
+      <y>360</y>
       <width>121</width>
       <height>25</height>
      </rect>
     </property>
     <property name="text">
      <string>Close</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="button_add_component">
+    <property name="geometry">
+     <rect>
+      <x>140</x>
+      <y>300</y>
+      <width>41</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>15</pointsize>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(78, 154, 6);
+background-color: rgb(186, 189, 182);</string>
+    </property>
+    <property name="text">
+     <string>+</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="button_delete_component">
+    <property name="geometry">
+     <rect>
+      <x>190</x>
+      <y>300</y>
+      <width>41</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>15</pointsize>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(204, 0, 0);
+background-color: rgb(186, 189, 182);</string>
+    </property>
+    <property name="text">
+     <string>-</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_7">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>20</y>
+      <width>81</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Libraries</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_8">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>300</y>
+      <width>111</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Components</string>
     </property>
    </widget>
   </widget>

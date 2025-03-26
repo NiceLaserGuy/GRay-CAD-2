@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>977</width>
-    <height>771</height>
+    <height>905</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -28,7 +28,7 @@
      <rect>
       <x>30</x>
       <y>30</y>
-      <width>411</width>
+      <width>461</width>
       <height>31</height>
      </rect>
     </property>
@@ -44,7 +44,7 @@
      <string notr="true"/>
     </property>
     <property name="text">
-     <string>Welcome to the resonator designer!</string>
+     <string>Upgrade your resonator to the extreme!</string>
     </property>
     <property name="alignment">
      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -374,7 +374,7 @@
         <string notr="true"/>
        </property>
        <property name="text">
-        <string>lower/upper bound l1 / mm</string>
+        <string>lower/upper bound l&lt;sub&gt;1&lt;/sub&gt; / mm</string>
        </property>
       </widget>
      </item>
@@ -419,7 +419,7 @@
      <item row="2" column="0">
       <widget class="QLabel" name="label_16">
        <property name="text">
-        <string>lower/upper bound l3 / mm</string>
+        <string>lower/upper bound l&lt;sub&gt;3&lt;/sub&gt;  / mm</string>
        </property>
       </widget>
      </item>
@@ -486,7 +486,7 @@
      <string/>
     </property>
     <property name="pixmap">
-     <pixmap>../../../../Downloads/resonator_layout.png</pixmap>
+     <pixmap>resonator_layout.png</pixmap>
     </property>
     <property name="scaledContents">
      <bool>true</bool>
@@ -543,159 +543,226 @@
      <string/>
     </property>
     <property name="pixmap">
-     <pixmap>../../../../Downloads/info.png</pixmap>
+     <pixmap>info.png</pixmap>
     </property>
     <property name="scaledContents">
      <bool>true</bool>
     </property>
    </widget>
-   <widget class="QFrame" name="gridFrame">
+   <widget class="QLabel" name="label_length1">
     <property name="geometry">
      <rect>
-      <x>600</x>
-      <y>530</y>
-      <width>261</width>
-      <height>221</height>
-     </rect>
-    </property>
-    <property name="frameShape">
-     <enum>QFrame::Panel</enum>
-    </property>
-    <property name="frameShadow">
-     <enum>QFrame::Raised</enum>
-    </property>
-    <layout class="QGridLayout" name="gridLayout_2">
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_27">
-       <property name="text">
-        <string>l&lt;sub&gt;2&lt;/sub&gt;</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QLabel" name="label_30">
-       <property name="text">
-        <string>TextLabel</string>
-       </property>
-      </widget>
-     </item>
-     <item row="9" column="0">
-      <widget class="QLabel" name="label_33">
-       <property name="text">
-        <string>fitness</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1">
-      <widget class="QLabel" name="label_35">
-       <property name="text">
-        <string>TextLabel</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="1">
-      <widget class="QLabel" name="label_37">
-       <property name="text">
-        <string>TextLabel</string>
-       </property>
-      </widget>
-     </item>
-     <item row="7" column="0">
-      <widget class="QLabel" name="label_31">
-       <property name="text">
-        <string>w&lt;sub&gt;sag&lt;/sub&gt;</string>
-       </property>
-      </widget>
-     </item>
-     <item row="8" column="1">
-      <widget class="QLabel" name="label_39">
-       <property name="text">
-        <string>TextLabel</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLabel" name="label_34">
-       <property name="text">
-        <string>TextLabel</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="0">
-      <widget class="QLabel" name="label_41">
-       <property name="text">
-        <string>R&lt;sub&gt;1,sag&lt;/sub&gt;, R&lt;sub&gt;1,tan&lt;/sub&gt;</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="label_28">
-       <property name="text">
-        <string>&lt;html&gt;&amp;#952;&lt;/html&gt;</string>
-       </property>
-      </widget>
-     </item>
-     <item row="7" column="1">
-      <widget class="QLabel" name="label_38">
-       <property name="text">
-        <string>TextLabel</string>
-       </property>
-      </widget>
-     </item>
-     <item row="9" column="1">
-      <widget class="QLabel" name="label_40">
-       <property name="text">
-        <string>TextLabel</string>
-       </property>
-      </widget>
-     </item>
-     <item row="8" column="0">
-      <widget class="QLabel" name="label_32">
-       <property name="text">
-        <string>w&lt;sub&gt;tan&lt;/sub&gt;</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_25">
-       <property name="text">
-        <string>l&lt;sub&gt;1&lt;/sub&gt;</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_26">
-       <property name="text">
-        <string>l&lt;sub&gt;3&lt;/sub&gt;</string>
-       </property>
-      </widget>
-     </item>
-     <item row="6" column="0">
-      <widget class="QLabel" name="label_42">
-       <property name="text">
-        <string>R&lt;sub&gt;2,sag&lt;/sub&gt;, R&lt;sub&gt;2,tan&lt;/sub&gt;</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QLabel" name="label_6">
-    <property name="geometry">
-     <rect>
-      <x>610</x>
-      <y>510</y>
-      <width>201</width>
-      <height>17</height>
+      <x>410</x>
+      <y>680</y>
+      <width>71</width>
+      <height>41</height>
      </rect>
     </property>
     <property name="font">
      <font>
-      <weight>75</weight>
-      <bold>true</bold>
+      <pointsize>14</pointsize>
      </font>
     </property>
     <property name="text">
-     <string>Evaluated best parameters:</string>
+     <string>=0</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_length2">
+    <property name="geometry">
+     <rect>
+      <x>210</x>
+      <y>590</y>
+      <width>165</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>=0</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_theta">
+    <property name="geometry">
+     <rect>
+      <x>444</x>
+      <y>650</y>
+      <width>171</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>=0</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_length3">
+    <property name="geometry">
+     <rect>
+      <x>310</x>
+      <y>500</y>
+      <width>165</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>=0</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_mirror1">
+    <property name="geometry">
+     <rect>
+      <x>520</x>
+      <y>520</y>
+      <width>211</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>=0 / 0</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_mirror2">
+    <property name="geometry">
+     <rect>
+      <x>590</x>
+      <y>670</y>
+      <width>191</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>=0 / 0</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_31">
+    <property name="geometry">
+     <rect>
+      <x>110</x>
+      <y>740</y>
+      <width>81</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;w&lt;span style=&quot; vertical-align:sub;&quot;&gt;sag&lt;/span&gt;, w&lt;span style=&quot; vertical-align:sub;&quot;&gt;tan&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_waist">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>745</y>
+      <width>221</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>0 / 0</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_43">
+    <property name="geometry">
+     <rect>
+      <x>110</x>
+      <y>771</y>
+      <width>81</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>m&lt;sub&gt;sag&lt;/sub&gt;, m&lt;sub&gt;tan&lt;/sub&gt;</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_stability">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>779</y>
+      <width>221</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>0 / 0</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_33">
+    <property name="geometry">
+     <rect>
+      <x>110</x>
+      <y>810</y>
+      <width>71</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>fitness</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_fitness">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>810</y>
+      <width>221</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>0</string>
     </property>
    </widget>
   </widget>

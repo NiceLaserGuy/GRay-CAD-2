@@ -1,15 +1,17 @@
 from PyQt5.QtCore import QObject, QDir, QModelIndex
-from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListView
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListView, QInputDialog, QMessageBox
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from os import path, listdir, rename
 from PyQt5 import uic
 import json
+import os
 
 class Libraries(QObject):
     """
     Handles library functionality including window management
     and file operations for mirror configurations.
     """
+    
     def __init__(self, parent=None):
         """Initialize the Libraries class with a parent object."""
         super().__init__(parent)
@@ -50,6 +52,22 @@ class Libraries(QObject):
 
         # Connect the listView_libraries to a click event
         self.ui_library.listView_libraries.clicked.connect(self.display_file_contents)
+
+        # Connect the add_component button to the method
+        self.ui_library.button_add_component.clicked.connect(self.add_new_component)
+
+        # Connect the delete_lib button to the method
+        self.ui_library.button_delete_lib.clicked.connect(self.delete_library)
+
+        # Connect the delete_component button to the method
+        self.ui_library.button_delete_component.clicked.connect(self.delete_component)
+
+    def close_library_window(self):
+        """
+        Closes the library window.
+        """
+        if self.library_window:
+            self.library_window.close()
 
     def load_library_files(self):
         """
@@ -163,88 +181,63 @@ class Libraries(QObject):
             self.ui_library.edit_manufacturer.setText(component.get("manufacturer", ""))
         else:
             print(f"Invalid component index: {selected_index}")
-
-    def accept_changes(self):
-        """
-        Saves the changes made in the listView_libraries to the selected library file.
-        """
-        # Get the currently selected file in the listView_libraries
-        selected_file_index = self.ui_library.listView_libraries.currentIndex().row()
-        model = self.ui_library.listView_libraries.model()
-
-        if selected_file_index >= 0:
-            selected_file_name = model.item(selected_file_index).text()
-
-            # Path to the Library folder
-            library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
-            old_file_path = path.join(library_path, selected_file_name)
-
-            # Update the file name if it has been changed
-            new_file_name = model.item(selected_file_index).text().strip()  # Get the edited name
-            if not new_file_name:  # Check if the new file name is empty
-                print("Error: File name cannot be empty.")
-                return
-
-            if new_file_name != selected_file_name:
-                new_file_path = path.join(library_path, f"{new_file_name}.json")
-                try:
-                    rename(old_file_path, new_file_path)  # Rename the file
-                    print(f"File renamed from {selected_file_name} to {new_file_name}.json")
-                    self.load_library_files()
-                except Exception as e:
-                    print(f"Error renaming file: {e}")
-                    return
-
-        # Save changes to the selected component (if applicable)
-        selected_index = self.ui_library.listView_lib_components.currentIndex().row()
-        if 0 <= selected_index < len(self.components_data):
-            component = self.components_data[selected_index]
-
-            # Update component data
-            component["name"] = model.item(selected_file_index).text()
-            component["manufacturer"] = self.ui_library.edit_manufacturer.text()
-
-            # Confirm the changes
-            print(f"Changes accepted for component: {component.get('name', 'Unnamed')}")
-        else:
-            print("No valid component selected.")
-
-    def close_library_window(self):
-        """
-        Closes the library window.
-        """
-        if self.library_window:
-            self.library_window.close()
-
+    
     def add_new_library(self):
         """
-        Creates a new .json file with default content and adds it to the listView_libraries.
+        Creates a new .json file with user-provided name and adds it to the listView_libraries.
         """
         # Path to the Library folder
         library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
 
-        # Default file name and content
-        new_file_name = "new_file.json"
+        # Prompt the user for a file name
+        new_file_name, ok = QInputDialog.getText(
+            self.library_window,
+            "Create New Library File",
+            "Enter the name for the new library file:"
+        )
+
+        # Check if the user pressed OK and entered a valid name
+        if not ok or not new_file_name.strip():
+            QMessageBox.warning(
+                self.library_window,
+                "Invalid Input",
+                "The file name cannot be empty. Please try again."
+            )
+            return
+
+        # Ensure the file name ends with .json
+        if not new_file_name.endswith(".json"):
+            new_file_name += ".json"
+
+        # Full path to the new file
         new_file_path = path.join(library_path, new_file_name)
+
+        # Check if the file already exists
+        if path.exists(new_file_path):
+            QMessageBox.warning(
+                self.library_window,
+                "File Already Exists",
+                f"A file with the name '{new_file_name}' already exists. Please choose a different name."
+            )
+            return
+
+        # Default content for the new file
         default_content = {
-            "name": "new file",
+            "name": new_file_name.replace(".json", ""),
             "type": "LIBRARY",
             "components": []
         }
-
-        # Ensure the file does not already exist
-        counter = 1
-        while path.exists(new_file_path):
-            new_file_name = f"new_file_{counter}.json"
-            new_file_path = path.join(library_path, new_file_name)
-            counter += 1
 
         # Create the new file
         try:
             with open(new_file_path, 'w') as file:
                 json.dump(default_content, file, indent=4)
         except Exception as e:
-            print(f"Error creating new file: {e}")
+            QMessageBox.critical(
+                self.library_window,
+                "Error",
+                f"An error occurred while creating the file: {e}"
+            )
             return
 
         # Add the new file to the listView_libraries
@@ -257,4 +250,308 @@ class Libraries(QObject):
                 self.ui_library.listView_libraries.setCurrentIndex(model.index(row, 0))
                 break
 
-        print(f"New library file created: {new_file_name}")
+        QMessageBox.information(
+            self.library_window,
+            "Success",
+            f"New library file '{new_file_name}' created successfully."
+        )
+
+    def delete_library(self):
+        """
+        Deletes the currently selected library after user confirmation.
+        """
+        # Get the currently selected library file
+        selected_file_index = self.ui_library.listView_libraries.currentIndex().row()
+        model = self.ui_library.listView_libraries.model()
+
+        if selected_file_index < 0:
+            QMessageBox.warning(
+                self.library_window,
+                "No Selection",
+                "Please select a library to delete."
+            )
+            return
+
+        selected_file_name = model.item(selected_file_index).text()
+
+        # Path to the Library folder
+        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+        selected_file_path = path.join(library_path, selected_file_name)
+
+        # Confirm deletion with the user
+        reply = QMessageBox.question(
+            self.library_window,
+            "Confirm Deletion",
+            f"Are you sure you want to delete the library '{selected_file_name}'?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            try:
+                # Delete the file
+                if path.exists(selected_file_path):
+                    os.remove(selected_file_path)
+                    self.load_library_files()
+                    QMessageBox.information(
+                        self.library_window,
+                        "Success",
+                        f"The library '{selected_file_name}' has been deleted."
+                    )
+                else:
+                    QMessageBox.warning(
+                        self.library_window,
+                        "File Not Found",
+                        f"The file '{selected_file_name}' does not exist."
+                    )
+            except Exception as e:
+                QMessageBox.critical(
+                    self.library_window,
+                    "Error",
+                    f"An error occurred while deleting the file: {e}"
+                )
+
+    def accept_changes(self):
+        """
+        Saves the changes made in the UI fields to the selected component in the library file.
+        """
+        # Get the currently selected library file
+        selected_file_index = self.ui_library.listView_libraries.currentIndex().row()
+        model = self.ui_library.listView_libraries.model()
+
+        if selected_file_index < 0:
+            QMessageBox.warning(
+                self.library_window,
+                "No Library Selected",
+                "Please select a library to save changes to a component."
+            )
+            return
+
+        selected_file_name = model.item(selected_file_index).text()
+
+        # Path to the Library folder
+        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+        selected_file_path = path.join(library_path, selected_file_name)
+
+        # Read the current library file
+        try:
+            with open(selected_file_path, 'r') as file:
+                library_data = json.load(file)
+        except Exception as e:
+            QMessageBox.critical(
+                self.library_window,
+                "Error",
+                f"An error occurred while reading the library file: {e}"
+            )
+            return
+
+        # Get the currently selected component
+        selected_component_index = self.ui_library.listView_lib_components.currentIndex().row()
+
+        if selected_component_index < 0 or "components" not in library_data or selected_component_index >= len(library_data["components"]):
+            QMessageBox.warning(
+                self.library_window,
+                "No Component Selected",
+                "Please select a component to save changes."
+            )
+            return
+
+        component = library_data["components"][selected_component_index]
+
+        # Update component data from the UI fields
+        component["name"] = self.ui_library.edit_name.text().strip()
+        component["manufacturer"] = self.ui_library.edit_manufacturer.text().strip()
+        component["type"] = self.ui_library.comboBox_type.currentText()
+
+        # Handle curvature values
+        try:
+            curvature_tangential = self.ui_library.edit_curvature_tangential.text().strip()
+            curvature_sagittal = self.ui_library.edit_curvature_sagittal.text().strip()
+
+            if curvature_tangential.lower() == "infinity":
+                component["properties"]["CURVATURE_TANGENTIAL"] = 1e30
+            else:
+                component["properties"]["CURVATURE_TANGENTIAL"] = float(curvature_tangential)
+
+            if curvature_sagittal.lower() == "infinity":
+                component["properties"]["CURVATURE_SAGITTAL"] = 1e30
+            else:
+                component["properties"]["CURVATURE_SAGITTAL"] = float(curvature_sagittal)
+        except ValueError:
+            QMessageBox.warning(
+                self.library_window,
+                "Invalid Input",
+                "Please enter valid numeric values for curvature."
+            )
+            return
+
+        # Determine if the component is round
+        if component["properties"]["CURVATURE_TANGENTIAL"] == component["properties"]["CURVATURE_SAGITTAL"]:
+            component["properties"]["IS_ROUND"] = 1.0
+        else:
+            component["properties"]["IS_ROUND"] = 0.0
+
+        # Save the updated library file
+        try:
+            with open(selected_file_path, 'w') as file:
+                json.dump(library_data, file, indent=4)
+            QMessageBox.information(
+                self.library_window,
+                "Success",
+                f"Changes to the component '{component['name']}' have been saved."
+            )
+            # Update the listView_lib_components to reflect the changes
+            self.display_file_contents(self.ui_library.listView_libraries.currentIndex())
+        except Exception as e:
+            QMessageBox.critical(
+                self.library_window,
+                "Error",
+                f"An error occurred while saving the library file: {e}"
+            )
+
+    def add_new_component(self):
+        """
+        Adds a new component to the currently selected library.
+        """
+        # Get the currently selected library file
+        selected_file_index = self.ui_library.listView_libraries.currentIndex().row()
+        model = self.ui_library.listView_libraries.model()
+
+        if selected_file_index < 0:
+            QMessageBox.warning(
+                self.library_window,
+                "No Library Selected",
+                "Please select a library to add a component to."
+            )
+            return
+
+        selected_file_name = model.item(selected_file_index).text()
+
+        # Path to the Library folder
+        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+        selected_file_path = path.join(library_path, selected_file_name)
+
+        # Read the current library file
+        try:
+            with open(selected_file_path, 'r') as file:
+                library_data = json.load(file)
+        except Exception as e:
+            QMessageBox.critical(
+                self.library_window,
+                "Error",
+                f"An error occurred while reading the library file: {e}"
+            )
+            return
+
+        # Create the new component
+        new_component = {
+            "type": "MIRROR",
+            "name": "new component",
+            "manufacturer": "",
+            "properties": {
+                "CURVATURE_TANGENTIAL": "",
+                "CURVATURE_SAGITTAL": "",
+                "IS_ROUND": ""
+            }
+        }
+
+        # Add the new component to the library
+        if "components" not in library_data:
+            library_data["components"] = []
+        library_data["components"].append(new_component)
+
+        # Save the updated library file
+        try:
+            with open(selected_file_path, 'w') as file:
+                json.dump(library_data, file, indent=4)
+            print(f"New component 'new component' added to {selected_file_name}.")
+        except Exception as e:
+            QMessageBox.critical(
+                self.library_window,
+                "Error",
+                f"An error occurred while saving the library file: {e}"
+            )
+            return
+
+        # Update the listView_lib_components to display the new component
+        self.display_file_contents(self.ui_library.listView_libraries.currentIndex())
+
+    def delete_component(self):
+        """
+        Deletes the currently selected component from the selected library after user confirmation.
+        """
+        # Get the currently selected library file
+        selected_file_index = self.ui_library.listView_libraries.currentIndex().row()
+        model = self.ui_library.listView_libraries.model()
+
+        if selected_file_index < 0:
+            QMessageBox.warning(
+                self.library_window,
+                "No Library Selected",
+                "Please select a library to delete a component from."
+            )
+            return
+
+        selected_file_name = model.item(selected_file_index).text()
+
+        # Path to the Library folder
+        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+        selected_file_path = path.join(library_path, selected_file_name)
+
+        # Read the current library file
+        try:
+            with open(selected_file_path, 'r') as file:
+                library_data = json.load(file)
+        except Exception as e:
+            QMessageBox.critical(
+                self.library_window,
+                "Error",
+                f"An error occurred while reading the library file: {e}"
+            )
+            return
+
+        # Get the currently selected component
+        selected_component_index = self.ui_library.listView_lib_components.currentIndex().row()
+
+        if selected_component_index < 0 or "components" not in library_data or selected_component_index >= len(library_data["components"]):
+            QMessageBox.warning(
+                self.library_window,
+                "No Component Selected",
+                "Please select a component to delete."
+            )
+            return
+
+        selected_component = library_data["components"][selected_component_index]
+
+        # Confirm deletion with the user
+        reply = QMessageBox.question(
+            self.library_window,
+            "Confirm Deletion",
+            f"Are you sure you want to delete the component '{selected_component.get('name', 'Unnamed')}'?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            try:
+                # Remove the component from the library
+                del library_data["components"][selected_component_index]
+
+                # Save the updated library file
+                with open(selected_file_path, 'w') as file:
+                    json.dump(library_data, file, indent=4)
+
+                # Reload the components in the UI
+                self.display_file_contents(self.ui_library.listView_libraries.currentIndex())
+
+                QMessageBox.information(
+                    self.library_window,
+                    "Success",
+                    f"The component '{selected_component.get('name', 'Unnamed')}' has been deleted."
+                )
+            except Exception as e:
+                QMessageBox.critical(
+                    self.library_window,
+                    "Error",
+                    f"An error occurred while deleting the component: {e}"
+                )

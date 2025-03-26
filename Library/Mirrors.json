@@ -1,86 +1,96 @@
 {
-  "components": [
-    {
-      "type": "MIRROR",
-      "name": "spherical r=100mm",
-      "manufacturer": "",
-      "properties": {
-        "CURVATURE_TANGENTIAL": 0.01,
-        "CURVATURE_SAGITTAL": 0.01,
-        "IS_ROUND": 1.0
-      }
-    },
-    {
-      "type": "MIRROR",
-      "name": "spherical r=200mm",
-      "manufacturer": "",
-      "properties": {
-        "CURVATURE_TANGENTIAL": 0.2,
-        "CURVATURE_SAGITTAL": 0.2,
-        "IS_ROUND": 1.0
-      }
-    },
-    {
-      "type": "MIRROR",
-      "name": "spherical r=250mm",
-      "manufacturer": "",
-      "properties": {
-        "CURVATURE_TANGENTIAL": 0.25,
-        "CURVATURE_SAGITTAL": 0.25,
-        "IS_ROUND": 1.0
-      }
-    },
-    {
-      "type": "MIRROR",
-      "name": "spherical r=750mm",
-      "manufacturer": "",
-      "properties": {
-        "CURVATURE_TANGENTIAL": 0.75,
-        "CURVATURE_SAGITTAL": 0.75,
-        "IS_ROUND": 1.0
-      }
-    },
-    {
-      "type": "MIRROR",
-      "name": "cylindrical r=100mm",
-      "manufacturer": "",
-      "properties": {
-        "CURVATURE_TANGENTIAL": 0.1,
-        "CURVATURE_SAGITTAL": 1e30,
-        "IS_ROUND": 0.0
-      }
-    },
-    {
-      "type": "MIRROR",
-      "name": "cylindrical r=200mm",
-      "manufacturer": "",
-      "properties": {
-        "CURVATURE_TANGENTIAL": 0.2,
-        "CURVATURE_SAGITTAL": 1e30,
-        "IS_ROUND": 0.0
-      }
-    },
-    {
-      "type": "MIRROR",
-      "name": "cylindrical r=250mm",
-      "manufacturer": "",
-      "properties": {
-        "CURVATURE_TANGENTIAL": 0.25,
-        "CURVATURE_SAGITTAL": 1e30,
-        "IS_ROUND": 0.0
-      }
-    },
-    {
-      "type": "MIRROR",
-      "name": "cylindrical r=100mm",
-      "manufacturer": "",
-      "properties": {
-        "CURVATURE_TANGENTIAL": 0.1,
-        "CURVATURE_SAGITTAL": 1e30,
-        "IS_ROUND": 0.0
-      }
-    }
-  ],
-  "name": "Mirrors",
-  "type": "LIBRARY"
+    "components": [
+        {
+            "type": "MIRROR",
+            "name": "spherical r=100mm",
+            "manufacturer": "",
+            "properties": {
+                "CURVATURE_TANGENTIAL": 0.01,
+                "CURVATURE_SAGITTAL": 0.01,
+                "IS_ROUND": 1.0
+            }
+        },
+        {
+            "type": "MIRROR",
+            "name": "spherical r=200mm",
+            "manufacturer": "",
+            "properties": {
+                "CURVATURE_TANGENTIAL": 0.2,
+                "CURVATURE_SAGITTAL": 0.2,
+                "IS_ROUND": 1.0
+            }
+        },
+        {
+            "type": "MIRROR",
+            "name": "spherical r=250mm",
+            "manufacturer": "",
+            "properties": {
+                "CURVATURE_TANGENTIAL": 0.25,
+                "CURVATURE_SAGITTAL": 0.25,
+                "IS_ROUND": 1.0
+            }
+        },
+        {
+            "type": "MIRROR",
+            "name": "spherical r=750mm",
+            "manufacturer": "",
+            "properties": {
+                "CURVATURE_TANGENTIAL": 0.75,
+                "CURVATURE_SAGITTAL": 0.75,
+                "IS_ROUND": 1.0
+            }
+        },
+        {
+            "type": "MIRROR",
+            "name": "cylindrical r=100mm",
+            "manufacturer": "",
+            "properties": {
+                "CURVATURE_TANGENTIAL": 0.1,
+                "CURVATURE_SAGITTAL": 1e+30,
+                "IS_ROUND": 0.0
+            }
+        },
+        {
+            "type": "MIRROR",
+            "name": "cylindrical r=200mm",
+            "manufacturer": "",
+            "properties": {
+                "CURVATURE_TANGENTIAL": 0.2,
+                "CURVATURE_SAGITTAL": 1e+30,
+                "IS_ROUND": 0.0
+            }
+        },
+        {
+            "type": "MIRROR",
+            "name": "cylindrical r=250mm",
+            "manufacturer": "",
+            "properties": {
+                "CURVATURE_TANGENTIAL": 0.25,
+                "CURVATURE_SAGITTAL": 1e+30,
+                "IS_ROUND": 0.0
+            }
+        },
+        {
+            "type": "MIRROR",
+            "name": "spherical r=50mm",
+            "manufacturer": "",
+            "properties": {
+                "CURVATURE_TANGENTIAL": 0.05,
+                "CURVATURE_SAGITTAL": 0.05,
+                "IS_ROUND": 1.0
+            }
+        },
+        {
+            "type": "MIRROR",
+            "name": "cylindrical r=50mm",
+            "manufacturer": "",
+            "properties": {
+                "CURVATURE_TANGENTIAL": 0.05,
+                "CURVATURE_SAGITTAL": 1e+30,
+                "IS_ROUND": 0.0
+            }
+        }
+    ],
+    "name": "Mirrors",
+    "type": "LIBRARY"
 }
