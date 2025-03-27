@@ -1,10 +1,12 @@
 import json
 import numpy as np
+import pyqtgraph as pg
 from deap import base, creator, tools
 from os import path, listdir
-from PyQt5.QtWidgets import QMainWindow
+from PyQt5.QtWidgets import QMainWindow, QMessageBox, QVBoxLayout, QDialog
 from PyQt5 import uic
 from PyQt5.QtCore import QThread, pyqtSignal, QObject
+from problem import Problem
 from Problems.resonator_types import *
 
 class Resonator(QObject):
@@ -16,9 +18,19 @@ class Resonator(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.resonator_window = None
-        self.resonator_type = BowTie()  # Initialize resonator type as BowTie
-        self.ui_resonator = None  # Initialize ui_resonator as None
+        self.resonator_type = None 
+        self.ui_resonator = None
         self.mirror_curvatures = []
+
+        # Attributes to store optimization results
+        self.l1 = None
+        self.l3 = None
+        self.lc = None
+        self.theta = None
+        self.r1_sag = None
+        self.r1_tan = None
+        self.r2_sag = None
+        self.r2_tan = None
 
     def open_resonator_window(self):
         """
@@ -37,7 +49,7 @@ class Resonator(QObject):
         
         # Configure and show the window
         self.resonator_window.setWindowTitle("Resonator Configuration")
-        self.resonator_window.showMaximized()
+        self.resonator_window.show()
 
         # Connect resonator instance to UI
         self.set_ui_resonator(self.ui_resonator)
@@ -48,28 +60,48 @@ class Resonator(QObject):
         self.ui_resonator.button_abort_resonator.clicked.connect(
             self.stop_optimization)
         self.select_library_source()
+
+        self.ui_resonator.pushButton_plot_beamdiagram.clicked.connect(self.plot_beamdiagram)
+
+        # Set the resonator type based on the ComboBox selection
+        self.set_resonator_type()
+
+        # Optional: Verbindung der ComboBox-Änderung mit der Methode
+        self.ui_resonator.comboBox_problem_class.currentIndexChanged.connect(self.set_resonator_type)
         
+    def set_resonator_type(self):
+        """
+        Sets the resonator type based on the selection in the comboBox_problem_class.
+        """
+        # Ausgewählten Klassennamen aus der ComboBox auslesen
+        selected_class_name = self.ui_resonator.comboBox_problem_class.currentText()
+
+        # Dynamische Instanziierung der Klasse
+        try:
+            selected_class = eval(selected_class_name)  # Klasse aus dem Namen erstellen
+            self.resonator_type = Problem(selected_class())  # Instanziiere die Klasse
+        except NameError as e:
+            QMessageBox.critical(
+                self.resonator_window,
+                "Error",
+                f"Failed to instantiate resonator type: {selected_class_name}\n{str(e)}"
+            )
+
     def select_library_source(self):
         """
         Loads all files from the 'Library' folder and displays them in the comboBox_library_source.
         """
         # Path to the Library folder
-        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+        library_path = path.abspath(path.join(path.dirname(__file__), "Library/Mirrors.json"))
 
         # Check if the folder exists
         if not path.exists(library_path):
-            print(f"Library folder not found: {library_path}")
+            QMessageBox.warning(
+                self.resonator_window,
+                "Library Folder Not Found",
+                f"Library folder not found: {library_path}"
+            )
             return
-
-        # Get a list of all files in the Library folder
-        files = [f for f in sorted(listdir(library_path)) if path.isfile(path.join(library_path, f))]
-
-        # Clear the comboBox before adding new items
-        self.ui_resonator.comboBox_library_source.clear()
-
-        # Add files to the comboBox
-        for file_name in files:
-            self.ui_resonator.comboBox_library_source.addItem(file_name)      
 
     def load_mirror_data(self, filepath):
         """
@@ -98,11 +130,11 @@ class Resonator(QObject):
                 is_round = properties.get("IS_ROUND", 0.0)
                 
                 # Normale Variante speichern
-                self.mirror_curvatures.append((curvature_sagittal*1e3, curvature_tangential*1e3, is_round))
+                self.mirror_curvatures.append((curvature_sagittal, curvature_tangential, is_round))
                 
                 # Für nicht-runde Spiegel zusätzlich die getauschte Variante speichern
                 if is_round == 0.0:
-                    self.mirror_curvatures.append((curvature_tangential*1e3, curvature_sagittal*1e3, is_round))
+                    self.mirror_curvatures.append((curvature_tangential, curvature_sagittal, is_round))
                     
         # Debugging-Ausgabe
         if not self.mirror_curvatures:
@@ -112,7 +144,6 @@ class Resonator(QObject):
         """Set the ui_resonator reference"""
         self.ui_resonator = ui_resonator
 
-        
     def get_input(self):
         """
         Retrieves input parameters from the UI and converts them to meters.
@@ -165,23 +196,30 @@ class Resonator(QObject):
         return population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability
 
     def evaluate_resonator(self):
+        """
+        Evaluates the resonator configuration using the selected mirror data file.
+        """
         # Get the selected file from comboBox_library_source
         selected_file = self.ui_resonator.comboBox_library_source.currentText()
 
         # Path to the selected file
         library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
         selected_file_path = path.join(library_path, selected_file)
-        print(f"Selected file: {selected_file_path}")
 
         # Load mirror data from the selected file
         self.load_mirror_data(selected_file_path)
 
         if not self.mirror_curvatures:
-            raise ValueError("Die Liste 'mirror_curvatures' ist leer. Überprüfen Sie die ausgewählte Datei.")
+            QMessageBox.critical(
+                self.resonator_window,
+                "Error",
+                "The list 'mirror_curvatures' is empty. Please check the selected file."
+            )
+            return
 
         # Get optimization parameters
         population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability = self.get_optimization_parameters()
-        
+
         inputs = self.get_input()
         target_sag, target_tan, nc, lc, n_prop, wavelength = inputs
 
@@ -358,7 +396,6 @@ class Resonator(QObject):
             self.ui_resonator.progressBar_build_resonator.setValue
         )
         self.optimization_thread.finished.connect(self.optimization_finished)
-        self.optimization_thread.generation_update.connect(self.generation_update)
         self.optimization_thread.start()
 
     def optimization_finished(self, best):
@@ -370,54 +407,84 @@ class Resonator(QObject):
         wavelength = thread.wavelength
 
         # Entpacken der Werte aus dem besten Partikel
-        l1, l3, theta, mirror1, mirror2 = best
+        self.l1, self.l3, self.theta, mirror1, mirror2 = best
 
         # Berechnung der Krümmungswerte basierend auf den Indizes
         mirror1 = int(np.clip(mirror1, 0, len(self.mirror_curvatures) - 1))
         mirror2 = int(np.clip(mirror2, 0, len(self.mirror_curvatures) - 1))
-        r1_sag, r1_tan = self.mirror_curvatures[mirror1][:2]
-        r2_sag, r2_tan = self.mirror_curvatures[mirror2][:2]
+        self.r1_sag, self.r1_tan = self.mirror_curvatures[mirror1][:2]
+        self.r2_sag, self.r2_tan = self.mirror_curvatures[mirror2][:2]
 
         # Berechnung der Waist-Größen mit den gespeicherten Werten
-        roundtrip_matrix_sag = self.resonator_type.roundtrip_sagittal(nc, lc, n_prop, l1, l3, r1_sag, r2_sag, theta)
-        roundtrip_matrix_tan = self.resonator_type.roundtrip_tangential(nc, lc, n_prop, l1, l3, r1_tan, r2_tan, theta)
+        roundtrip_matrix_sag = self.resonator_type.roundtrip_sagittal(nc, lc, n_prop, self.l1, self.l3, self.r1_sag, self.r2_sag, self.theta)
+        roundtrip_matrix_tan = self.resonator_type.roundtrip_tangential(nc, lc, n_prop, self.l1, self.l3, self.r1_tan, self.r2_tan, self.theta)
         m_sag = np.abs((roundtrip_matrix_sag[0, 0] + roundtrip_matrix_sag[1, 1])/2)
         m_tan = np.abs((roundtrip_matrix_tan[0, 0] + roundtrip_matrix_tan[1, 1])/2)
         b_sag = np.abs(roundtrip_matrix_sag[0, 1])
         b_tan = np.abs(roundtrip_matrix_tan[0, 1])
-        waist_sag = np.sqrt(((b_sag * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_sag**2)))))
-        waist_tan = np.sqrt(((b_tan * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_tan**2)))))
+        self.waist_sag = np.sqrt(((b_sag * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_sag**2)))))
+        self.waist_tan = np.sqrt(((b_tan * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_tan**2)))))
 
-        r1_sag = "\u221e" if r1_sag >= 1e+15 else r1_sag
-        r1_tan = "\u221e" if r1_tan >= 1e+15 else r1_tan
-        r2_sag = "\u221e" if r2_sag >= 1e+15 else r2_sag
-        r2_tan = "\u221e" if r2_tan >= 1e+15 else r2_tan
+        r1_sag = "\u221e" if self.r1_sag >= 1e+15 else self.r1_sag
+        r1_tan = "\u221e" if self.r1_tan >= 1e+15 else self.r1_tan
+        r2_sag = "\u221e" if self.r2_sag >= 1e+15 else self.r2_sag
+        r2_tan = "\u221e" if self.r2_tan >= 1e+15 else self.r2_tan
 
         # Ausgabe der Ergebnisse
-        self.ui_resonator.label_length1.setText(f"={l1:.3f} mm")
-        self.ui_resonator.label_length2.setText(f"={(2*l1+lc+l3)/2*np.cos(theta):.3f} mm")
-        self.ui_resonator.label_length3.setText(f"={l3:.3f} mm")
-        self.ui_resonator.label_theta.setText(f"={np.rad2deg(theta):.3f} °")
+        self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
+        self.ui_resonator.label_length2.setText(f"={(2*self.l1+lc+self.l3)/2*np.cos(self.theta):.3f} mm")
+        self.ui_resonator.label_length3.setText(f"={self.l3:.3f} mm")
+        self.ui_resonator.label_theta.setText(f"={np.rad2deg(self.theta):.3f} °")
         self.ui_resonator.label_mirror1.setText(f"={r1_sag} mm / {r1_tan} mm")
         self.ui_resonator.label_mirror2.setText(f"={r2_sag} mm / {r2_tan} mm")
-        self.ui_resonator.label_waist.setText(f"={waist_sag*1e3:.3f} µm / {waist_tan*1e3:.3f} µm")
+        self.ui_resonator.label_waist.setText(f"={self.waist_sag*1e3:.3f} µm / {self.waist_tan*1e3:.3f} µm")
         self.ui_resonator.label_fitness.setText(f"={best.fitness.values[0]:.3f}")
         self.ui_resonator.label_stability.setText(f"={m_sag:.3f} / {m_tan:.3f}")
         return best
-
-    def generation_update(self, gen, best_fitness):
-        # Debugging-Ausgabe
-        print(f"Generation {gen}: Best fitness = {best_fitness}")
 
     def stop_optimization(self):
         if hasattr(self, 'optimization_thread'):
             self.optimization_thread.stop()
 
+    def plot_beamdiagram(self):
+        """
+        Opens a new window and plots the beam diagram using pyqtgraph.
+        The data for the plot can be provided later.
+        """
+        # Create a new dialog window for the plot
+        plot_window = QDialog(self.resonator_window)
+        plot_window.setWindowTitle("Beam Diagram")
+        plot_window.resize(800, 600)
+
+        # Create a pyqtgraph PlotWidget
+        styles = {'color':'black', 'font-size':'15px'}  # Styles for the labels
+        plot_widget = pg.PlotWidget()
+        plot_widget.setBackground('white')
+        plot_widget.setTitle("Beam Diagram", **styles)
+        plot_widget.setLabel('left', 'waist / μm', **styles)
+        plot_widget.setLabel('bottom', 'length / mm', **styles)
+        plot_widget.showGrid(x=True, y=True)
+        plot_widget.addLegend()
+
+        # Create a layout and add the PlotWidget
+        layout = QVBoxLayout()
+        layout.addWidget(plot_widget)
+        plot_window.setLayout(layout)
+
+        # set the data for the plot
+        length = np.linspace(1e-15,2*self.l1+self.lc+self.l3+2*l2 , 1e9) #Length of the resonator
+
+        # Placeholder for the plot (to be replaced with actual data later)
+        plot_widget.plot(length, waist_sagittal, pen=pg.mkPen(color='r', width=2), name="waist sagittal")
+        plot_widget.plot(length, waist_tangential, pen=pg.mkPen(color='b', width=2), name="waist tangential")
+
+        # Show the plot window
+        plot_window.show()
+
 
 class OptimizationThread(QThread):
     progress = pyqtSignal(int)  # Signal für den Fortschritt
     finished = pyqtSignal(object)  # Signal für das beste Ergebnis
-    generation_update = pyqtSignal(int, float)  # Signal für Generation-Updates
 
     def __init__(self, resonator, population, toolbox, generation_count):
         super().__init__()
@@ -450,9 +517,9 @@ class OptimizationThread(QThread):
                 self.toolbox.update(part, best)
 
             self.progress.emit(gen + 1)
-            self.generation_update.emit(gen, best.fitness.values[0])
 
         self.finished.emit(best)
 
     def stop(self):
         self.abort_flag = True
+

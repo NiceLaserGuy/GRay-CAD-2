@@ -45,7 +45,7 @@ class MainWindow(QMainWindow):
 
         # Load the main UI from .ui file
         self.ui = uic.loadUi(path.abspath(path.join(path.dirname(__file__))) + 
-                            "/assets/interface.ui", self)
+                            "/assets/mainwindow.ui", self)
 
         # Connect menu items to their respective handlers
         self.ui.action_Open.triggered.connect(self.action_open)

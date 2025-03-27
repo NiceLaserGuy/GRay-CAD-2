@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QObject, QDir, QModelIndex
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListView, QInputDialog, QMessageBox
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
-from os import path, listdir, rename
+from os import path, listdir
 from PyQt5 import uic
 import json
 import os
@@ -62,6 +62,27 @@ class Libraries(QObject):
         # Connect the delete_component button to the method
         self.ui_library.button_delete_component.clicked.connect(self.delete_component)
 
+        # Connect the is_round checkbox to the method
+        self.ui_library.radioButton_is_spherical.toggled.connect(self.toggle_curvature_tangential)
+    
+    def toggle_curvature_tangential(self, checked):
+        """
+        Toggles the enabled state of the edit_curvature_tangential field
+        based on the state of the radioButton_is_spherical.
+        
+        Args:
+            checked (bool): True if the radio button is checked, False otherwise.
+        """
+        self.ui_library.edit_curvature_tangential.setEnabled(not checked)
+        self.ui_library.label_6.setEnabled(not checked)
+        if checked:
+            # Set the value of edit_curvature_tangential to match edit_curvature_sagittal
+            curvature_sagittal = self.ui_library.edit_curvature_sagittal.text().strip()
+            self.ui_library.edit_curvature_tangential.setText(curvature_sagittal)
+            self.ui_library.edit_curvature_tangential.setEnabled(False)  # Disable the field
+        else:
+            self.ui_library.edit_curvature_tangential.setEnabled(True)  # Enable the field
+
     def close_library_window(self):
         """
         Closes the library window.
@@ -78,7 +99,11 @@ class Libraries(QObject):
 
         # Check if the folder exists
         if not path.exists(library_path):
-            print(f"Library folder not found: {library_path}")
+            QMessageBox.warning(
+                self.library_window,
+                "Library Folder Not Found",
+                f"Library folder not found: {library_path}"
+            )
             return
 
         # Get a list of files in the Library folder
@@ -109,7 +134,11 @@ class Libraries(QObject):
 
         # Check if the file exists
         if not path.exists(file_path):
-            print(f"File not found: {file_path}")
+            QMessageBox.warning(
+                self.library_window,
+                "File Not Found",
+                f"File not found: {file_path}"
+            )
             return
 
         # Read the contents of the file
@@ -117,7 +146,11 @@ class Libraries(QObject):
             with open(file_path, 'r') as file:
                 data = json.load(file)  # Parse the JSON file
         except Exception as e:
-            print(f"Error reading file: {e}")
+            QMessageBox.critical(
+                self.library_window,
+                "Error Reading File",
+                f"An error occurred while reading the file: {e}"
+            )
             return
 
         # Create a model for the listView_lib_components
@@ -133,9 +166,17 @@ class Libraries(QObject):
                     model.appendRow(item)
                     self.components_data.append(component)  # Store the full component data
                 else:
-                    print(f"Component without 'name' attribute found: {component}")
+                    QMessageBox.warning(
+                        self.library_window,
+                        "Component Missing Name",
+                        f"Component without 'name' attribute found: {component}"
+                    )
         else:
-            print(f"No 'components' list found in {selected_file}")
+            QMessageBox.warning(
+                self.library_window,
+                "No Components Found",
+                f"No 'components' list found in {selected_file}"
+            )
 
         # Set the model to the listView_lib_components
         self.ui_library.listView_lib_components.setModel(model)
@@ -158,6 +199,13 @@ class Libraries(QObject):
             curvature_tangential = component.get("properties", {}).get("CURVATURE_TANGENTIAL", "N/A")
             curvature_sagittal = component.get("properties", {}).get("CURVATURE_SAGITTAL", "N/A")
 
+            if component.get("properties", {}).get("IS_ROUND", 0.0) == 1.0:
+                self.toggle_curvature_tangential(True)
+                self.ui_library.radioButton_is_spherical.setChecked(True)
+            else:
+                self.toggle_curvature_tangential(False)
+                self.ui_library.radioButton_is_spherical.setChecked(False)
+
             # Replace 1e30 with "Infinity"
             if curvature_tangential == 1e30:
                 curvature_tangential = "Infinity"
@@ -174,13 +222,21 @@ class Libraries(QObject):
             if index_in_combobox != -1:
                 self.ui_library.comboBox_type.setCurrentIndex(index_in_combobox)
             else:
-                print(f"Unknown component type: {component_type}")
+                QMessageBox.warning(
+                    self.library_window,
+                    "Unknown Component Type",
+                    f"Unknown component type: {component_type}"
+                )
 
             # Set the name and manufacturer in the UI fields
             self.ui_library.edit_name.setText(component.get("name", ""))
             self.ui_library.edit_manufacturer.setText(component.get("manufacturer", ""))
         else:
-            print(f"Invalid component index: {selected_index}")
+            QMessageBox.warning(
+                self.library_window,
+                "Invalid Component Index",
+                f"Invalid component index: {selected_index}"
+            )
     
     def add_new_library(self):
         """
@@ -363,33 +419,52 @@ class Libraries(QObject):
         component["manufacturer"] = self.ui_library.edit_manufacturer.text().strip()
         component["type"] = self.ui_library.comboBox_type.currentText()
 
-        # Handle curvature values
-        try:
-            curvature_tangential = self.ui_library.edit_curvature_tangential.text().strip()
-            curvature_sagittal = self.ui_library.edit_curvature_sagittal.text().strip()
+        # Handle properties based on the type
+        if component["type"] == "LENS":
+            try:
+                component["properties"]["CURVATURE_IN_SAG"] = float(self.ui_library.edit_curvature_in_sag.text().strip())
+                component["properties"]["CURVATURE_OUT_SAG"] = float(self.ui_library.edit_curvature_out_sag.text().strip())
+                component["properties"]["CURVATURE_IN_TAN"] = float(self.ui_library.edit_curvature_in_tan.text().strip())
+                component["properties"]["CURVATURE_OUT_TAN"] = float(self.ui_library.edit_curvature_out_tan.text().strip())
+                # Determine if the component is round
+                if self.ui_library.radioButton_is_spherical.isChecked():
+                    component["properties"]["IS_ROUND"] = 1.0 # True
+                else:
+                    component["properties"]["IS_ROUND"] = 0.0 # False
+            except ValueError:
+                QMessageBox.warning(
+                    self.library_window,
+                    "Invalid Input",
+                    "Please enter valid numeric values for lens curvatures."
+                )
+                return
+        else:  # Default to MIRROR
+            try:
+                curvature_tangential = self.ui_library.edit_curvature_tangential.text().strip()
+                curvature_sagittal = self.ui_library.edit_curvature_sagittal.text().strip()
 
-            if curvature_tangential.lower() == "infinity":
-                component["properties"]["CURVATURE_TANGENTIAL"] = 1e30
-            else:
-                component["properties"]["CURVATURE_TANGENTIAL"] = float(curvature_tangential)
+                if curvature_tangential.lower() == "infinity":
+                    component["properties"]["CURVATURE_TANGENTIAL"] = 1e30
+                else:
+                    component["properties"]["CURVATURE_TANGENTIAL"] = float(curvature_tangential)
 
-            if curvature_sagittal.lower() == "infinity":
-                component["properties"]["CURVATURE_SAGITTAL"] = 1e30
-            else:
-                component["properties"]["CURVATURE_SAGITTAL"] = float(curvature_sagittal)
-        except ValueError:
-            QMessageBox.warning(
-                self.library_window,
-                "Invalid Input",
-                "Please enter valid numeric values for curvature."
-            )
-            return
+                if curvature_sagittal.lower() == "infinity":
+                    component["properties"]["CURVATURE_SAGITTAL"] = 1e30
+                else:
+                    component["properties"]["CURVATURE_SAGITTAL"] = float(curvature_sagittal)
 
-        # Determine if the component is round
-        if component["properties"]["CURVATURE_TANGENTIAL"] == component["properties"]["CURVATURE_SAGITTAL"]:
-            component["properties"]["IS_ROUND"] = 1.0
-        else:
-            component["properties"]["IS_ROUND"] = 0.0
+                # Determine if the component is round
+                if self.ui_library.radioButton_is_spherical.isChecked():
+                    component["properties"]["IS_ROUND"] = 1.0 # True
+                else:
+                    component["properties"]["IS_ROUND"] = 0.0 # False
+            except ValueError:
+                QMessageBox.warning(
+                    self.library_window,
+                    "Invalid Input",
+                    "Please enter valid numeric values for mirror curvatures."
+                )
+                return
 
         # Save the updated library file
         try:
@@ -443,17 +518,33 @@ class Libraries(QObject):
             )
             return
 
-        # Create the new component
-        new_component = {
-            "type": "MIRROR",
-            "name": "new component",
-            "manufacturer": "",
-            "properties": {
-                "CURVATURE_TANGENTIAL": "",
-                "CURVATURE_SAGITTAL": "",
-                "IS_ROUND": ""
+        # Get the selected type from comboBox_type
+        selected_type = self.ui_library.comboBox_type.currentText()
+
+        # Initialize the new component based on the type
+        if selected_type == "LENS":
+            new_component = {
+                "type": "LENS",
+                "name": "new lens",
+                "manufacturer": "",
+                "properties": {
+                    "CURVATURE_IN_SAG": "",
+                    "CURVATURE_OUT_SAG": "",
+                    "CURVATURE_IN_TAN": "",
+                    "CURVATURE_OUT_TAN": ""
+                }
             }
-        }
+        else:  # Default to MIRROR
+            new_component = {
+                "type": "MIRROR",
+                "name": "new mirror",
+                "manufacturer": "",
+                "properties": {
+                    "CURVATURE_TANGENTIAL": "",
+                    "CURVATURE_SAGITTAL": "",
+                    "IS_ROUND": ""
+                }
+            }
 
         # Add the new component to the library
         if "components" not in library_data:
@@ -464,7 +555,6 @@ class Libraries(QObject):
         try:
             with open(selected_file_path, 'w') as file:
                 json.dump(library_data, file, indent=4)
-            print(f"New component 'new component' added to {selected_file_name}.")
         except Exception as e:
             QMessageBox.critical(
                 self.library_window,
