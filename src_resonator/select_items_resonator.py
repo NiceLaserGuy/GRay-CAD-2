@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QMainWindow, QMessageBox
 from PyQt5.QtCore import QModelIndex, QObject
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 
-from resonators import Resonator
+from src_resonator.resonators import Resonator
 import config
 
 class ItemSelector(QObject):
@@ -25,10 +25,10 @@ class ItemSelector(QObject):
         # Create new window instance without parent
         self.lib_resonator_window = QMainWindow()
         
+        
         # Load the library UI
-        self.ui_select_components_resonator = uic.loadUi(
-            path.abspath(path.join(path.dirname(__file__), 
-            "assets/lib_resonator_window.ui")), 
+        ui_path = path.abspath(path.join(path.dirname(path.dirname(__file__)), "assets/lib_resonator_window.ui"))
+        self.ui_select_components_resonator = uic.loadUi(ui_path, 
             self.lib_resonator_window
         )
         
@@ -76,7 +76,7 @@ class ItemSelector(QObject):
         Loads files from the 'Library' folder and displays them in the listView_libraries.
         """
         # Path to the Library folder
-        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+        library_path = path.abspath(path.join(path.dirname(path.dirname(__file__)), "Library"))
 
         # Check if the folder exists
         if not path.exists(library_path):
@@ -110,7 +110,7 @@ class ItemSelector(QObject):
         selected_file = index.data()
 
         # Path to the Library folder
-        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+        library_path = path.abspath(path.join(path.dirname(path.dirname(__file__)), "Library"))
         file_path = path.join(library_path, selected_file)
 
         # Check if the file exists

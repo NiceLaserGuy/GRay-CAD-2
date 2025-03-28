@@ -15,12 +15,9 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMainWindow, QMessageBox, QFileDialog
 
 # Custom module imports
-from resonators import Resonator
+from src_resonator.resonators import Resonator
 from libraries import Libraries
-from select_items_resonator import ItemSelector
-
-import pyqtgraph as pg
-import logging
+from src_resonator.select_items_resonator import ItemSelector
 
 class MainWindow(QMainWindow):
     """

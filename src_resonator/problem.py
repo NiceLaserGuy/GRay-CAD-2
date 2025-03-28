@@ -1,5 +1,5 @@
 from Problems.resonator_types import BowTie
-from matrices import Matrices
+from Problems.matrices import Matrices
 import numpy as np
 
 class Problem:

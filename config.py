@@ -8,9 +8,9 @@ def set_temp_file_path(path):
 def get_temp_file_path():
     return TEMP_FILE_PATH_LIB
 
-def set_temp_file_resonator_setup(*args):
+def set_temp_resonator_setup(*args):
     global TEMP_RESONATOR_SETUP
     TEMP_RESONATOR_SETUP = args
     
-def get_temp_file_resonator_setup():
+def get_temp_resonator_setup():
     return TEMP_RESONATOR_SETUP

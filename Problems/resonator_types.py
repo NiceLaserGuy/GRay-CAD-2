@@ -1,5 +1,5 @@
 import numpy as np
-from matrices import Matrices
+from Problems.matrices import Matrices
 
 class BowTie:
 
