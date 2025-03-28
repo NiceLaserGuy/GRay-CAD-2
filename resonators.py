@@ -1,6 +1,7 @@
 import json
 import numpy as np
 import pyqtgraph as pg
+import config
 from deap import base, creator, tools
 from os import path, listdir
 from PyQt5.QtWidgets import QMainWindow, QMessageBox, QVBoxLayout, QDialog
@@ -53,13 +54,14 @@ class Resonator(QObject):
 
         # Connect resonator instance to UI
         self.set_ui_resonator(self.ui_resonator)
+        self.temp_file_path = config.get_temp_file_path()
+
 
         # Connect resonator window buttons
         self.ui_resonator.button_evaluate_resonator.clicked.connect(
             self.evaluate_resonator)
         self.ui_resonator.button_abort_resonator.clicked.connect(
             self.stop_optimization)
-        self.select_library_source()
 
         self.ui_resonator.pushButton_plot_beamdiagram.clicked.connect(self.plot_beamdiagram)
 
@@ -86,22 +88,6 @@ class Resonator(QObject):
                 "Error",
                 f"Failed to instantiate resonator type: {selected_class_name}\n{str(e)}"
             )
-
-    def select_library_source(self):
-        """
-        Loads all files from the 'Library' folder and displays them in the comboBox_library_source.
-        """
-        # Path to the Library folder
-        library_path = path.abspath(path.join(path.dirname(__file__), "Library/Mirrors.json"))
-
-        # Check if the folder exists
-        if not path.exists(library_path):
-            QMessageBox.warning(
-                self.resonator_window,
-                "Library Folder Not Found",
-                f"Library folder not found: {library_path}"
-            )
-            return
 
     def load_mirror_data(self, filepath):
         """
@@ -196,15 +182,22 @@ class Resonator(QObject):
         return population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability
 
     def evaluate_resonator(self):
-        """
-        Evaluates the resonator configuration using the selected mirror data file.
-        """
-        # Get the selected file from comboBox_library_source
-        selected_file = self.ui_resonator.comboBox_library_source.currentText()
+        if self.temp_file_path is None:
+            QMessageBox.critical(
+                self.resonator_window,
+                "Error",
+                "No temporary file found. Please add components and save them."
+            )
+        if not self.temp_file_path or not path.exists(self.temp_file_path):
+            QMessageBox.critical(
+                self.resonator_window,
+                "Error",
+                "Keine temporäre Datei gefunden. Bitte fügen Sie Komponenten hinzu und speichern Sie sie."
+            )
+            return
 
-        # Path to the selected file
-        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
-        selected_file_path = path.join(library_path, selected_file)
+        # Verwende die temporäre Datei als Quelle
+        selected_file_path = self.temp_file_path
 
         # Load mirror data from the selected file
         self.load_mirror_data(selected_file_path)
@@ -216,6 +209,8 @@ class Resonator(QObject):
                 "The list 'mirror_curvatures' is empty. Please check the selected file."
             )
             return
+
+        config.TEMP_FILE_PATH_LIB = self.temp_file_path
 
         # Get optimization parameters
         population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability = self.get_optimization_parameters()

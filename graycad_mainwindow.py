@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import QMainWindow, QMessageBox, QFileDialog
 # Custom module imports
 from resonators import Resonator
 from libraries import Libraries
+from select_items_resonator import ItemSelector
 
 import pyqtgraph as pg
 import logging
@@ -38,6 +39,7 @@ class MainWindow(QMainWindow):
         # Create instances of helper classes
         self.res = Resonator()
         self.lib = Libraries()
+        self.item_selector = ItemSelector()
 
         # Set application window icon
         self.setWindowIcon(QIcon(path.abspath(path.join(path.dirname(__file__), 
@@ -54,7 +56,7 @@ class MainWindow(QMainWindow):
         self.ui.action_Exit.triggered.connect(self.action_exit)
         
         # Connect main buttons to their handlers
-        self.ui.button_build_resonator.clicked.connect(self.res.open_resonator_window)
+        self.ui.button_build_resonator.clicked.connect(self.item_selector.open_library_window)
         self.ui.action_Library.triggered.connect(self.lib.open_library_window)
 
     def action_open(self):
