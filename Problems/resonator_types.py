@@ -5,6 +5,15 @@ class BowTie:
 
     def __init__(self):
         self.matrices = Matrices()
+
+    def set_roundtrip_direction(self, lc, l1, l3, theta):
+         self.l1 = l1
+         self.l3 = l3
+         self.lc = lc
+         self.l2 = ((2 * l1) + lc + l3) / (2 * np.cos(2*theta))
+         """Sets the direction of the roundtrip, only needed for plotting"""
+         vars = self.lc/2, self.l1, self.l2, self.l3, self.l2, self.l1, self.lc/2
+         return vars
     
     def set_roundtrip_tangential(self, nc, lc, n0, l1, l3, r1_tan, r2_tan, theta):
             """Calculate the roundtrip matrix for the tangential plane"""
@@ -42,7 +51,71 @@ class BowTie:
 
         return m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11        
 
-    def set_fitness(waist_sag, waist_tan, target_sag, target_tan):
+    def set_fitness(self, waist_sag, waist_tan, target_sag, target_tan):
+            """Calculate the fitness value for the Bowtie resonator"""
+            if waist_sag < waist_tan:
+                fitness_value = np.sqrt(
+                    2*((waist_sag - target_sag) / target_sag)**2 +  # Double weight for smaller waist
+                    ((waist_tan - target_tan) / target_tan)**2
+                )
+                return fitness_value,
+            if waist_sag > waist_tan:
+                fitness_value = np.sqrt(
+                    ((waist_sag - target_sag) / target_sag)**2 +
+                    2*((waist_tan - target_tan) / target_tan)**2    # Double weight for smaller waist
+                )
+                return fitness_value,
+
+            if waist_sag == waist_tan:
+                fitness_value = np.sqrt(
+                    ((waist_sag - target_sag) / target_sag)**2 +
+                    ((waist_tan - target_tan) / target_tan)**2
+                )
+                return fitness_value,
+
+class FabryPerot:
+     
+    def __init__(self):
+        self.matrices = Matrices()
+
+
+    def set_roundtrip_direction(self, lc, l1):
+         self.l1 = l1
+         self.lc = lc
+         """Sets the direction of the roundtrip, only needed for plotting"""
+         return self.lc/2, self.l1, self.l1, self.lc, self.l1, self.l1, self.lc/2
+    
+    def set_roundtrip_tangential(self, nc, lc, n0, l1, r1_tan):
+        """Calculate the roundtrip matrix for the tangential plane"""
+
+        m1 = self.matrices.free_space(lc / 2, nc)
+        m2 = self.matrices.free_space(l1, n0)
+        m3 = self.matrices.curved_mirror_sagittal(r1_tan, 0)
+        m4 = self.matrices.free_space(l1, n0)
+        m5 = self.matrices.free_space(lc, nc)
+        m6 = self.matrices.free_space(l1, n0)
+        m7 = self.matrices.curved_mirror_sagittal(r1_tan, 0)
+        m8 = self.matrices.free_space(l1, n0)
+        m9 = self.matrices.free_space(lc / 2, nc)
+
+        return m1, m2, m3, m4, m5, m6, m7, m8, m9
+
+    def set_roundtrip_sagittal(self, nc, lc, n0, l1, r1_sag):
+        """Calculate the roundtrip matrix for the sagittal plane"""
+        
+        m1 = self.matrices.free_space(lc / 2, nc)
+        m2 = self.matrices.free_space(l1, n0)
+        m3 = self.matrices.curved_mirror_sagittal(r1_sag, 0)
+        m4 = self.matrices.free_space(l1, n0)
+        m5 = self.matrices.free_space(lc, nc)
+        m6 = self.matrices.free_space(l1, n0)
+        m7 = self.matrices.curved_mirror_sagittal(r1_sag, 0)
+        m8 = self.matrices.free_space(l1, n0)
+        m9 = self.matrices.free_space(lc / 2, nc)
+
+        return m1, m2, m3, m4, m5, m6, m7, m8, m9
+
+    def set_fitness(self, waist_sag, waist_tan, target_sag, target_tan):
             """Calculate the fitness value for the Bowtie resonator"""
             if waist_sag < waist_tan:
                 fitness_value = np.sqrt(

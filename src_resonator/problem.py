@@ -1,4 +1,4 @@
-from Problems.resonator_types import BowTie
+from Problems.resonator_types import *
 from Problems.matrices import Matrices
 import numpy as np
 
@@ -34,3 +34,9 @@ class Problem:
         Calls the fitness calculation on the resonator type.
         """
         return self.type.set_fitness(*args, **kwargs)
+    
+    def optimization_parameters(self, *args, **kwargs):
+        """
+        Calls the parameters of the resonator type.
+        """
+        return self, type.parameters(*args, **kwargs)

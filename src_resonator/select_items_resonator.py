@@ -54,6 +54,10 @@ class ItemSelector(QObject):
         # Connect the pushButton_add to the method
         self.ui_select_components_resonator.toolButton_add_component.clicked.connect(self.add_component_to_temporary_list)
         
+        self.ui_select_components_resonator.pushButton_remove_component.clicked.connect(self.remove_component_from_temporary_list)
+    
+        self.ui_select_components_resonator.pushButton_remove_all.clicked.connect(self.remove_all_components_from_temporary_list)
+
     def handle_next_button(self):
         """
         Speichert die temporäre Datei und öffnet das nächste Fenster.
@@ -364,6 +368,44 @@ class ItemSelector(QObject):
         # Setze das Modell in listView_temporary_component
         self.ui_select_components_resonator.listView_temporary_component.setModel(model)
 
+    def add_component_to_temporary_list(self):
+        """
+        Fügt die ausgewählte Komponente von listView_lib_components zur temporären Liste hinzu
+        und speichert sie in der temporären Datei.
+        """
+        # Überprüfen, ob eine Komponente ausgewählt ist
+        selected_indexes = self.ui_select_components_resonator.listView_lib_components.selectedIndexes()
+        if not selected_indexes:
+            QMessageBox.warning(
+                self.library_window,
+                "No Component Selected",
+                "Bitte wählen Sie eine Komponente aus der Liste aus."
+            )
+            return
+
+        # Hole die ausgewählte Komponente
+        selected_index = selected_indexes[0].row()
+        if 0 <= selected_index < len(self.components_data):
+            selected_component = self.components_data[selected_index]
+        else:
+            QMessageBox.warning(
+                self.library_window,
+                "Invalid Selection",
+                "Die ausgewählte Komponente ist ungültig."
+            )
+            return
+
+        # Füge die Komponente zur temporären Liste hinzu
+        if not hasattr(self, "temporary_components"):
+            self.temporary_components = []  # Initialisiere die temporäre Liste
+        self.temporary_components.append(selected_component)
+
+        # Aktualisiere die temporäre Datei
+        self.update_temporary_file()
+
+        # Zeige die temporäre Liste in listView_temporary_component an
+        self.update_temporary_list_view()
+
     def add_all_components_to_temporary_list(self):
         """
         Fügt alle Komponenten aus listView_lib_components zur temporären Liste hinzu
@@ -392,3 +434,63 @@ class ItemSelector(QObject):
 
         # Zeige die temporäre Liste in listView_temporary_component an
         self.update_temporary_list_view()
+
+    def remove_component_from_temporary_list(self):
+        """
+        Entfernt die ausgewählte Komponente aus der temporären Liste.
+        """
+        # Überprüfen, ob eine Komponente ausgewählt ist
+        selected_indexes = self.ui_select_components_resonator.listView_temporary_component.selectedIndexes()
+        if not selected_indexes:
+            QMessageBox.warning(
+                self.library_window,
+                "No Component Selected",
+                "Bitte wählen Sie eine Komponente aus der temporären Liste aus."
+            )
+            return
+
+        # Hole den Index der ausgewählten Komponente
+        selected_index = selected_indexes[0].row()
+
+        # Überprüfen, ob der Index gültig ist
+        if 0 <= selected_index < len(self.temporary_components):
+            # Entferne die Komponente aus der temporären Liste
+            self.temporary_components.pop(selected_index)
+
+            # Aktualisiere die temporäre Datei
+            self.update_temporary_file()
+
+            # Aktualisiere die Anzeige der temporären Liste
+            self.update_temporary_list_view()
+
+        else:
+            QMessageBox.warning(
+                self.library_window,
+                "Invalid Selection",
+                "Die ausgewählte Komponente ist ungültig."
+        )
+        
+    def remove_all_components_from_temporary_list(self):
+        """
+        Entfernt alle Komponenten aus der temporären Liste.
+        """
+        # Überprüfen, ob die temporäre Liste leer ist
+        if not hasattr(self, "temporary_components") or not self.temporary_components:
+            QMessageBox.warning(
+                self.library_window,
+                "No Components to Remove",
+                "Es gibt keine Komponenten, die entfernt werden können."
+            )
+            return
+
+        # Leere die temporäre Liste
+        self.temporary_components.clear()
+
+        # Aktualisiere die temporäre Datei
+        self.update_temporary_file()
+
+        # Aktualisiere die Anzeige der temporären Liste
+        self.update_temporary_list_view()
+        
+        # Setze ein leeres Modell für die listView_temporary_component
+        self.ui_select_components_resonator.listView_temporary_component.setModel(QStandardItemModel())

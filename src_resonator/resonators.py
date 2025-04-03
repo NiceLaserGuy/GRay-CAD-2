@@ -65,29 +65,6 @@ class Resonator(QObject):
 
         #self.ui_resonator.pushButton_plot_beamdiagram.clicked.connect(self.plot_beamdiagram)
 
-        # Set the resonator type based on the ComboBox selection
-        self.set_resonator_type()
-
-        # Optional: Verbindung der ComboBox-Änderung mit der Methode
-        self.ui_resonator.comboBox_problem_class.currentIndexChanged.connect(self.set_resonator_type)
-        
-    def set_resonator_type(self):
-        """
-        Sets the resonator type based on the selection in the comboBox_problem_class.
-        """
-        # Ausgewählten Klassennamen aus der ComboBox auslesen
-        selected_class_name = self.ui_resonator.comboBox_problem_class.currentText()
-
-        # Dynamische Instanziierung der Klasse
-        try:
-            selected_class = eval(selected_class_name)  # Klasse aus dem Namen erstellen
-            self.resonator_type = Problem(selected_class())  # Instanziiere die Klasse
-        except NameError as e:
-            QMessageBox.critical(
-                self.resonator_window,
-                "Error",
-                f"Failed to instantiate resonator type: {selected_class_name}\n{str(e)}"
-            )
 
     def load_mirror_data(self, filepath):
         """
@@ -182,6 +159,7 @@ class Resonator(QObject):
         return population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability
 
     def evaluate_resonator(self):
+
         if self.temp_file_path is None:
             QMessageBox.critical(
                 self.resonator_window,
@@ -195,6 +173,18 @@ class Resonator(QObject):
                 "Keine temporäre Datei gefunden. Bitte fügen Sie Komponenten hinzu und speichern Sie sie."
             )
             return
+        
+        self.selected_class_name = self.ui_resonator.comboBox_problem_class.currentText()
+        if self.selected_class_name == "BowTie":
+            self.resonator_type = BowTie()
+        elif self.selected_class_name == "FabryPerot":
+            self.resonator_type = FabryPerot()
+        else:
+            self.resonator_type = None
+        if self.selected_class_name is None:
+            print("Error: No valid resonator type selected.")
+            
+        self.problem = Problem(self.resonator_type)
 
         # Verwende die temporäre Datei als Quelle
         selected_file_path = self.temp_file_path
@@ -230,8 +220,11 @@ class Resonator(QObject):
             Returns:
                 tuple: Single-element tuple containing the fitness value
             """
-            # Extract individual parameters
-            l1, l3, theta, mirror1, mirror2 = individual
+            if self.ui_resonator.comboBox_problem_class.currentText() == "BowTie":
+                # Extract individual parameters
+                l1, l3, theta, mirror1, mirror2 = individual
+            if self.ui_resonator.comboBox_problem_class.currentText() =="FabryPerot":
+                l1, mirror1 = individual
             
             # Get mirror curvatures
             mirror1 = int(np.clip(mirror1, 0, len(self.mirror_curvatures) - 1))
@@ -240,9 +233,12 @@ class Resonator(QObject):
             r2_sag, r2_tan = self.mirror_curvatures[mirror2][:2]
             
             # Calculate roundtrip matrices
-            roundtrip_matrix_sag = self.resonator_type.roundtrip_sagittal(nc, lc, n_prop, l1, l3, r1_sag, r2_sag, theta)
-            roundtrip_matrix_tan = self.resonator_type.roundtrip_tangential(nc, lc, n_prop, l1, l3, r1_tan, r2_tan, theta)
-            
+            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(
+                self.nc, self.lc, self.n_prop, l1, l3, r1_sag, r2_sag, theta
+                )
+            roundtrip_matrix_tan = self.problem.roundtrip_tangential(
+                self.nc, self.lc, self.n_prop, l1, l3, r1_tan, r2_tan, theta
+                )
             # Extract matrix elements for stability calculation
             m_sag = np.abs((roundtrip_matrix_sag[0, 0] + roundtrip_matrix_sag[1, 1])/2)
             m_tan = np.abs((roundtrip_matrix_tan[0, 0] + roundtrip_matrix_tan[1, 1])/2)
@@ -268,26 +264,9 @@ class Resonator(QObject):
             if abs(m_sag) > 1 or abs(m_tan) > 1:
                 return 1e6,
         
-            # Different weights are applied depending on which waist is smaller
-            if waist_sag < waist_tan:
-                fitness_value = np.sqrt(
-                    2*((waist_sag - target_sag) / target_sag)**2 +  # Double weight for smaller waist
-                    ((waist_tan - target_tan) / target_tan)**2
-                )
-                return fitness_value,
-            if waist_sag > waist_tan:
-                fitness_value = np.sqrt(
-                    ((waist_sag - target_sag) / target_sag)**2 +
-                    2*((waist_tan - target_tan) / target_tan)**2
-                )
-                return fitness_value,
+            fitness_value, = self.problem.fitness(waist_sag, waist_tan, target_sag, target_tan)
 
-            if waist_sag == waist_tan:
-                fitness_value = np.sqrt(
-                    ((waist_sag - target_sag) / target_sag)**2 +
-                    ((waist_tan - target_tan) / target_tan)**2
-                )
-                return fitness_value,
+            return (fitness_value,) 
 
         # Definition der generate Funktion
         def generate(size, smin, smax):
@@ -411,8 +390,8 @@ class Resonator(QObject):
         self.r2_sag, self.r2_tan = self.mirror_curvatures[mirror2][:2]
 
         # Berechnung der Waist-Größen mit den gespeicherten Werten
-        roundtrip_matrix_sag = self.resonator_type.roundtrip_sagittal(nc, lc, n_prop, self.l1, self.l3, self.r1_sag, self.r2_sag, self.theta)
-        roundtrip_matrix_tan = self.resonator_type.roundtrip_tangential(nc, lc, n_prop, self.l1, self.l3, self.r1_tan, self.r2_tan, self.theta)
+        roundtrip_matrix_sag = self.problem.roundtrip_sagittal(nc, lc, n_prop, self.l1, self.l3, self.r1_sag, self.r2_sag, self.theta)
+        roundtrip_matrix_tan = self.problem.roundtrip_tangential(nc, lc, n_prop, self.l1, self.l3, self.r1_tan, self.r2_tan, self.theta)
         m_sag = np.abs((roundtrip_matrix_sag[0, 0] + roundtrip_matrix_sag[1, 1])/2)
         m_tan = np.abs((roundtrip_matrix_tan[0, 0] + roundtrip_matrix_tan[1, 1])/2)
         b_sag = np.abs(roundtrip_matrix_sag[0, 1])
