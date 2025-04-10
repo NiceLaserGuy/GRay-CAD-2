@@ -147,6 +147,7 @@ class Resonator(QObject):
         Returns:
             tuple: (population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax)
         """
+        num_runs = int(float(self.ui_resonator.edit_num_runs.text()))
         population_number = int(float(self.ui_resonator.edit_population_number.text()))
         generation_number = int(float(self.ui_resonator.edit_generation_number.text()))
         phi1 = float(self.ui_resonator.edit_phi1_float.text())
@@ -156,21 +157,30 @@ class Resonator(QObject):
         smin = float(self.ui_resonator.edit_smin.text())
         smax = float(self.ui_resonator.edit_smax.text())
         mutation_probability = float(self.ui_resonator.edit_mutation_probability.text())
-        return population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability
+        return num_runs, population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability
 
     def evaluate_resonator(self):
-
-        if self.temp_file_path is None:
+        """
+        Starts the optimization process with multiple runs.
+        """
+        if self.temp_file_path is None or not path.exists(self.temp_file_path):
             QMessageBox.critical(
                 self.resonator_window,
                 "Error",
                 "No temporary file found. Please add components and save them."
             )
-        if not self.temp_file_path or not path.exists(self.temp_file_path):
+            return
+
+        # Get the number of runs from the UI
+        try:
+            num_runs = int(self.ui_resonator.edit_num_runs.text())
+            if num_runs <= 0:
+                raise ValueError("Number of runs must be greater than 0.")
+        except ValueError:
             QMessageBox.critical(
                 self.resonator_window,
                 "Error",
-                "Keine temporäre Datei gefunden. Bitte fügen Sie Komponenten hinzu und speichern Sie sie."
+                "Invalid number of runs. Please enter a positive integer."
             )
             return
         
@@ -182,8 +192,13 @@ class Resonator(QObject):
         else:
             self.resonator_type = None
         if self.selected_class_name is None:
-            print("Error: No valid resonator type selected.")
-            
+            QMessageBox.critical(
+                self.resonator_window,
+                "Error",
+                "No valid resonator type selected. Please select a valid resonator type."
+            )
+            return
+                
         self.problem = Problem(self.resonator_type)
 
         # Verwende die temporäre Datei als Quelle
@@ -203,166 +218,29 @@ class Resonator(QObject):
         config.TEMP_FILE_PATH_LIB = self.temp_file_path
 
         # Get optimization parameters
-        population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability = self.get_optimization_parameters()
+        num_runs, population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability = self.get_optimization_parameters()
 
         inputs = self.get_input()
         target_sag, target_tan, nc, lc, n_prop, wavelength = inputs
 
-        # Define the fitness function with closure over the input values
-        def objective(individual):
-            """
-            Fitness function for PSO optimization.
-            Calculates resonator parameters and returns fitness value.
-            
-            Args:
-                individual: Particle containing [l1, l3, theta, mirror1, mirror2]
-            
-            Returns:
-                tuple: Single-element tuple containing the fitness value
-            """
-            if self.ui_resonator.comboBox_problem_class.currentText() == "BowTie":
-                # Extract individual parameters
-                l1, l3, theta, mirror1, mirror2 = individual
-            if self.ui_resonator.comboBox_problem_class.currentText() =="FabryPerot":
-                l1, mirror1 = individual
-            
-            # Get mirror curvatures
-            mirror1 = int(np.clip(mirror1, 0, len(self.mirror_curvatures) - 1))
-            mirror2 = int(np.clip(mirror2, 0, len(self.mirror_curvatures) - 1))
-            r1_sag, r1_tan = self.mirror_curvatures[mirror1][:2]
-            r2_sag, r2_tan = self.mirror_curvatures[mirror2][:2]
-            
-            # Calculate roundtrip matrices
-            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(
-                self.nc, self.lc, self.n_prop, l1, l3, r1_sag, r2_sag, theta
-                )
-            roundtrip_matrix_tan = self.problem.roundtrip_tangential(
-                self.nc, self.lc, self.n_prop, l1, l3, r1_tan, r2_tan, theta
-                )
-            # Extract matrix elements for stability calculation
-            m_sag = np.abs((roundtrip_matrix_sag[0, 0] + roundtrip_matrix_sag[1, 1])/2)
-            m_tan = np.abs((roundtrip_matrix_tan[0, 0] + roundtrip_matrix_tan[1, 1])/2)
-            
-            # Calculate beam parameters
-            b_sag = np.abs(roundtrip_matrix_sag[0, 1])
-            b_tan = np.abs(roundtrip_matrix_tan[0, 1])
-            
-            # Berechnung der Waist-Größen mit Sicherheitsprüfung
-            if 1 - m_sag**2 <= 0:
-                waist_sag = 1e6  # Bestrafe instabile Resonatoren
-            else:
-                waist_sag = np.sqrt(((b_sag * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_sag**2)))))
-
-            if 1 - m_tan**2 <= 0:
-                waist_tan = 1e6  # Bestrafe instabile Resonatoren
-            else:
-                waist_tan = np.sqrt(((b_tan * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_tan**2)))))
-
-            # Calculate fitness value based on waist size ratios and stability
-
-            # Check for unstable resonators
-            if abs(m_sag) > 1 or abs(m_tan) > 1:
-                return 1e6,
-        
-            fitness_value, = self.problem.fitness(waist_sag, waist_tan, target_sag, target_tan)
-
-            return (fitness_value,) 
-
-        # Definition der generate Funktion
-        def generate(size, smin, smax):
-            """
-            Generates a new particle for PSO.
-
-            Args:
-                size (int): Number of parameters per particle
-                smin (float): Minimum velocity value
-                smax (float): Maximum velocity value
-
-            Returns:
-                Particle: New particle with random initial position and velocity
-            """
-            # Grenzen für l1, l3 und theta aus der UI
-            l1_min, l1_max, l3_min, l3_max, theta_min, theta_max = self.getbounds()
-
-            # Initialisiere Partikelpositionen und Geschwindigkeiten
-            particle = creator.Particle([
-                np.random.uniform(l1_min, l1_max) if i == 0 else
-                np.random.uniform(l3_min, l3_max) if i == 1 else
-                np.random.uniform(theta_min, theta_max) if i == 2 else
-                np.random.randint(0, len(self.mirror_curvatures))
-                for i in range(size)
-            ])
-            particle.speed = [np.random.uniform(smin, smax) for _ in range(size)]
-            particle.smin = smin
-            particle.smax = smax
-            return particle
-
-        # Definition der update_particle Funktion
-        def update_particle(part, best, phi1, phi2, mutation_probability):
-            """
-            Updates particle position and velocity with optional mutation.
-            
-            Args:
-                part: Particle to update
-                best: Global best position
-                phi1: Personal best weight
-                phi2: Global best weight
-                mutation_probability: Probability of mutation (default: 10%)
-            """
-            u1 = np.random.uniform(0, phi1, len(part))
-            u2 = np.random.uniform(0, phi2, len(part))
-            v_u1 = [u * (b - p) for u, b, p in zip(u1, part.best, part)]
-            v_u2 = [u * (b - p) for u, b, p in zip(u2, best, part)]
-            part.speed = [v + vu1 + vu2 for v, vu1, vu2 in zip(part.speed, v_u1, v_u2)]
-
-            # Geschwindigkeitsgrenzen einhalten
-            for i, speed in enumerate(part.speed):
-                if speed < part.smin:
-                    part.speed[i] = part.smin
-                elif speed > part.smax:
-                    part.speed[i] = part.smax
-
-            # Positionsgrenzen einhalten
-            l1_min, l1_max, l3_min, l3_max, theta_min, theta_max = self.getbounds()
-
-            part[:] = [
-                np.clip(p + v, l1_min, l1_max) if i == 0 else
-                np.clip(p + v, l3_min, l3_max) if i == 1 else
-                np.clip(p + v, theta_min, theta_max) if i == 2 else
-                int(np.clip(round(p + v), 0, len(self.mirror_curvatures) - 1))
-                for i, (p, v) in enumerate(zip(part, part.speed))
-            ]
-
-            # Mutation: Zufällige Änderung mit einer kleinen Wahrscheinlichkeit
-            for i in range(len(part)):
-                if np.random.rand() < mutation_probability:
-                    if i == 0:  # l1
-                        part[i] = np.random.uniform(l1_min, l1_max)
-                    elif i == 1:  # l3
-                        part[i] = np.random.uniform(l3_min, l3_max)
-                    elif i == 2:  # theta
-                        part[i] = np.random.uniform(theta_min, theta_max)
-                    else:  # mirror indices
-                        part[i] = np.random.randint(0, len(self.mirror_curvatures))
-
         # DEAP setup for PSO with optimization parameters
         toolbox = base.Toolbox()
-        toolbox.register("particle", generate, size=5, smin=smin, smax=smax)
+        toolbox.register("particle", self.generate, size=5, smin=smin, smax=smax)
         toolbox.register("population", tools.initRepeat, list, toolbox.particle)
-        # Registrierung der update_particle-Funktion mit mutation_probability
-        toolbox.register("update", update_particle, phi1=phi1, phi2=phi2, mutation_probability=mutation_probability)
-        toolbox.register("evaluate", objective)
+        toolbox.register("update", self.update_particle, phi1=phi1, phi2=phi2, mutation_probability=mutation_probability)
+        toolbox.register("evaluate", self.objective)
 
         # Create population with population_number
         population = toolbox.population(n=population_number)
 
-        # Initialize optimization thread with generation_number
+        # Initialize optimization thread with multiple runs
         self.optimization_thread = OptimizationThread(
-            self, population, toolbox, generation_number
+            self, population, toolbox, generation_number, num_runs
         )
-        
-        # Setup progress bar with generation_number
-        self.ui_resonator.progressBar_build_resonator.setMaximum(generation_number)
+
+        # Setup progress bar
+        total_generations = num_runs * generation_number
+        self.ui_resonator.progressBar_build_resonator.setMaximum(total_generations)
         self.ui_resonator.progressBar_build_resonator.setValue(0)
 
         # Connect signals and start thread
@@ -422,46 +300,205 @@ class Resonator(QObject):
         if hasattr(self, 'optimization_thread'):
             self.optimization_thread.stop()
 
-    
+    def objective(self, individual):
+        """
+        Fitness function for PSO optimization.
+        Calculates resonator parameters and returns fitness value.
+        
+        Args:
+            individual: Particle containing [l1, l3, theta, mirror1, mirror2]
+        
+        Returns:
+            tuple: Single-element tuple containing the fitness value
+        """
+        if self.ui_resonator.comboBox_problem_class.currentText() == "BowTie":
+            # Extract individual parameters
+            l1, l3, theta, mirror1, mirror2 = individual
+        elif self.ui_resonator.comboBox_problem_class.currentText() == "FabryPerot":
+            l1, mirror1 = individual
+            l3, theta, mirror2 = 0, 0, 0  # Default values for FabryPerot
+
+        # Get mirror curvatures
+        mirror1 = int(np.clip(mirror1, 0, len(self.mirror_curvatures) - 1))
+        mirror2 = int(np.clip(mirror2, 0, len(self.mirror_curvatures) - 1))
+        r1_sag, r1_tan = self.mirror_curvatures[mirror1][:2]
+        r2_sag, r2_tan = self.mirror_curvatures[mirror2][:2]
+
+        # Calculate roundtrip matrices
+        roundtrip_matrix_sag = self.problem.roundtrip_sagittal(
+            self.nc, self.lc, self.n_prop, l1, l3, r1_sag, r2_sag, theta
+        )
+        roundtrip_matrix_tan = self.problem.roundtrip_tangential(
+            self.nc, self.lc, self.n_prop, l1, l3, r1_tan, r2_tan, theta
+        )
+
+        # Extract matrix elements for stability calculation
+        m_sag = np.abs((roundtrip_matrix_sag[0, 0] + roundtrip_matrix_sag[1, 1]) / 2)
+        m_tan = np.abs((roundtrip_matrix_tan[0, 0] + roundtrip_matrix_tan[1, 1]) / 2)
+
+        # Calculate beam parameters
+        b_sag = np.abs(roundtrip_matrix_sag[0, 1])
+        b_tan = np.abs(roundtrip_matrix_tan[0, 1])
+
+        # Berechnung der Waist-Größen mit Sicherheitsprüfung
+        if 1 - m_sag**2 <= 0:
+            waist_sag = 1e6  # Bestrafe instabile Resonatoren
+        else:
+            waist_sag = np.sqrt(((b_sag * self.wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_sag**2)))))
+
+        if 1 - m_tan**2 <= 0:
+            waist_tan = 1e6  # Bestrafe instabile Resonatoren
+        else:
+            waist_tan = np.sqrt(((b_tan * self.wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_tan**2)))))
+
+        # Check for unstable resonators
+        if abs(m_sag) > 1 or abs(m_tan) > 1:
+            return 1e6,
+
+        # Calculate fitness value using the Problem class
+        fitness_value, = self.problem.fitness(waist_sag, waist_tan, self.target_sag, self.target_tan)
+
+        return (fitness_value,)
+
+    def generate(self, size, smin, smax):
+        """
+        Generates a new particle for PSO.
+
+        Args:
+            size (int): Number of parameters per particle
+            smin (float): Minimum velocity value
+            smax (float): Maximum velocity value
+
+        Returns:
+            Particle: New particle with random initial position and velocity
+        """
+        # Grenzen für l1, l3 und theta aus der UI
+        l1_min, l1_max, l3_min, l3_max, theta_min, theta_max = self.getbounds()
+
+        # Initialisiere Partikelpositionen und Geschwindigkeiten
+        particle = creator.Particle([
+            np.random.uniform(l1_min, l1_max) if i == 0 else
+            np.random.uniform(l3_min, l3_max) if i == 1 else
+            np.random.uniform(theta_min, theta_max) if i == 2 else
+            np.random.randint(0, len(self.mirror_curvatures))
+            for i in range(size)
+        ])
+        particle.speed = [np.random.uniform(smin, smax) for _ in range(size)]
+        particle.smin = smin
+        particle.smax = smax
+        return particle
+
+    def update_particle(self, part, best, phi1, phi2, mutation_probability):
+        """
+        Updates particle position and velocity with optional mutation.
+        
+        Args:
+            part: Particle to update
+            best: Global best position
+            phi1: Personal best weight
+            phi2: Global best weight
+            mutation_probability: Probability of mutation
+        """
+        u1 = np.random.uniform(0, phi1, len(part))
+        u2 = np.random.uniform(0, phi2, len(part))
+        v_u1 = [u * (b - p) for u, b, p in zip(u1, part.best, part)]
+        v_u2 = [u * (b - p) for u, b, p in zip(u2, best, part)]
+        part.speed = [v + vu1 + vu2 for v, vu1, vu2 in zip(part.speed, v_u1, v_u2)]
+
+        # Geschwindigkeitsgrenzen einhalten
+        for i, speed in enumerate(part.speed):
+            if speed < part.smin:
+                part.speed[i] = part.smin
+            elif speed > part.smax:
+                part.speed[i] = part.smax
+
+        # Positionsgrenzen einhalten
+        l1_min, l1_max, l3_min, l3_max, theta_min, theta_max = self.getbounds()
+
+        part[:] = [
+            np.clip(p + v, l1_min, l1_max) if i == 0 else
+            np.clip(p + v, l3_min, l3_max) if i == 1 else
+            np.clip(p + v, theta_min, theta_max) if i == 2 else
+            int(np.clip(round(p + v), 0, len(self.mirror_curvatures) - 1))
+            for i, (p, v) in enumerate(zip(part, part.speed))
+        ]
+
+        # Mutation: Zufällige Änderung mit einer kleinen Wahrscheinlichkeit
+        for i in range(len(part)):
+            if np.random.rand() < mutation_probability:
+                if i == 0:  # l1
+                    part[i] = np.random.uniform(l1_min, l1_max)
+                elif i == 1:  # l3
+                    part[i] = np.random.uniform(l3_min, l3_max)
+                elif i == 2:  # theta
+                    part[i] = np.random.uniform(theta_min, theta_max)
+                else:  # mirror indices
+                    part[i] = np.random.randint(0, len(self.mirror_curvatures))
 
 
 class OptimizationThread(QThread):
     progress = pyqtSignal(int)  # Signal für den Fortschritt
     finished = pyqtSignal(object)  # Signal für das beste Ergebnis
 
-    def __init__(self, resonator, population, toolbox, generation_count):
+    def __init__(self, resonator, population, toolbox, generation_count, num_runs):
         super().__init__()
         self.resonator = resonator
         self.population = population
         self.toolbox = toolbox
         self.generation_count = generation_count
+        self.num_runs = num_runs  # Anzahl der Läufe
         self.abort_flag = False
-        
+        self.best_overall = None  # Bestes Ergebnis über alle Läufe hinweg
+
         # Speichern der Input-Werte
         inputs = self.resonator.get_input()
         self.target_sag, self.target_tan, self.nc, self.lc, self.n_prop, self.wavelength = inputs
 
     def run(self):
-        best = None
-        for gen in range(self.generation_count):
+        total_generations = self.num_runs * self.generation_count  # Gesamtanzahl der Generationen
+        current_progress = 0
+
+        for run in range(self.num_runs):
             if self.abort_flag:
                 break
 
+            print(f"Starting run {run + 1}/{self.num_runs}...")
+
+            # Initialisiere die Population für den aktuellen Lauf
             for part in self.population:
-                part.fitness.values = self.toolbox.evaluate(part)
-                if not part.best or part.best.fitness.values[0] > part.fitness.values[0]:
-                    part.best = creator.Particle(part)
-                    part.best.fitness.values = part.fitness.values
-                if not best or best.fitness.values[0] > part.fitness.values[0]:
-                    best = creator.Particle(part)
-                    best.fitness.values = part.fitness.values
+                part.fitness.values = (float('inf'),)  # Setze die Fitness auf einen hohen Wert
+                part.best = None
 
-            for part in self.population:
-                self.toolbox.update(part, best)
+            best = None  # Bestes Ergebnis für den aktuellen Lauf
 
-            self.progress.emit(gen + 1)
+            for gen in range(self.generation_count):
+                if self.abort_flag:
+                    break
 
-        self.finished.emit(best)
+                for part in self.population:
+                    part.fitness.values = self.toolbox.evaluate(part)
+                    if not part.best or part.best.fitness.values[0] > part.fitness.values[0]:
+                        part.best = creator.Particle(part)
+                        part.best.fitness.values = part.fitness.values
+                    if not best or best.fitness.values[0] > part.fitness.values[0]:
+                        best = creator.Particle(part)
+                        best.fitness.values = part.fitness.values
+
+                for part in self.population:
+                    self.toolbox.update(part, best)
+
+                # Fortschritt melden
+                current_progress += 1
+                self.progress.emit(current_progress)
+
+            # Vergleiche das beste Ergebnis des aktuellen Laufs mit dem besten Gesamt-Ergebnis
+            if not self.best_overall or best.fitness.values[0] < self.best_overall.fitness.values[0]:
+                self.best_overall = best
+
+            print(f"Run {run + 1} completed. Best fitness: {best.fitness.values[0]}")
+
+        # Signal mit dem besten Ergebnis aller Läufe senden
+        self.finished.emit(self.best_overall)
 
     def stop(self):
         self.abort_flag = True
