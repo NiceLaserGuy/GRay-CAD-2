@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1033</width>
+    <width>1036</width>
     <height>841</height>
    </rect>
   </property>
@@ -769,24 +769,10 @@
          </item>
         </widget>
        </item>
-       <item row="3" column="0">
+       <item row="4" column="0">
         <widget class="QLabel" name="label_16">
          <property name="text">
           <string>lower/upper bound l&lt;sub&gt;3&lt;/sub&gt;  / mm</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="label_15">
-         <property name="text">
-          <string>lower/upper bound theta / deg</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QLineEdit" name="edit_lower_bound_l3">
-         <property name="text">
-          <string>50</string>
          </property>
         </widget>
        </item>
@@ -797,27 +783,17 @@
          </property>
         </widget>
        </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="label_15">
+         <property name="text">
+          <string>lower/upper bound theta / deg</string>
+         </property>
+        </widget>
+       </item>
        <item row="4" column="1">
-        <widget class="QLineEdit" name="edit_lower_bound_theta">
-         <property name="toolTip">
-          <string/>
-         </property>
+        <widget class="QLineEdit" name="edit_lower_bound_l3">
          <property name="text">
-          <string>15</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="2">
-        <widget class="QLineEdit" name="edit_upper_bound_theta">
-         <property name="text">
-          <string>60</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="2">
-        <widget class="QLineEdit" name="edit_upper_bound_l3">
-         <property name="text">
-          <string>150</string>
+          <string>50</string>
          </property>
         </widget>
        </item>
@@ -835,6 +811,30 @@
          </property>
         </widget>
        </item>
+       <item row="5" column="1">
+        <widget class="QLineEdit" name="edit_lower_bound_theta">
+         <property name="toolTip">
+          <string/>
+         </property>
+         <property name="text">
+          <string>15</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="2">
+        <widget class="QLineEdit" name="edit_upper_bound_theta">
+         <property name="text">
+          <string>60</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="2">
+        <widget class="QLineEdit" name="edit_upper_bound_l3">
+         <property name="text">
+          <string>150</string>
+         </property>
+        </widget>
+       </item>
        <item row="1" column="0">
         <widget class="QLabel" name="label_18">
          <property name="styleSheet">
@@ -842,6 +842,27 @@
          </property>
          <property name="text">
           <string>lower/upper bound l&lt;sub&gt;1&lt;/sub&gt; / mm</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="label_32">
+         <property name="text">
+          <string>lower/upper bound l&lt;sub&gt;2&lt;/sub&gt; / mm</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QLineEdit" name="edit_lower_bound_l2">
+         <property name="text">
+          <string>40</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="2">
+        <widget class="QLineEdit" name="edit_upper_bound_l2">
+         <property name="text">
+          <string>100</string>
          </property>
         </widget>
        </item>

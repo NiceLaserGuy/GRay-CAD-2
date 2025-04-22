@@ -63,6 +63,9 @@ class Resonator(QObject):
         self.ui_resonator.button_abort_resonator.clicked.connect(
             self.stop_optimization)
 
+        self.ui_resonator.comboBox_problem_class.currentTextChanged.connect(
+            self.config_ui)
+        
         #self.ui_resonator.pushButton_plot_beamdiagram.clicked.connect(self.plot_beamdiagram)
 
 
@@ -103,6 +106,44 @@ class Resonator(QObject):
         if not self.mirror_curvatures:
             raise ValueError("Die Liste 'mirror_curvatures' ist leer.")
         
+    def config_ui(self):
+        if self.selected_class_name == "BowTie":
+            self.ui_resonator.edit_lower_bound_l1.setDisabled(False)
+            self.ui_resonator.edit_upper_bound_l1.setDisabled(False)
+            self.ui_resonator.edit_lower_bound_l2.setDisabled(True)
+            self.ui_resonator.edit_upper_bound_l2.setDisabled(True)
+            self.ui_resonator.edit_lower_bound_l3.setDisabled(False)
+            self.ui_resonator.edit_upper_bound_l3.setDisabled(False)
+            self.ui_resonator.edit_lower_bound_theta.setDisabled(False)
+            self.ui_resonator.edit_upper_bound_theta.setDisabled(False)
+        elif self.selected_class_name == "FabryPerot":
+            self.ui_resonator.edit_lower_bound_l1.setDisabled(False)
+            self.ui_resonator.edit_upper_bound_l1.setDisabled(False)
+            self.ui_resonator.edit_lower_bound_l2.setDisabled(True)
+            self.ui_resonator.edit_upper_bound_l2.setDisabled(True)
+            self.ui_resonator.edit_lower_bound_l3.setDisabled(True)
+            self.ui_resonator.edit_upper_bound_l3.setDisabled(True)
+            self.ui_resonator.edit_lower_bound_theta.setDisabled(True)
+            self.ui_resonator.edit_upper_bound_theta.setDisabled(True)
+        elif self.selected_class_name == "Rectangle":
+            self.ui_resonator.edit_lower_bound_l1.setDisabled(False)
+            self.ui_resonator.edit_upper_bound_l1.setDisabled(False)
+            self.ui_resonator.edit_lower_bound_l2.setDisabled(False)
+            self.ui_resonator.edit_upper_bound_l2.setDisabled(False)
+            self.ui_resonator.edit_lower_bound_l3.setDisabled(True)
+            self.ui_resonator.edit_upper_bound_l3.setDisabled(True)
+            self.ui_resonator.edit_lower_bound_theta.setDisabled(True)
+            self.ui_resonator.edit_upper_bound_theta.setDisabled(True)
+        elif self.selected_class_name == "Triangle":
+            self.ui_resonator.edit_lower_bound_l1.setDisabled(False)
+            self.ui_resonator.edit_upper_bound_l1.setDisabled(False)
+            self.ui_resonator.edit_lower_bound_l2.setDisabled(False)
+            self.ui_resonator.edit_upper_bound_l2.setDisabled(False)
+            self.ui_resonator.edit_lower_bound_l3.setDisabled(True)
+            self.ui_resonator.edit_upper_bound_l3.setDisabled(True)
+            self.ui_resonator.edit_lower_bound_theta.setDisabled(True)
+            self.ui_resonator.edit_upper_bound_theta.setDisabled(True)
+        
     def set_ui_resonator(self, ui_resonator):
         """Set the ui_resonator reference"""
         self.ui_resonator = ui_resonator
@@ -133,12 +174,14 @@ class Resonator(QObject):
         """
         l1_min = float(self.ui_resonator.edit_lower_bound_l1.text())
         l1_max = float(self.ui_resonator.edit_upper_bound_l1.text())
+        l2_min = float(self.ui_resonator.edit_lower_bound_l2.text())
+        l2_max = float(self.ui_resonator.edit_upper_bound_l2.text())
         l3_min = float(self.ui_resonator.edit_lower_bound_l3.text())
         l3_max = float(self.ui_resonator.edit_upper_bound_l3.text())
         theta_min = np.deg2rad(float(self.ui_resonator.edit_lower_bound_theta.text())/2)
         theta_max = np.deg2rad(float(self.ui_resonator.edit_upper_bound_theta.text())/2)
     
-        return l1_min, l1_max, l3_min, l3_max, theta_min, theta_max
+        return l1_min, l1_max, l2_min, l2_max, l3_min, l3_max, theta_min, theta_max
     
     def get_optimization_parameters(self):
         """
@@ -224,8 +267,10 @@ class Resonator(QObject):
         target_sag, target_tan, nc, lc, n_prop, wavelength = inputs
 
         # DEAP setup for PSO with optimization parameters
+        self.size = self.problem.problem_dimension()
+        
         toolbox = base.Toolbox()
-        toolbox.register("particle", self.generate, size=5, smin=smin, smax=smax)
+        toolbox.register("particle", self.generate, size=self.size, smin=smin, smax=smax)
         toolbox.register("population", tools.initRepeat, list, toolbox.particle)
         toolbox.register("update", self.update_particle, phi1=phi1, phi2=phi2, mutation_probability=mutation_probability)
         toolbox.register("evaluate", self.objective)
@@ -373,16 +418,23 @@ class Resonator(QObject):
             Particle: New particle with random initial position and velocity
         """
         # Grenzen für l1, l3 und theta aus der UI
-        l1_min, l1_max, l3_min, l3_max, theta_min, theta_max = self.getbounds()
+        l1_min, l1_max, l2_min, l2_max, l3_min, l3_max, theta_min, theta_max = self.getbounds()
 
         # Initialisiere Partikelpositionen und Geschwindigkeiten
-        particle = creator.Particle([
-            np.random.uniform(l1_min, l1_max) if i == 0 else
-            np.random.uniform(l3_min, l3_max) if i == 1 else
-            np.random.uniform(theta_min, theta_max) if i == 2 else
-            np.random.randint(0, len(self.mirror_curvatures))
-            for i in range(size)
-        ])
+        if self.selected_class_name == "BowTie":
+            particle = creator.Particle([
+                np.random.uniform(l1_min, l1_max) if i == 0 else
+                np.random.uniform(l3_min, l3_max) if i == 1 else
+                np.random.uniform(theta_min, theta_max) if i == 2 else
+                np.random.randint(0, len(self.mirror_curvatures))
+                for i in range(size)
+            ])
+        elif self.selected_class_name == "FabryPerot":
+            particle = creator.Particle([
+                np.random.uniform(l1_min, l1_max) if i == 0 else
+                np.random.randint(0, len(self.mirror_curvatures))
+                for i in range(size)
+            ])
         particle.speed = [np.random.uniform(smin, smax) for _ in range(size)]
         particle.smin = smin
         particle.smax = smax
@@ -413,7 +465,7 @@ class Resonator(QObject):
                 part.speed[i] = part.smax
 
         # Positionsgrenzen einhalten
-        l1_min, l1_max, l3_min, l3_max, theta_min, theta_max = self.getbounds()
+        l1_min, l1_max, l2_min, l2_max, l3_min, l3_max, theta_min, theta_max = self.getbounds()
 
         part[:] = [
             np.clip(p + v, l1_min, l1_max) if i == 0 else
@@ -455,14 +507,11 @@ class OptimizationThread(QThread):
         self.target_sag, self.target_tan, self.nc, self.lc, self.n_prop, self.wavelength = inputs
 
     def run(self):
-        total_generations = self.num_runs * self.generation_count  # Gesamtanzahl der Generationen
         current_progress = 0
 
         for run in range(self.num_runs):
             if self.abort_flag:
                 break
-
-            print(f"Starting run {run + 1}/{self.num_runs}...")
 
             # Initialisiere die Population für den aktuellen Lauf
             for part in self.population:
@@ -495,11 +544,8 @@ class OptimizationThread(QThread):
             if not self.best_overall or best.fitness.values[0] < self.best_overall.fitness.values[0]:
                 self.best_overall = best
 
-            print(f"Run {run + 1} completed. Best fitness: {best.fitness.values[0]}")
-
         # Signal mit dem besten Ergebnis aller Läufe senden
         self.finished.emit(self.best_overall)
 
     def stop(self):
         self.abort_flag = True
-

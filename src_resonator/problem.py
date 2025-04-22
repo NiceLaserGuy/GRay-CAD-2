@@ -6,6 +6,12 @@ class Problem:
     def __init__(self, resonator_type=object):
         self.matrices = Matrices()
         self.type = resonator_type
+        
+    def problem_dimension(self, *args, **kwargs):
+        """
+        Calls the problem dimension calculation on the resonator type.
+        """
+        return self.type.set_problem_dimension(*args, **kwargs)
 
     def roundtrip_tangential(self, *args, **kwargs):
         """
