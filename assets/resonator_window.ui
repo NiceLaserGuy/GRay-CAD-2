@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1036</width>
-    <height>841</height>
+    <height>872</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -765,6 +765,16 @@
          <item>
           <property name="text">
            <string>FabryPerot</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Rectangle</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Triangle</string>
           </property>
          </item>
         </widget>

@@ -97,15 +97,15 @@ class FabryPerot:
 
         m1 = self.matrices.free_space(lc / 2, nc)
         m2 = self.matrices.free_space(l1, n0)
-        m3 = self.matrices.curved_mirror_sagittal(r1_tan, 0)
+        m3 = self.matrices.curved_mirror_tangential(r1_tan, 0)
         m4 = self.matrices.free_space(l1, n0)
-        m5 = self.matrices.free_space(lc, nc)
-        m6 = self.matrices.free_space(l1, n0)
-        m7 = self.matrices.curved_mirror_sagittal(r1_tan, 0)
-        m8 = self.matrices.free_space(l1, n0)
-        m9 = self.matrices.free_space(lc / 2, nc)
+        m5 = self.matrices.free_space(lc / 2, nc)
+        #m6 = self.matrices.free_space(l1, n0)
+        #m7 = self.matrices.curved_mirror_tangential(r1_tan, 0)
+        #m8 = self.matrices.free_space(l1, n0)
+        #m9 = self.matrices.free_space(lc / 2, nc)
 
-        return m1, m2, m3, m4, m5, m6, m7, m8, m9
+        return m1, m2, m3, m4, m5#, m6, m7, m8, m9
 
     def set_roundtrip_sagittal(self, nc, lc, n0, l1, r1_sag):
         """Calculate the roundtrip matrix for the sagittal plane"""
@@ -114,13 +114,13 @@ class FabryPerot:
         m2 = self.matrices.free_space(l1, n0)
         m3 = self.matrices.curved_mirror_sagittal(r1_sag, 0)
         m4 = self.matrices.free_space(l1, n0)
-        m5 = self.matrices.free_space(lc, nc)
-        m6 = self.matrices.free_space(l1, n0)
-        m7 = self.matrices.curved_mirror_sagittal(r1_sag, 0)
-        m8 = self.matrices.free_space(l1, n0)
-        m9 = self.matrices.free_space(lc / 2, nc)
+        m5 = self.matrices.free_space(lc / 2, nc)
+        #m6 = self.matrices.free_space(l1, n0)
+        #m7 = self.matrices.curved_mirror_sagittal(r1_sag, 0)
+        #m8 = self.matrices.free_space(l1, n0)
+        #m9 = self.matrices.free_space(lc / 2, nc)
 
-        return m1, m2, m3, m4, m5, m6, m7, m8, m9
+        return m1, m2, m3, m4, m5#, m6, m7, m8, m9
 
     def set_fitness(self, waist_sag, waist_tan, target_sag, target_tan):
             """Calculate the fitness value for the Bowtie resonator"""
