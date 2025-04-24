@@ -13,6 +13,7 @@ class Start:
         if not hasattr(creator, "Particle"):
             creator.create("Particle", list, fitness=creator.FitnessMin, 
                          speed=list, smin=None, smax=None, best=None)
+            
 
         self.app = QApplication([])
         self.app.setWindowIcon(QIcon(path.abspath(path.join(path.dirname(__file__), 
