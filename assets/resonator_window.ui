@@ -767,6 +767,16 @@
            <string>FabryPerot</string>
           </property>
          </item>
+         <item>
+          <property name="text">
+           <string>Triangle</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Rectangle</string>
+          </property>
+         </item>
         </widget>
        </item>
        <item row="4" column="0">

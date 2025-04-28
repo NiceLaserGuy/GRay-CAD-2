@@ -22,9 +22,11 @@ class Resonator(QObject):
         self.resonator_type = None 
         self.ui_resonator = None
         self.mirror_curvatures = []
+        self.plotter = Plotter()
 
         # Attributes to store optimization results
         self.l1 = None
+        self.l2 = None
         self.l3 = None
         self.lc = None
         self.theta = None
@@ -32,6 +34,7 @@ class Resonator(QObject):
         self.r1_tan = None
         self.r2_sag = None
         self.r2_tan = None
+        self.selected_class_name = None
 
     def open_resonator_window(self):
         """
@@ -66,9 +69,11 @@ class Resonator(QObject):
         self.ui_resonator.comboBox_problem_class.currentTextChanged.connect(
             self.config_ui)
         
-        #self.ui_resonator.pushButton_plot_beamdiagram.clicked.connect(self.plot_beamdiagram)
-
-
+        self.config_ui()
+        
+        
+        self.ui_resonator.pushButton_plot_beamdiagram.clicked.connect(self.plotter.plot_beamdiagram)
+        
     def load_mirror_data(self, filepath):
         """
         Loads mirror data from a JSON file.
@@ -107,6 +112,8 @@ class Resonator(QObject):
             raise ValueError("Die Liste 'mirror_curvatures' ist leer.")
         
     def config_ui(self):
+        self.selected_class_name = self.ui_resonator.comboBox_problem_class.currentText()
+
         if self.selected_class_name == "BowTie":
             self.ui_resonator.edit_lower_bound_l1.setDisabled(False)
             self.ui_resonator.edit_upper_bound_l1.setDisabled(False)
@@ -143,7 +150,8 @@ class Resonator(QObject):
             self.ui_resonator.edit_upper_bound_l3.setDisabled(True)
             self.ui_resonator.edit_lower_bound_theta.setDisabled(True)
             self.ui_resonator.edit_upper_bound_theta.setDisabled(True)
-        
+        config.set_temp_resonator_type(self.selected_class_name)
+
     def set_ui_resonator(self, ui_resonator):
         """Set the ui_resonator reference"""
         self.ui_resonator = ui_resonator
@@ -161,6 +169,7 @@ class Resonator(QObject):
         self.lc = float(self.ui_resonator.edit_crystal_length.text())
         self.wavelength = float(self.ui_resonator.edit_wavelength.text())*1e-3
         self.n_prop = 1
+        config.set_temp_light_field_parameters(self.wavelength, self.lc, self.nc)
 
         return np.array([self.target_sag, self.target_tan, self.nc, self.lc, self.n_prop, self.wavelength])
     
@@ -232,6 +241,10 @@ class Resonator(QObject):
             self.resonator_type = BowTie()
         elif self.selected_class_name == "FabryPerot":
             self.resonator_type = FabryPerot()
+        elif self.selected_class_name == "Rectangle":
+            self.resonator_type = Rectangle()
+        elif self.selected_class_name == "Triangle":
+            self.resonator_type = Triangle()
         else:
             self.resonator_type = None
         if self.selected_class_name is None:
@@ -304,7 +317,18 @@ class Resonator(QObject):
         wavelength = thread.wavelength
 
         # Entpacken der Werte aus dem besten Partikel
-        self.l1, self.l3, self.theta, mirror1, mirror2 = best
+        if self.selected_class_name == "BowTie":
+            self.l1, self.l3, self.theta, mirror1, mirror2 = best
+            self.l2 = (2 * self.l1 + lc + self.l3) / 2 * np.cos(self.theta)
+        elif self.selected_class_name == "FabryPerot":
+            self.l1, mirror1 = best
+            self.l2, self.l3, self.theta, mirror2 = 0, 0, 0
+        elif self.selected_class_name == "Rectangle":
+            self.l1, self.l2, mirror1, mirror2 = best
+            self.l3, self.theta = 0, np.pi / 2
+        elif self.selected_class_name == "Triangle":
+            self.l1, self.l2, self.theta, mirror1, mirror2 = best
+            self.l3 = 0
 
         # Berechnung der Krümmungswerte basierend auf den Indizes
         mirror1 = int(np.clip(mirror1, 0, len(self.mirror_curvatures) - 1))
@@ -325,17 +349,38 @@ class Resonator(QObject):
         r1_sag = "\u221e" if self.r1_sag >= 1e+15 else self.r1_sag
         r1_tan = "\u221e" if self.r1_tan >= 1e+15 else self.r1_tan
         r2_sag = "\u221e" if self.r2_sag >= 1e+15 else self.r2_sag
-        r2_tan = "\u221e" if self.r2_tan >= 1e+15 else self.r2_tan
-        
-        config.set_temp_resonator_setup(best)
+        r2_tan = "\u221e" if self.r2_tan >= 1e+15 else self.r2_tan        
 
         # Ausgabe der Ergebnisse
-        self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
-        self.ui_resonator.label_length2.setText(f"={(2*self.l1+lc+self.l3)/2*np.cos(self.theta):.3f} mm")
-        self.ui_resonator.label_length3.setText(f"={self.l3:.3f} mm")
-        self.ui_resonator.label_theta.setText(f"={np.rad2deg(self.theta):.3f} °")
+        if self.selected_class_name == "BowTie":
+            config.set_temp_resonator_setup(self.l1, self.l2, self.l3, self.theta, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
+            self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
+            self.ui_resonator.label_length2.setText(f"={(2*self.l1+lc+self.l3)/2*np.cos(self.theta):.3f} mm")
+            self.ui_resonator.label_length3.setText(f"={self.l3:.3f} mm")
+            self.ui_resonator.label_theta.setText(f"={np.rad2deg(self.theta):.3f} °")
+            self.ui_resonator.label_mirror2.setText(f"={r2_sag} mm / {r2_tan} mm")
+        elif self.selected_class_name == "FabryPerot":
+            config.set_temp_resonator_setup(self.l1, self.r1_sag, self.r1_tan)
+            self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
+            self.ui_resonator.label_length2.setText(f"={self.l2:.3f} mm")
+            self.ui_resonator.label_length3.setText(f"=0.0 mm")
+            self.ui_resonator.label_theta.setText(f"=0.0 °")
+            self.ui_resonator.label_mirror2.setText(f"=0 mm / 0 mm")
+        elif self.selected_class_name == "Rectangle":
+            config.set_temp_resonator_setup(self.l1, self.l2, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
+            self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
+            self.ui_resonator.label_length2.setText(f"={self.l2:.3f} mm")
+            self.ui_resonator.label_length3.setText(f"=0.0 mm")
+            self.ui_resonator.label_theta.setText(f"=90 °")
+            self.ui_resonator.label_mirror2.setText(f"={r2_sag} mm / {r2_tan} mm")
+        elif self.selected_class_name == "Triangle":
+            config.set_temp_resonator_setup(self.l1, self.l2, self.theta, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
+            self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
+            self.ui_resonator.label_length2.setText(f"={self.l2:.3f} mm")
+            self.ui_resonator.label_length3.setText(f"=0.0 mm")
+            self.ui_resonator.label_theta.setText(f"={np.rad2deg(self.theta):.3f} °")
+            self.ui_resonator.label_mirror2.setText(f"=0 mm / 0 mm")
         self.ui_resonator.label_mirror1.setText(f"={r1_sag} mm / {r1_tan} mm")
-        self.ui_resonator.label_mirror2.setText(f"={r2_sag} mm / {r2_tan} mm")
         self.ui_resonator.label_waist.setText(f"={self.waist_sag*1e3:.3f} µm / {self.waist_tan*1e3:.3f} µm")
         self.ui_resonator.label_fitness.setText(f"={best.fitness.values[0]:.3f}")
         self.ui_resonator.label_stability.setText(f"={m_sag:.3f} / {m_tan:.3f}")
@@ -356,12 +401,18 @@ class Resonator(QObject):
         Returns:
             tuple: Single-element tuple containing the fitness value
         """
-        if self.ui_resonator.comboBox_problem_class.currentText() == "BowTie":
+        if self.selected_class_name == "BowTie":
             # Extract individual parameters
             l1, l3, theta, mirror1, mirror2 = individual
-        elif self.ui_resonator.comboBox_problem_class.currentText() == "FabryPerot":
+        elif self.selected_class_name == "FabryPerot":
             l1, mirror1 = individual
-            l3, theta, mirror2 = 0, 0, 0  # Default values for FabryPerot
+            l3, theta, mirror2 = 0, 0, 0
+        elif self.selected_class_name == "Rectangle":
+            l1, l2, mirror1, mirror2 = individual
+            l3, theta = 0, np.pi / 2
+        elif self.selected_class_name == "Triangle":
+            l1, l2, theta, mirror1, mirror2 = individual
+            l3 = 0
 
         # Get mirror curvatures
         mirror1 = int(np.clip(mirror1, 0, len(self.mirror_curvatures) - 1))
@@ -370,12 +421,34 @@ class Resonator(QObject):
         r2_sag, r2_tan = self.mirror_curvatures[mirror2][:2]
 
         # Calculate roundtrip matrices
-        roundtrip_matrix_sag = self.problem.roundtrip_sagittal(
-            self.nc, self.lc, self.n_prop, l1, l3, r1_sag, r2_sag, theta
-        )
-        roundtrip_matrix_tan = self.problem.roundtrip_tangential(
-            self.nc, self.lc, self.n_prop, l1, l3, r1_tan, r2_tan, theta
-        )
+        if self.selected_class_name == "BowTie":
+            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(
+                self.nc, self.lc, self.n_prop, l1, l3, r1_sag, r2_sag, theta
+            )
+            roundtrip_matrix_tan = self.problem.roundtrip_tangential(
+                self.nc, self.lc, self.n_prop, l1, l3, r1_tan, r2_tan, theta
+            )
+        elif self.selected_class_name == "FabryPerot":
+            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(
+                self.nc, self.lc, self.n_prop, l1, r1_sag
+            )
+            roundtrip_matrix_tan = self.problem.roundtrip_tangential(
+                self.nc, self.lc, self.n_prop, l1, r1_tan
+            )
+        elif self.selected_class_name == "Rectangle":
+            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(
+                self.nc, self.lc, self.n_prop, l1, l2, r1_sag, r2_sag
+            )
+            roundtrip_matrix_tan = self.problem.roundtrip_tangential(
+                self.nc, self.lc, self.n_prop, l1, l2, r1_tan, r2_tan
+            )
+        elif self.selected_class_name == "Triangle":
+            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(
+                self.nc, self.lc, self.n_prop, l1, l2, theta, r1_sag, r2_sag
+            )
+            roundtrip_matrix_tan = self.problem.roundtrip_tangential(
+                self.nc, self.lc, self.n_prop, l1, l2, theta, r1_tan, r2_tan
+            )
 
         # Extract matrix elements for stability calculation
         m_sag = np.abs((roundtrip_matrix_sag[0, 0] + roundtrip_matrix_sag[1, 1]) / 2)
@@ -435,6 +508,22 @@ class Resonator(QObject):
                 np.random.randint(0, len(self.mirror_curvatures))
                 for i in range(size)
             ])
+        elif self.selected_class_name == "Rectangle":
+            particle = creator.Particle([
+                np.random.uniform(l1_min, l1_max) if i == 0 else
+                np.random.uniform(l2_min, l2_max) if i == 1 else
+                np.random.randint(0, len(self.mirror_curvatures))
+                for i in range(size)
+            ])
+        elif self.selected_class_name == "Triangle":
+            particle = creator.Particle([
+                np.random.uniform(l1_min, l1_max) if i == 0 else
+                np.random.uniform(l2_min, l2_max) if i == 1 else
+                np.random.uniform(theta_min, theta_max) if i == 2 else
+                np.random.randint(0, len(self.mirror_curvatures))
+                for i in range(size)
+            ])
+            
         particle.speed = [np.random.uniform(smin, smax) for _ in range(size)]
         particle.smin = smin
         particle.smax = smax
@@ -466,26 +555,69 @@ class Resonator(QObject):
 
         # Positionsgrenzen einhalten
         l1_min, l1_max, l2_min, l2_max, l3_min, l3_max, theta_min, theta_max = self.getbounds()
-
-        part[:] = [
-            np.clip(p + v, l1_min, l1_max) if i == 0 else
-            np.clip(p + v, l3_min, l3_max) if i == 1 else
-            np.clip(p + v, theta_min, theta_max) if i == 2 else
-            int(np.clip(round(p + v), 0, len(self.mirror_curvatures) - 1))
-            for i, (p, v) in enumerate(zip(part, part.speed))
-        ]
+        if self.selected_class_name == "BowTie":
+            part[:] = [
+                np.clip(p + v, l1_min, l1_max) if i == 0 else
+                np.clip(p + v, l3_min, l3_max) if i == 1 else
+                np.clip(p + v, theta_min, theta_max) if i == 2 else
+                int(np.clip(round(p + v), 0, len(self.mirror_curvatures) - 1))
+                for i, (p, v) in enumerate(zip(part, part.speed))
+            ]
+        elif self.selected_class_name == "FabryPerot":
+            part[:] = [
+                np.clip(p + v, l1_min, l1_max) if i == 0 else
+                int(np.clip(round(p + v), 0, len(self.mirror_curvatures) - 1))
+                for i, (p, v) in enumerate(zip(part, part.speed))
+            ]
+        elif self.selected_class_name == "Rectangle":
+            part[:] = [
+                np.clip(p + v, l1_min, l1_max) if i == 0 else
+                np.clip(p + v, l2_min, l2_max) if i == 1 else
+                int(np.clip(round(p + v), 0, len(self.mirror_curvatures) - 1))
+                for i, (p, v) in enumerate(zip(part, part.speed))
+            ]
+        elif self.selected_class_name == "Triangle":
+            part[:] = [
+                np.clip(p + v, l1_min, l1_max) if i == 0 else
+                np.clip(p + v, l2_min, l2_max) if i == 1 else
+                np.clip(p + v, theta_min, theta_max) if i == 2 else
+                int(np.clip(round(p + v), 0, len(self.mirror_curvatures) - 1))
+                for i, (p, v) in enumerate(zip(part, part.speed))
+            ]
 
         # Mutation: Zufällige Änderung mit einer kleinen Wahrscheinlichkeit
         for i in range(len(part)):
             if np.random.rand() < mutation_probability:
-                if i == 0:  # l1
-                    part[i] = np.random.uniform(l1_min, l1_max)
-                elif i == 1:  # l3
-                    part[i] = np.random.uniform(l3_min, l3_max)
-                elif i == 2:  # theta
-                    part[i] = np.random.uniform(theta_min, theta_max)
-                else:  # mirror indices
-                    part[i] = np.random.randint(0, len(self.mirror_curvatures))
+                if self.selected_class_name == "BowTie":
+                    if i == 0:  # l1
+                        part[i] = np.random.uniform(l1_min, l1_max)
+                    elif i == 1:  # l3
+                        part[i] = np.random.uniform(l3_min, l3_max)
+                    elif i == 2:  # theta
+                        part[i] = np.random.uniform(theta_min, theta_max)
+                    else:  # mirror indices
+                        part[i] = np.random.randint(0, len(self.mirror_curvatures))
+                elif self.selected_class_name == "FabryPerot":
+                    if i == 0:  # l1
+                        part[i] = np.random.uniform(l1_min, l1_max)
+                    else:  # mirror index
+                        part[i] = np.random.randint(0, len(self.mirror_curvatures))
+                elif self.selected_class_name == "Rectangle":
+                    if i == 0:  # l1
+                        part[i] = np.random.uniform(l1_min, l1_max)
+                    elif i == 1:  # l2
+                        part[i] = np.random.uniform(l2_min, l2_max)
+                    else:  # mirror index
+                        part[i] = np.random.randint(0, len(self.mirror_curvatures))
+                elif self.selected_class_name == "Triangle":
+                    if i == 0:
+                        part[i] = np.random.uniform(l1_min, l1_max)
+                    elif i == 1:
+                        part[i] = np.random.uniform(l2_min, l2_max)
+                    elif i == 2:
+                        part[i] = np.random.uniform(theta_min, theta_max)
+                    else:  # mirror index
+                        part[i] = np.random.randint(0, len(self.mirror_curvatures))
 
 
 class OptimizationThread(QThread):
