@@ -76,7 +76,7 @@
             "manufacturer": "",
             "properties": {
                 "CURVATURE_TANGENTIAL": 50,
-                "CURVATURE_SAGITTAL": 0.05,
+                "CURVATURE_SAGITTAL": 50,
                 "IS_ROUND": 1.0
             }
         },

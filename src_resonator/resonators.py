@@ -277,7 +277,7 @@ class Resonator(QObject):
         num_runs, population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability = self.get_optimization_parameters()
 
         inputs = self.get_input()
-        target_sag, target_tan, nc, lc, n_prop, wavelength = inputs
+        self.target_sag, self.target_tan, self.nc, self.lc, self.n_prop, self.wavelength = inputs
 
         # DEAP setup for PSO with optimization parameters
         self.size = self.problem.problem_dimension()
@@ -319,7 +319,7 @@ class Resonator(QObject):
         # Entpacken der Werte aus dem besten Partikel
         if self.selected_class_name == "BowTie":
             self.l1, self.l3, self.theta, mirror1, mirror2 = best
-            self.l2 = (2 * self.l1 + lc + self.l3) / 2 * np.cos(self.theta)
+            self.l2 = ((2 * self.l1) + lc + self.l3) / (2 * np.cos(2*self.theta))
         elif self.selected_class_name == "FabryPerot":
             self.l1, mirror1 = best
             self.l2, self.l3, self.theta, mirror2 = 0, 0, 0
@@ -355,9 +355,9 @@ class Resonator(QObject):
         if self.selected_class_name == "BowTie":
             config.set_temp_resonator_setup(self.l1, self.l2, self.l3, self.theta, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
             self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
-            self.ui_resonator.label_length2.setText(f"={(2*self.l1+lc+self.l3)/2*np.cos(self.theta):.3f} mm")
+            self.ui_resonator.label_length2.setText(f"={(2*self.l1+lc+self.l3)/(2*np.cos(2*self.theta)):.3f} mm")
             self.ui_resonator.label_length3.setText(f"={self.l3:.3f} mm")
-            self.ui_resonator.label_theta.setText(f"={np.rad2deg(self.theta):.3f} °")
+            self.ui_resonator.label_theta.setText(f"={np.rad2deg(2*self.theta):.3f} °")
             self.ui_resonator.label_mirror2.setText(f"={r2_sag} mm / {r2_tan} mm")
         elif self.selected_class_name == "FabryPerot":
             config.set_temp_resonator_setup(self.l1, self.r1_sag, self.r1_tan)
@@ -379,7 +379,7 @@ class Resonator(QObject):
             self.ui_resonator.label_length2.setText(f"={self.l2:.3f} mm")
             self.ui_resonator.label_length3.setText(f"=0.0 mm")
             self.ui_resonator.label_theta.setText(f"={np.rad2deg(self.theta):.3f} °")
-            self.ui_resonator.label_mirror2.setText(f"=0 mm / 0 mm")
+            self.ui_resonator.label_mirror2.setText(f"={r2_sag} mm / {r2_tan} mm")
         self.ui_resonator.label_mirror1.setText(f"={r1_sag} mm / {r1_tan} mm")
         self.ui_resonator.label_waist.setText(f"={self.waist_sag*1e3:.3f} µm / {self.waist_tan*1e3:.3f} µm")
         self.ui_resonator.label_fitness.setText(f"={best.fitness.values[0]:.3f}")

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1036</width>
-    <height>841</height>
+    <height>872</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -563,7 +563,7 @@
        <item row="0" column="1">
         <widget class="QLineEdit" name="edit_num_runs">
          <property name="text">
-          <string>50</string>
+          <string>10</string>
          </property>
         </widget>
        </item>
@@ -619,7 +619,7 @@
        <item row="2" column="1">
         <widget class="QLineEdit" name="edit_population_number">
          <property name="text">
-          <string>50</string>
+          <string>250</string>
          </property>
         </widget>
        </item>

@@ -10,6 +10,19 @@ class Plotter:
     def __init__(self):
         super().__init__()
 
+    def q_transform(M, q_in):
+        """Transformiert q_in mit einer ABCD-Matrix M."""
+        A, B, C, D = M.flatten()
+        return (A * q_in + B) / (C * q_in + D)
+
+    def w_from_q(q, wavelength):
+        """Berechnet Strahlradius w(z) aus q(z)."""
+        q_inv = 1 / q
+        Im_qinv = q_inv.imag
+        if Im_qinv == 0:
+            return np.nan
+        return np.sqrt(-wavelength / (np.pi * Im_qinv))
+
     def plot_beamdiagram(self):
         """
         Opens a new window and plots the beam diagram using pyqtgraph.
@@ -34,45 +47,45 @@ class Plotter:
             msg.setWindowTitle("Warning")
             msg.exec_()
             return
-        
-        waist_sagittal = []
-        waist_tangential = []
+        self.step = 0.1 # mm
+        self.length = 0
+        self.waist_sagittal = []
+        self.z_R = np.pi  # Rayleigh length
+        self.q_in_sag = 1j * self.z_R
 
         if self.resonator_type == "BowTie":
             self.l1, self.l2, self.l3, self.theta, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan = self.temp_resonator_setup
 
             bowtie = BowTie()
-            problem = Problem()
             # Hole die Abschnitte in der richtigen Reihenfolge
             sections = bowtie.set_roundtrip_direction(self.lc, self.l1, self.l3, self.theta)
+            length = sum(sections)
+            print("sections: ", sections)
+            print("length: ", length)
             # Hole die Matrizen für den sagittalen Strahlverlauf
             matrices = bowtie.set_roundtrip_sagittal(self.nc, self.lc, 1, self.l1, self.l3, self.r1_sag, self.r2_sag, self.theta)
-            for m in matrices:
-                roundtrip_sag = np.matmul(m, roundtrip_sag) if roundtrip_sag is not None else m
 
-            # Diskretisierung pro Abschnitt
-            step = 0.1 # mm
-            waist_sagittal = []
-            waist_tangential = []
-            pos = 0
-            
-            m_sag = np.abs((mat_total[0, 0] + mat_total[1, 1]) / 2)
-            b_sag = np.abs(mat_total[0, 1])
-            waist = np.sqrt(((b_sag * self.wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_sag ** 2)))))
+            '''for mat in matrices:
+                if length < self.l1:
+                    num_steps = int(param / step)
+                    for i in range(num_steps):
+                        step_matrix = np.array([[1, l], [0, 1]])
+                        M_accumulated = step_matrix @ M_accumulated
+                        qz = self.q_transform(M_accumulated, q_in_sag)
+                        wz = self.w_from_q(qz, self.wavelength)
+                        l += dz
+                        z_list.append(l)
+                        w_list.append(wz)
+                elif typ == "lens":
+                    lens_matrix = np.array([[1, 0], [-1/param, 1]])
+                    M_accumulated = lens_matrix @ M_accumulated
+                    # Optional: auch hier Punkt speichern
+                    qz = self.q_transform(M_accumulated, q_in)
+                    wz = self.w_from_q(qz, wavelength)
+                    z_list.append(l)
+                    w_list.append(waist_sagittal)'''
 
-            # Startmatrix (Einheitsmatrix)
-            mat_total = np.identity(2)
-
-            for mat in zip(matrices):
-                steps = max(1, int(sec_len / step))
-                for _ in range(steps):
-                    mat_total = mat @ mat_total
-                    
-                    waist_sagittal.append(waist)
-                    length.append(pos)
-                    pos += step
-
-        # Create a new dialog window for the plot
+'''        # Create a new dialog window for the plot
         self.plot_window = QDialog()
         self.plot_window.setWindowTitle("Beam Diagram")
         self.plot_window.resize(800, 600)
@@ -93,41 +106,14 @@ class Plotter:
         self.plot_window.setLayout(layout)
 
         # Placeholder for the plot (to be replaced with actual data later)
-        plot_widget.plot(length, waist_sagittal, pen=pg.mkPen(color='r', width=2), name="waist sagittal")
-        plot_widget.plot(length, waist_tangential, pen=pg.mkPen(color='b', width=2), name="waist tangential")
+        plot_widget.plot(pos, waist_sagittal, pen=pg.mkPen(color='r', width=2), name="waist sagittal")
+        #plot_widget.plot(pos, waist_tangential, pen=pg.mkPen(color='b', width=2), name="waist tangential")
 
         # Show the plot window
-        self.plot_window.show()
+        self.plot_window.show()'''
         
-        
-import numpy as np
-import matplotlib.pyplot as plt
 
-def abcd_multiply(matrices):
-    """Multipliziert eine Liste von 2x2 ABCD-Matrizen."""
-    M = np.eye(2)
-    for m in matrices:
-        M = np.dot(m, M)
-    return M
-
-def q_transform(M, q_in):
-    """Transformiert q_in mit einer ABCD-Matrix M."""
-    A, B, C, D = M.flatten()
-    return (A * q_in + B) / (C * q_in + D)
-
-def w_from_q(q, wavelength):
-    """Berechnet Strahlradius w(z) aus q(z)."""
-    q_inv = 1 / q
-    Im_qinv = q_inv.imag
-    if Im_qinv == 0:
-        return np.nan
-    return np.sqrt(-wavelength / (np.pi * Im_qinv))
-
-# ----------------------------
-# Beispielsystem definieren
-# ----------------------------
-
-wavelength = 1064e-6  # mm (1064 nm)
+'''wavelength = 1064e-6  # mm (1064 nm)
 z_R = 2.0             # Rayleigh-Länge
 q_in = 1j * z_R       # Start-q
 
@@ -171,17 +157,4 @@ for elem in elements:
         wz = w_from_q(qz, wavelength)
         z_list.append(z_current)
         w_list.append(wz)
-
-# ----------------------------
-# Plot
-# ----------------------------
-
-plt.figure(figsize=(8, 4))
-plt.plot(z_list, w_list, label="Strahlradius $w(z)$", color="blue")
-plt.xlabel("z [mm]")
-plt.ylabel("w(z) [mm]")
-plt.title("Strahlradius entlang des Systems")
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()
+'''
