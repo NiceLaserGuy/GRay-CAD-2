@@ -4,24 +4,19 @@ import numpy as np
 import config
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QMessageBox
 from Problems.resonator_types import *
-from src_resonator.problem import Problem
+from Problems.matrices import Matrices
+
 
 class Plotter:
     def __init__(self):
         super().__init__()
+        self.mat = Matrices()
+        self.bowtie = BowTie()
 
-    def q_transform(M, q_in):
+    def q_transform(self, M, q_in):
         """Transformiert q_in mit einer ABCD-Matrix M."""
         A, B, C, D = M.flatten()
         return (A * q_in + B) / (C * q_in + D)
-
-    def w_from_q(q, wavelength):
-        """Berechnet Strahlradius w(z) aus q(z)."""
-        q_inv = 1 / q
-        Im_qinv = q_inv.imag
-        if Im_qinv == 0:
-            return np.nan
-        return np.sqrt(-wavelength / (np.pi * Im_qinv))
 
     def plot_beamdiagram(self):
         """
@@ -47,45 +42,36 @@ class Plotter:
             msg.setWindowTitle("Warning")
             msg.exec_()
             return
+        
         self.step = 0.1 # mm
-        self.length = 0
+        self.z = 0
         self.waist_sagittal = []
-        self.z_R = np.pi  # Rayleigh length
-        self.q_in_sag = 1j * self.z_R
+        self.waist_tangential = []
+        self.z_list = []
+
+        
+        
 
         if self.resonator_type == "BowTie":
-            self.l1, self.l2, self.l3, self.theta, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan = self.temp_resonator_setup
+            self.waist_sag, self.waist_tan, self.l1, self.l2, self.l3, self.theta, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan = self.temp_resonator_setup
+            self.z_R_sag = np.pi * self.waist_sag**2 / self.wavelength
+            self.q_sag = self.z - 1j * self.z_R_sag
+            self.z_R_tan = np.pi * self.waist_tan**2 / self.wavelength
+            self.q_tan = self.z - 1j * self.z_R_tan
 
-            bowtie = BowTie()
-            # Hole die Abschnitte in der richtigen Reihenfolge
-            sections = bowtie.set_roundtrip_direction(self.lc, self.l1, self.l3, self.theta)
-            length = sum(sections)
-            print("sections: ", sections)
-            print("length: ", length)
-            # Hole die Matrizen für den sagittalen Strahlverlauf
-            matrices = bowtie.set_roundtrip_sagittal(self.nc, self.lc, 1, self.l1, self.l3, self.r1_sag, self.r2_sag, self.theta)
+            while self.z < self.lc/2:
+                self.qz = self.q_transform(self.mat.free_space(self.z, self.nc), self.q_sag)
+                self.z_list.append(self.z)
+                self.waist_sagittal.append(self.qz)
+                self.z += self.step
 
-            '''for mat in matrices:
-                if length < self.l1:
-                    num_steps = int(param / step)
-                    for i in range(num_steps):
-                        step_matrix = np.array([[1, l], [0, 1]])
-                        M_accumulated = step_matrix @ M_accumulated
-                        qz = self.q_transform(M_accumulated, q_in_sag)
-                        wz = self.w_from_q(qz, self.wavelength)
-                        l += dz
-                        z_list.append(l)
-                        w_list.append(wz)
-                elif typ == "lens":
-                    lens_matrix = np.array([[1, 0], [-1/param, 1]])
-                    M_accumulated = lens_matrix @ M_accumulated
-                    # Optional: auch hier Punkt speichern
-                    qz = self.q_transform(M_accumulated, q_in)
-                    wz = self.w_from_q(qz, wavelength)
-                    z_list.append(l)
-                    w_list.append(waist_sagittal)'''
+            while self.z < self.l1:
+                self.qz = self.q_transform(self.mat.free_space(self.z, 1)@self.mat.free_space(self.lc/2, self.nc), self.q_sag)
+                self.z_list.append(self.z)
+                self.waist_sagittal.append(self.qz)
+                self.z += self.step
 
-'''        # Create a new dialog window for the plot
+        # Create a new dialog window for the plot
         self.plot_window = QDialog()
         self.plot_window.setWindowTitle("Beam Diagram")
         self.plot_window.resize(800, 600)
@@ -105,12 +91,13 @@ class Plotter:
         layout.addWidget(plot_widget)
         self.plot_window.setLayout(layout)
 
+        waist_sagittal_real = [np.abs(q) for q in self.waist_sagittal]
         # Placeholder for the plot (to be replaced with actual data later)
-        plot_widget.plot(pos, waist_sagittal, pen=pg.mkPen(color='r', width=2), name="waist sagittal")
+        plot_widget.plot(self.z_list, waist_sagittal_real, pen=pg.mkPen(color='r', width=2), name="waist sagittal")
         #plot_widget.plot(pos, waist_tangential, pen=pg.mkPen(color='b', width=2), name="waist tangential")
 
         # Show the plot window
-        self.plot_window.show()'''
+        self.plot_window.show()
         
 
 '''wavelength = 1064e-6  # mm (1064 nm)

@@ -10,11 +10,12 @@ class BowTie:
         self.dimension = 5
         return self.dimension
 
-    def set_roundtrip_direction(self, lc, l1, l3, theta):
-         self.l1 = l1
-         self.l3 = l3
-         self.lc = lc
-         self.l2 = ((2 * l1) + lc + l3) / (2 * np.cos(2*theta))
+    def set_roundtrip_direction(self):
+         self.l1 = self.l1
+         self.lc = self.lc
+         self.l3 = self.l3
+         self.theta = self.theta
+         self.l2 = ((2 * self.l1) + self.lc + self.l3) / (2 * np.cos(2*self.theta))
          """Sets the direction of the roundtrip, only needed for plotting"""
          vars = self.lc/2, self.l1, self.l2, self.l3, self.l2, self.l1, self.lc/2
          return vars
@@ -86,9 +87,9 @@ class FabryPerot:
         self.dimension = 2
         return self.dimension
 
-    def set_roundtrip_direction(self, lc, l1):
-         self.l1 = l1
-         self.lc = lc
+    def set_roundtrip_direction(self):
+         self.l1 = self.l1
+         self.lc = self.lc
          """Sets the direction of the roundtrip, only needed for plotting"""
          return self.lc/2, self.l1, self.l1, self.lc, self.l1, self.l1, self.lc/2
     
@@ -153,10 +154,10 @@ class Triangle:
         self.dimension = 5
         return self.dimension
 
-    def set_roundtrip_direction(self, lc, l1, l3):
-         self.l1 = l1
-         self.lc = lc
-         self.l3 = l3
+    def set_roundtrip_direction(self):
+         self.l1 = self.l1
+         self.lc = self.lc
+         self.l2 = self.l2
          """Sets the direction of the roundtrip, only needed for plotting"""
          return self.lc/2, self.l1, self.l2, self.l2, self.l1, self.lc/2
     
@@ -225,10 +226,10 @@ class Rectangle:
         self.dimension = 4
         return self.dimension
 
-    def set_roundtrip_direction(self, lc, l1, l2):
-         self.l1 = l1
-         self.lc = lc
-         self.l2 = l2
+    def set_roundtrip_direction(self):
+         self.l1 = self.l1
+         self.lc = self.lc
+         self.l2 = self.l2
          self.l3 = (2 * self.l1) + self.lc
          """Sets the direction of the roundtrip, only needed for plotting"""
          return self.lc/2, self.l1, self.l2, self.l3, self.l2, self.l1, self.lc/2

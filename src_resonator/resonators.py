@@ -353,28 +353,28 @@ class Resonator(QObject):
 
         # Ausgabe der Ergebnisse
         if self.selected_class_name == "BowTie":
-            config.set_temp_resonator_setup(self.l1, self.l2, self.l3, self.theta, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
+            config.set_temp_resonator_setup(self.waist_sag, self.waist_tan, self.l1, self.l2, self.l3, self.theta, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
             self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
             self.ui_resonator.label_length2.setText(f"={(2*self.l1+lc+self.l3)/(2*np.cos(2*self.theta)):.3f} mm")
             self.ui_resonator.label_length3.setText(f"={self.l3:.3f} mm")
             self.ui_resonator.label_theta.setText(f"={np.rad2deg(2*self.theta):.3f} °")
             self.ui_resonator.label_mirror2.setText(f"={r2_sag} mm / {r2_tan} mm")
         elif self.selected_class_name == "FabryPerot":
-            config.set_temp_resonator_setup(self.l1, self.r1_sag, self.r1_tan)
+            config.set_temp_resonator_setup(self.waist_sag, self.waist_tan, self.l1, self.r1_sag, self.r1_tan)
             self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
             self.ui_resonator.label_length2.setText(f"={self.l2:.3f} mm")
             self.ui_resonator.label_length3.setText(f"=0.0 mm")
             self.ui_resonator.label_theta.setText(f"=0.0 °")
             self.ui_resonator.label_mirror2.setText(f"=0 mm / 0 mm")
         elif self.selected_class_name == "Rectangle":
-            config.set_temp_resonator_setup(self.l1, self.l2, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
+            config.set_temp_resonator_setup(self.waist_sag, self.waist_tan, self.l1, self.l2, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
             self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
             self.ui_resonator.label_length2.setText(f"={self.l2:.3f} mm")
             self.ui_resonator.label_length3.setText(f"=0.0 mm")
             self.ui_resonator.label_theta.setText(f"=90 °")
             self.ui_resonator.label_mirror2.setText(f"={r2_sag} mm / {r2_tan} mm")
         elif self.selected_class_name == "Triangle":
-            config.set_temp_resonator_setup(self.l1, self.l2, self.theta, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
+            config.set_temp_resonator_setup(self.waist_sag, self.waist_tan, self.l1, self.l2, self.theta, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
             self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
             self.ui_resonator.label_length2.setText(f"={self.l2:.3f} mm")
             self.ui_resonator.label_length3.setText(f"=0.0 mm")
