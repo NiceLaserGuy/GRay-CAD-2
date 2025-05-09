@@ -30,8 +30,8 @@ class Plotter:
             self.temp_resonator_setup = config.get_temp_resonator_setup()
             self.resonator_type = config.get_temp_resonator_type()
             self.wavelength = config.get_temp_light_field_parameters()[0]  # Wavelength of the light
-            self.lc = config.get_temp_light_field_parameters()[1]  # Length of the cavity
-            self.nc = config.get_temp_light_field_parameters()[2]  # Number of cycles
+            self.lc = config.get_temp_light_field_parameters()[1]  # Length of the crystal
+            self.nc = config.get_temp_light_field_parameters()[2]  # Refractive index of the crystal
         except ValueError:
             # Show a message box with the error message
             msg = QMessageBox()
@@ -54,8 +54,10 @@ class Plotter:
 
         if self.resonator_type == "BowTie":
             self.waist_sag, self.waist_tan, self.l1, self.l2, self.l3, self.theta, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan = self.temp_resonator_setup
+            
             self.z_R_sag = np.pi * self.waist_sag**2 / self.wavelength
             self.q_sag = self.z - 1j * self.z_R_sag
+
             self.z_R_tan = np.pi * self.waist_tan**2 / self.wavelength
             self.q_tan = self.z - 1j * self.z_R_tan
 
