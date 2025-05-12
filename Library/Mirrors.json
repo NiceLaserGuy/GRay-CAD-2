@@ -89,6 +89,16 @@
                 "CURVATURE_SAGITTAL": 1e+30,
                 "IS_ROUND": 0.0
             }
+        },
+        {
+            "type": "MIRROR",
+            "name": "spherical r=Inf mm",
+            "manufacturer": "",
+            "properties": {
+                "CURVATURE_TANGENTIAL": 1e+30,
+                "CURVATURE_SAGITTAL": 1e+30,
+                "IS_ROUND": 1.0
+            }
         }
     ],
     "name": "Mirrors",

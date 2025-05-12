@@ -144,12 +144,12 @@ class Resonator(QObject):
         elif self.selected_class_name == "Triangle":
             self.ui_resonator.edit_lower_bound_l1.setDisabled(False)
             self.ui_resonator.edit_upper_bound_l1.setDisabled(False)
-            self.ui_resonator.edit_lower_bound_l2.setDisabled(False)
-            self.ui_resonator.edit_upper_bound_l2.setDisabled(False)
+            self.ui_resonator.edit_lower_bound_l2.setDisabled(True)
+            self.ui_resonator.edit_upper_bound_l2.setDisabled(True)
             self.ui_resonator.edit_lower_bound_l3.setDisabled(True)
             self.ui_resonator.edit_upper_bound_l3.setDisabled(True)
-            self.ui_resonator.edit_lower_bound_theta.setDisabled(True)
-            self.ui_resonator.edit_upper_bound_theta.setDisabled(True)
+            self.ui_resonator.edit_lower_bound_theta.setDisabled(False)
+            self.ui_resonator.edit_upper_bound_theta.setDisabled(False)
         config.set_temp_resonator_type(self.selected_class_name)
 
     def set_ui_resonator(self, ui_resonator):
@@ -277,7 +277,7 @@ class Resonator(QObject):
         num_runs, population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability = self.get_optimization_parameters()
 
         inputs = self.get_input()
-        self.target_sag, self.target_tan, self.nc, self.lc, self.n_prop, self.wavelength = inputs
+        #target_sag, target_tan, nc, lc, self.n_prop, self.wavelength = inputs
 
         # DEAP setup for PSO with optimization parameters
         self.size = self.problem.problem_dimension()
@@ -322,13 +322,14 @@ class Resonator(QObject):
             self.l2 = ((2 * self.l1) + lc + self.l3) / (2 * np.cos(2*self.theta))
         elif self.selected_class_name == "FabryPerot":
             self.l1, mirror1 = best
-            self.l2, self.l3, self.theta, mirror2 = 0, 0, 0
+            #self.l2, self.l3, self.theta, mirror2 = 0, 0, 0, 0
         elif self.selected_class_name == "Rectangle":
             self.l1, self.l2, mirror1, mirror2 = best
-            self.l3, self.theta = 0, np.pi / 2
+            self.l3, self.theta = self.lc + (2 * self.l1), np.pi / 4
         elif self.selected_class_name == "Triangle":
-            self.l1, self.l2, self.theta, mirror1, mirror2 = best
-            self.l3 = 0
+            self.l1, self.theta, mirror1, mirror2 = best
+            self.l2 = (self.l1 + (lc / 2))/np.cos(2 * self.theta)
+            #self.l3 = 0
 
         # Berechnung der Krümmungswerte basierend auf den Indizes
         mirror1 = int(np.clip(mirror1, 0, len(self.mirror_curvatures) - 1))
@@ -337,8 +338,19 @@ class Resonator(QObject):
         self.r2_sag, self.r2_tan = self.mirror_curvatures[mirror2][:2]
 
         # Berechnung der Waist-Größen mit den gespeicherten Werten
-        roundtrip_matrix_sag = self.problem.roundtrip_sagittal(nc, lc, n_prop, self.l1, self.l3, self.r1_sag, self.r2_sag, self.theta)
-        roundtrip_matrix_tan = self.problem.roundtrip_tangential(nc, lc, n_prop, self.l1, self.l3, self.r1_tan, self.r2_tan, self.theta)
+        if self.selected_class_name == "BowTie":
+            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(nc, lc, n_prop, self.l1, self.l3, self.r1_sag, self.r2_sag, self.theta)
+            roundtrip_matrix_tan = self.problem.roundtrip_tangential(nc, lc, n_prop, self.l1, self.l3, self.r1_tan, self.r2_tan, self.theta)
+        if self.selected_class_name == "FabryPerot":
+            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(nc, lc, n_prop, self.l1, self.r1_sag)
+            roundtrip_matrix_tan = self.problem.roundtrip_tangential(nc, lc, n_prop, self.l1, self.r1_tan)
+        if self.selected_class_name == "Rectangle":
+            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(nc, lc, n_prop, self.l1, self.l2, self.r1_sag, self.r2_sag)
+            roundtrip_matrix_tan = self.problem.roundtrip_tangential(nc, lc, n_prop, self.l1, self.l2, self.r1_tan, self.r2_tan)
+        if self.selected_class_name == "Triangle":
+            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(nc, lc, n_prop, self.l1, self.r1_sag, self.r2_sag, self.theta)
+            roundtrip_matrix_tan = self.problem.roundtrip_tangential(nc, lc, n_prop, self.l1, self.r1_tan, self.r2_tan, self.theta)
+
         m_sag = np.abs((roundtrip_matrix_sag[0, 0] + roundtrip_matrix_sag[1, 1])/2)
         m_tan = np.abs((roundtrip_matrix_tan[0, 0] + roundtrip_matrix_tan[1, 1])/2)
         b_sag = np.abs(roundtrip_matrix_sag[0, 1])
@@ -355,7 +367,7 @@ class Resonator(QObject):
         if self.selected_class_name == "BowTie":
             config.set_temp_resonator_setup(self.waist_sag, self.waist_tan, self.l1, self.l2, self.l3, self.theta, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
             self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
-            self.ui_resonator.label_length2.setText(f"={(2*self.l1+lc+self.l3)/(2*np.cos(2*self.theta)):.3f} mm")
+            self.ui_resonator.label_length2.setText(f"={((2*self.l1)+lc+self.l3)/(2*np.cos(2*self.theta)):.3f} mm")
             self.ui_resonator.label_length3.setText(f"={self.l3:.3f} mm")
             self.ui_resonator.label_theta.setText(f"={np.rad2deg(2*self.theta):.3f} °")
             self.ui_resonator.label_mirror2.setText(f"={r2_sag} mm / {r2_tan} mm")
@@ -370,15 +382,15 @@ class Resonator(QObject):
             config.set_temp_resonator_setup(self.waist_sag, self.waist_tan, self.l1, self.l2, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
             self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
             self.ui_resonator.label_length2.setText(f"={self.l2:.3f} mm")
-            self.ui_resonator.label_length3.setText(f"=0.0 mm")
-            self.ui_resonator.label_theta.setText(f"=90 °")
+            self.ui_resonator.label_length3.setText(f"={self.lc + (2 * self.l1):.3f} mm")
+            self.ui_resonator.label_theta.setText(f"={np.rad2deg(2*self.theta)} °")
             self.ui_resonator.label_mirror2.setText(f"={r2_sag} mm / {r2_tan} mm")
         elif self.selected_class_name == "Triangle":
             config.set_temp_resonator_setup(self.waist_sag, self.waist_tan, self.l1, self.l2, self.theta, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
             self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
-            self.ui_resonator.label_length2.setText(f"={self.l2:.3f} mm")
+            self.ui_resonator.label_length2.setText(f"={(self.l1 + (lc / 2))/np.cos(2 * self.theta):.3f} mm")
             self.ui_resonator.label_length3.setText(f"=0.0 mm")
-            self.ui_resonator.label_theta.setText(f"={np.rad2deg(self.theta):.3f} °")
+            self.ui_resonator.label_theta.setText(f"={np.rad2deg(2*self.theta):.3f} °")
             self.ui_resonator.label_mirror2.setText(f"={r2_sag} mm / {r2_tan} mm")
         self.ui_resonator.label_mirror1.setText(f"={r1_sag} mm / {r1_tan} mm")
         self.ui_resonator.label_waist.setText(f"={self.waist_sag*1e3:.3f} µm / {self.waist_tan*1e3:.3f} µm")
@@ -409,9 +421,9 @@ class Resonator(QObject):
             l3, theta, mirror2 = 0, 0, 0
         elif self.selected_class_name == "Rectangle":
             l1, l2, mirror1, mirror2 = individual
-            l3, theta = 0, np.pi / 2
+            l3, theta = 0, np.pi / 4
         elif self.selected_class_name == "Triangle":
-            l1, l2, theta, mirror1, mirror2 = individual
+            l1, theta, mirror1, mirror2 = individual
             l3 = 0
 
         # Get mirror curvatures
@@ -422,33 +434,17 @@ class Resonator(QObject):
 
         # Calculate roundtrip matrices
         if self.selected_class_name == "BowTie":
-            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(
-                self.nc, self.lc, self.n_prop, l1, l3, r1_sag, r2_sag, theta
-            )
-            roundtrip_matrix_tan = self.problem.roundtrip_tangential(
-                self.nc, self.lc, self.n_prop, l1, l3, r1_tan, r2_tan, theta
-            )
+            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(self.nc, self.lc, self.n_prop, l1, l3, r1_sag, r2_sag, theta)
+            roundtrip_matrix_tan = self.problem.roundtrip_tangential(self.nc, self.lc, self.n_prop, l1, l3, r1_tan, r2_tan, theta)
         elif self.selected_class_name == "FabryPerot":
-            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(
-                self.nc, self.lc, self.n_prop, l1, r1_sag
-            )
-            roundtrip_matrix_tan = self.problem.roundtrip_tangential(
-                self.nc, self.lc, self.n_prop, l1, r1_tan
-            )
+            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(self.nc, self.lc, self.n_prop, l1, r1_sag)
+            roundtrip_matrix_tan = self.problem.roundtrip_tangential(self.nc, self.lc, self.n_prop, l1, r1_tan)
         elif self.selected_class_name == "Rectangle":
-            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(
-                self.nc, self.lc, self.n_prop, l1, l2, r1_sag, r2_sag
-            )
-            roundtrip_matrix_tan = self.problem.roundtrip_tangential(
-                self.nc, self.lc, self.n_prop, l1, l2, r1_tan, r2_tan
-            )
+            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(self.nc, self.lc, self.n_prop, l1, l2, r1_sag, r2_sag)
+            roundtrip_matrix_tan = self.problem.roundtrip_tangential(self.nc, self.lc, self.n_prop, l1, l2, r1_tan, r2_tan)
         elif self.selected_class_name == "Triangle":
-            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(
-                self.nc, self.lc, self.n_prop, l1, l2, theta, r1_sag, r2_sag
-            )
-            roundtrip_matrix_tan = self.problem.roundtrip_tangential(
-                self.nc, self.lc, self.n_prop, l1, l2, theta, r1_tan, r2_tan
-            )
+            roundtrip_matrix_sag = self.problem.roundtrip_sagittal(self.nc, self.lc, self.n_prop, l1, r1_sag, r2_sag, theta)
+            roundtrip_matrix_tan = self.problem.roundtrip_tangential(self.nc, self.lc, self.n_prop, l1, r1_tan, r2_tan, theta)
 
         # Extract matrix elements for stability calculation
         m_sag = np.abs((roundtrip_matrix_sag[0, 0] + roundtrip_matrix_sag[1, 1]) / 2)
@@ -518,8 +514,7 @@ class Resonator(QObject):
         elif self.selected_class_name == "Triangle":
             particle = creator.Particle([
                 np.random.uniform(l1_min, l1_max) if i == 0 else
-                np.random.uniform(l2_min, l2_max) if i == 1 else
-                np.random.uniform(theta_min, theta_max) if i == 2 else
+                np.random.uniform(theta_min, theta_max) if i == 1 else
                 np.random.randint(0, len(self.mirror_curvatures))
                 for i in range(size)
             ])
@@ -579,8 +574,7 @@ class Resonator(QObject):
         elif self.selected_class_name == "Triangle":
             part[:] = [
                 np.clip(p + v, l1_min, l1_max) if i == 0 else
-                np.clip(p + v, l2_min, l2_max) if i == 1 else
-                np.clip(p + v, theta_min, theta_max) if i == 2 else
+                np.clip(p + v, theta_min, theta_max) if i == 1 else
                 int(np.clip(round(p + v), 0, len(self.mirror_curvatures) - 1))
                 for i, (p, v) in enumerate(zip(part, part.speed))
             ]
@@ -613,8 +607,6 @@ class Resonator(QObject):
                     if i == 0:
                         part[i] = np.random.uniform(l1_min, l1_max)
                     elif i == 1:
-                        part[i] = np.random.uniform(l2_min, l2_max)
-                    elif i == 2:
                         part[i] = np.random.uniform(theta_min, theta_max)
                     else:  # mirror index
                         part[i] = np.random.randint(0, len(self.mirror_curvatures))

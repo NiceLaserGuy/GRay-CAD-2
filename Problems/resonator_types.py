@@ -100,13 +100,9 @@ class FabryPerot:
         m2 = self.matrices.free_space(l1, n0)
         m3 = self.matrices.curved_mirror_sagittal(r1_tan, 0)
         m4 = self.matrices.free_space(l1, n0)
-        m5 = self.matrices.free_space(lc, nc)
-        m6 = self.matrices.free_space(l1, n0)
-        m7 = self.matrices.curved_mirror_sagittal(r1_tan, 0)
-        m8 = self.matrices.free_space(l1, n0)
-        m9 = self.matrices.free_space(lc / 2, nc)
+        m5 = self.matrices.free_space(lc / 2, nc)
 
-        return m1, m2, m3, m4, m5, m6, m7, m8, m9
+        return m1, m2, m3, m4, m5
 
     def set_roundtrip_sagittal(self, nc, lc, n0, l1, r1_sag):
         """Calculate the roundtrip matrix for the sagittal plane"""
@@ -115,13 +111,9 @@ class FabryPerot:
         m2 = self.matrices.free_space(l1, n0)
         m3 = self.matrices.curved_mirror_sagittal(r1_sag, 0)
         m4 = self.matrices.free_space(l1, n0)
-        m5 = self.matrices.free_space(lc, nc)
-        m6 = self.matrices.free_space(l1, n0)
-        m7 = self.matrices.curved_mirror_sagittal(r1_sag, 0)
-        m8 = self.matrices.free_space(l1, n0)
-        m9 = self.matrices.free_space(lc / 2, nc)
+        m5 = self.matrices.free_space(lc / 2, nc)
 
-        return m1, m2, m3, m4, m5, m6, m7, m8, m9
+        return m1, m2, m3, m4, m5
 
     def set_fitness(self, waist_sag, waist_tan, target_sag, target_tan):
             """Calculate the fitness value for the Bowtie resonator"""
@@ -151,7 +143,7 @@ class Triangle:
         self.matrices = Matrices()
 
     def set_problem_dimension(self):
-        self.dimension = 5
+        self.dimension = 4
         return self.dimension
 
     def set_roundtrip_direction(self):
@@ -161,11 +153,10 @@ class Triangle:
          """Sets the direction of the roundtrip, only needed for plotting"""
          return self.lc/2, self.l1, self.l2, self.l2, self.l1, self.lc/2
     
-    def set_roundtrip_tangential(self, nc, lc, n0, l1, l2, r1_tan, r2_tan, theta):
+    def set_roundtrip_tangential(self, nc, lc, n0, l1, r1_tan, r2_tan, theta):
         """Calculate the roundtrip matrix for the tangential plane"""
-        phi = np.pi - (2 * theta)
-        print("phi", phi)
-        print("theta", theta)
+        phi = (np.pi/2 - 2*theta)
+        l2 = (l1 + lc / 2)/np.cos(2 * theta)
 
         m1 = self.matrices.free_space(lc / 2, nc)
         m2 = self.matrices.free_space(l1, n0)
@@ -179,9 +170,10 @@ class Triangle:
 
         return m1, m2, m3, m4, m5, m6, m7, m8, m9
 
-    def set_roundtrip_sagittal(self, nc, lc, n0, l1, l2, r1_sag, r2_sag, theta):
+    def set_roundtrip_sagittal(self, nc, lc, n0, l1, r1_sag, r2_sag, theta):
         """Calculate the roundtrip matrix for the sagittal plane"""
-        phi = np.pi - (2 * theta)
+        phi = (np.pi/2 - 2*theta)
+        l2 = (l1 + lc / 2)/np.cos(2 * theta)
 
         m1 = self.matrices.free_space(lc / 2, nc)
         m2 = self.matrices.free_space(l1, n0)
@@ -240,13 +232,13 @@ class Rectangle:
             
             m1= self.matrices.free_space(lc / 2, nc)
             m2= self.matrices.free_space(l1, n0)
-            m3= self.matrices.curved_mirror_tangential(r2_tan, np.pi/2)
+            m3= self.matrices.curved_mirror_tangential(r1_tan, np.pi/4)
             m4= self.matrices.free_space(l2, n0)
-            m5= self.matrices.curved_mirror_tangential(r1_tan, np.pi/2)
+            m5= self.matrices.curved_mirror_tangential(r2_tan, np.pi/4)
             m6= self.matrices.free_space(l3, n0)
-            m7= self.matrices.curved_mirror_tangential(r1_tan, np.pi/2)
+            m7= self.matrices.curved_mirror_tangential(r2_tan, np.pi/4)
             m8= self.matrices.free_space(l2, n0)
-            m9= self.matrices.curved_mirror_tangential(r2_tan, np.pi/2)
+            m9= self.matrices.curved_mirror_tangential(r1_tan, np.pi/4)
             m10= self.matrices.free_space(l1, n0)
             m11= self.matrices.free_space(lc / 2, nc)
 
@@ -258,13 +250,13 @@ class Rectangle:
                    
         m1= self.matrices.free_space(lc / 2, nc)
         m2= self.matrices.free_space(l1, n0)
-        m3= self.matrices.curved_mirror_sagittal(r2_sag, np.pi/2)
+        m3= self.matrices.curved_mirror_sagittal(r1_sag, np.pi/4)
         m4= self.matrices.free_space(l2, n0)
-        m5= self.matrices.curved_mirror_sagittal(r1_sag, np.pi/2)
+        m5= self.matrices.curved_mirror_sagittal(r2_sag, np.pi/4)
         m6= self.matrices.free_space(l3, n0)
-        m7= self.matrices.curved_mirror_sagittal(r1_sag, np.pi/2)
+        m7= self.matrices.curved_mirror_sagittal(r2_sag, np.pi/4)
         m8= self.matrices.free_space(l2, n0)
-        m9= self.matrices.curved_mirror_sagittal(r2_sag, np.pi/2)
+        m9= self.matrices.curved_mirror_sagittal(r1_sag, np.pi/4)
         m10= self.matrices.free_space(l1, n0)
         m11= self.matrices.free_space(lc / 2, nc)
 
