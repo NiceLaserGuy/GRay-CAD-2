@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import QMainWindow, QMessageBox, QFileDialog
 
 # Custom module imports
 from src_resonator.resonators import Resonator
-from libraries import Libraries
+from src_libraries.libraries import Libraries
 from src_resonator.select_items_resonator import ItemSelector
 
 class MainWindow(QMainWindow):
@@ -40,11 +40,10 @@ class MainWindow(QMainWindow):
 
         # Set application window icon
         self.setWindowIcon(QIcon(path.abspath(path.join(path.dirname(__file__), 
-                         "/assets/TaskbarIcon.png"))))
+                         "../../assets/TaskbarIcon.png"))))
 
         # Load the main UI from .ui file
-        self.ui = uic.loadUi(path.abspath(path.join(path.dirname(__file__))) + 
-                            "/assets/mainwindow.ui", self)
+        self.ui = uic.loadUi(path.abspath(path.join(path.dirname(__file__), "../assets/mainwindow.ui")), self)
 
         # Connect menu items to their respective handlers
         self.ui.action_Open.triggered.connect(self.action_open)

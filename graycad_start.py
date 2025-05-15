@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QIcon
 from os import path
-from graycad_mainwindow import MainWindow
+from GUI.graycad_mainwindow import MainWindow
 from deap import base, creator
 
 class Start:

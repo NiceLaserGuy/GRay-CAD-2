@@ -1,7 +1,7 @@
 import json
 import os
 
-class LensLibrary:
+class ComponentLibrary:
     def __init__(self, library_path):
         self.library_path = library_path
         self.lenses = self.load_lenses()

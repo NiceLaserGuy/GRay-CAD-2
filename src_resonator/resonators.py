@@ -6,9 +6,10 @@ from os import path
 from PyQt5.QtWidgets import QMainWindow, QMessageBox
 from PyQt5 import uic
 from PyQt5.QtCore import QThread, pyqtSignal, QObject
+from PyQt5.QtGui import QPixmap
 from src_resonator.problem import Problem
 from src_resonator.plot_setup import Plotter
-from Problems.resonator_types import *
+from src_resonator.resonator_types import *
 
 class Resonator(QObject):
     """
@@ -72,7 +73,7 @@ class Resonator(QObject):
         self.config_ui()
         
         
-        self.ui_resonator.pushButton_plot_beamdiagram.clicked.connect(self.plotter.plot_beamdiagram)
+        #self.ui_resonator.pushButton_plot_beamdiagram.clicked.connect(self.plotter.plot_beamdiagram)
         
     def load_mirror_data(self, filepath):
         """
@@ -113,7 +114,7 @@ class Resonator(QObject):
         
     def config_ui(self):
         self.selected_class_name = self.ui_resonator.comboBox_problem_class.currentText()
-
+        base_path = path.abspath(path.join(path.dirname(__file__), "..", "assets"))
         if self.selected_class_name == "BowTie":
             self.ui_resonator.edit_lower_bound_l1.setDisabled(False)
             self.ui_resonator.edit_upper_bound_l1.setDisabled(False)
@@ -123,6 +124,9 @@ class Resonator(QObject):
             self.ui_resonator.edit_upper_bound_l3.setDisabled(False)
             self.ui_resonator.edit_lower_bound_theta.setDisabled(False)
             self.ui_resonator.edit_upper_bound_theta.setDisabled(False)
+            graphic_path = path.join(base_path, "bowtie_layout.png")
+            graphic = QPixmap(graphic_path)
+            self.ui_resonator.layout_resonator_picture.setMaximumSize(500, 200)
         elif self.selected_class_name == "FabryPerot":
             self.ui_resonator.edit_lower_bound_l1.setDisabled(False)
             self.ui_resonator.edit_upper_bound_l1.setDisabled(False)
@@ -132,6 +136,9 @@ class Resonator(QObject):
             self.ui_resonator.edit_upper_bound_l3.setDisabled(True)
             self.ui_resonator.edit_lower_bound_theta.setDisabled(True)
             self.ui_resonator.edit_upper_bound_theta.setDisabled(True)
+            graphic_path = path.join(base_path, "fabryperot_layout.png")
+            graphic = QPixmap(graphic_path)
+            self.ui_resonator.layout_resonator_picture.setMaximumSize(500, 50)
         elif self.selected_class_name == "Rectangle":
             self.ui_resonator.edit_lower_bound_l1.setDisabled(False)
             self.ui_resonator.edit_upper_bound_l1.setDisabled(False)
@@ -141,6 +148,9 @@ class Resonator(QObject):
             self.ui_resonator.edit_upper_bound_l3.setDisabled(True)
             self.ui_resonator.edit_lower_bound_theta.setDisabled(True)
             self.ui_resonator.edit_upper_bound_theta.setDisabled(True)
+            graphic_path = path.join(base_path, "rectangle_layout.png")
+            graphic = QPixmap(graphic_path)
+            self.ui_resonator.layout_resonator_picture.setMaximumSize(500, 200)
         elif self.selected_class_name == "Triangle":
             self.ui_resonator.edit_lower_bound_l1.setDisabled(False)
             self.ui_resonator.edit_upper_bound_l1.setDisabled(False)
@@ -150,6 +160,11 @@ class Resonator(QObject):
             self.ui_resonator.edit_upper_bound_l3.setDisabled(True)
             self.ui_resonator.edit_lower_bound_theta.setDisabled(False)
             self.ui_resonator.edit_upper_bound_theta.setDisabled(False)
+            graphic_path = path.join(base_path, "triangle_layout.png")
+            graphic = QPixmap(graphic_path)
+            self.ui_resonator.layout_resonator_picture.setMaximumSize(500, 200)
+            
+        self.ui_resonator.layout_resonator_picture.setPixmap(graphic)
         config.set_temp_resonator_type(self.selected_class_name)
 
     def set_ui_resonator(self, ui_resonator):
@@ -322,14 +337,14 @@ class Resonator(QObject):
             self.l2 = ((2 * self.l1) + lc + self.l3) / (2 * np.cos(2*self.theta))
         elif self.selected_class_name == "FabryPerot":
             self.l1, mirror1 = best
-            #self.l2, self.l3, self.theta, mirror2 = 0, 0, 0, 0
+            self.l2, self.l3, self.theta, mirror2 = 0, 0, 0, 0
         elif self.selected_class_name == "Rectangle":
             self.l1, self.l2, mirror1, mirror2 = best
             self.l3, self.theta = self.lc + (2 * self.l1), np.pi / 4
         elif self.selected_class_name == "Triangle":
             self.l1, self.theta, mirror1, mirror2 = best
             self.l2 = (self.l1 + (lc / 2))/np.cos(2 * self.theta)
-            #self.l3 = 0
+            self.l3 = 0
 
         # Berechnung der Krümmungswerte basierend auf den Indizes
         mirror1 = int(np.clip(mirror1, 0, len(self.mirror_curvatures) - 1))

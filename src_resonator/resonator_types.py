@@ -1,5 +1,5 @@
 import numpy as np
-from Problems.matrices import Matrices
+from src_physics.matrices import Matrices
 
 class BowTie:
 
@@ -26,13 +26,13 @@ class BowTie:
             
             m1= self.matrices.free_space(lc / 2, nc)
             m2= self.matrices.free_space(l1, n0)
-            m3= self.matrices.curved_mirror_tangential(r2_tan, theta)
+            m3= self.matrices.curved_mirror_tangential(r1_tan, theta)
             m4= self.matrices.free_space(l2, n0)
-            m5= self.matrices.curved_mirror_tangential(r1_tan, theta)
+            m5= self.matrices.curved_mirror_tangential(r2_tan, theta)
             m6= self.matrices.free_space(l3, n0)
-            m7= self.matrices.curved_mirror_tangential(r1_tan, theta)
+            m7= self.matrices.curved_mirror_tangential(r2_tan, theta)
             m8= self.matrices.free_space(l2, n0)
-            m9= self.matrices.curved_mirror_tangential(r2_tan, theta)
+            m9= self.matrices.curved_mirror_tangential(r1_tan, theta)
             m10= self.matrices.free_space(l1, n0)
             m11= self.matrices.free_space(lc / 2, nc)
 
@@ -44,13 +44,13 @@ class BowTie:
         
         m1= self.matrices.free_space(lc / 2, nc)
         m2= self.matrices.free_space(l1, n0)
-        m3= self.matrices.curved_mirror_sagittal(r2_sag, theta)
+        m3= self.matrices.curved_mirror_sagittal(r1_sag, theta)
         m4= self.matrices.free_space(l2, n0)
-        m5= self.matrices.curved_mirror_sagittal(r1_sag, theta)
+        m5= self.matrices.curved_mirror_sagittal(r2_sag, theta)
         m6= self.matrices.free_space(l3, n0)
-        m7= self.matrices.curved_mirror_sagittal(r1_sag, theta)
+        m7= self.matrices.curved_mirror_sagittal(r2_sag, theta)
         m8= self.matrices.free_space(l2, n0)
-        m9= self.matrices.curved_mirror_sagittal(r2_sag, theta)
+        m9= self.matrices.curved_mirror_sagittal(r1_sag, theta)
         m10= self.matrices.free_space(l1, n0)
         m11= self.matrices.free_space(lc / 2, nc)
 

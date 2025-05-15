@@ -1,5 +1,5 @@
-from Problems.resonator_types import *
-from Problems.matrices import Matrices
+from src_resonator.resonator_types import *
+from src_physics.matrices import Matrices
 import numpy as np
 
 class Problem:

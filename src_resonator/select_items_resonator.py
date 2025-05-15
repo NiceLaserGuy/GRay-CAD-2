@@ -457,19 +457,23 @@ class ItemSelector(QObject):
             # Entferne die Komponente aus der temporären Liste
             self.temporary_components.pop(selected_index)
 
-            # Aktualisiere die temporäre Datei
-            self.update_temporary_file()
-
-            # Aktualisiere die Anzeige der temporären Liste
-            self.update_temporary_list_view()
-
         else:
             QMessageBox.warning(
                 self.library_window,
                 "Invalid Selection",
                 "Die ausgewählte Komponente ist ungültig."
-        )
-        
+            )
+            return
+
+        # Aktualisiere die Anzeige der temporären Liste
+        if not self.temporary_components:
+            # Wenn die Liste leer ist, setze ein leeres Modell
+            self.ui_select_components_resonator.listView_temporary_component.setModel(QStandardItemModel())
+        else:
+            # Aktualisiere die temporäre Datei und Liste
+            self.update_temporary_file()
+            self.update_temporary_list_view()
+
     def remove_all_components_from_temporary_list(self):
         """
         Entfernt alle Komponenten aus der temporären Liste.
