@@ -44,7 +44,7 @@
          <string/>
         </property>
         <property name="pixmap">
-         <pixmap>bowtie_layout.png</pixmap>
+         <pixmap>fabryperot_layout.png</pixmap>
         </property>
         <property name="scaledContents">
          <bool>true</bool>

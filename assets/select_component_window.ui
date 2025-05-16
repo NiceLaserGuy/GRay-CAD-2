@@ -290,6 +290,13 @@ background-color: rgb(186, 189, 182);</string>
       </property>
      </widget>
     </item>
+    <item row="9" column="3">
+     <widget class="QPushButton" name="button_back">
+      <property name="text">
+       <string>Back</string>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>

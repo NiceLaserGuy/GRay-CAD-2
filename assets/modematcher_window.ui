@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>877</width>
-    <height>590</height>
+    <width>934</width>
+    <height>592</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,7 +15,7 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0">
+    <item row="3" column="0">
      <widget class="QLabel" name="label">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -39,6 +39,211 @@
        <bool>true</bool>
       </property>
      </widget>
+    </item>
+    <item row="0" column="0">
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="5" column="2">
+       <widget class="QLineEdit" name="lineEdit_9"/>
+      </item>
+      <item row="0" column="1">
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item row="6" column="2">
+       <widget class="QLineEdit" name="lineEdit_10"/>
+      </item>
+      <item row="5" column="5">
+       <widget class="QLineEdit" name="lineEdit_6"/>
+      </item>
+      <item row="3" column="2">
+       <widget class="QLabel" name="label_12">
+        <property name="text">
+         <string>Tangential</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Wavelength</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignHCenter|Qt::AlignTop</set>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QLineEdit" name="lineEdit_3"/>
+      </item>
+      <item row="0" column="5">
+       <widget class="QLabel" name="label_3">
+        <property name="font">
+         <font>
+          <pointsize>14</pointsize>
+         </font>
+        </property>
+        <property name="layoutDirection">
+         <enum>Qt::LeftToRight</enum>
+        </property>
+        <property name="text">
+         <string>Output Beam</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="4">
+       <widget class="QLabel" name="label_9">
+        <property name="text">
+         <string>Rayleigh Length (z&lt;sub&gt;R, out&lt;/sub&gt;)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="3">
+       <widget class="QLineEdit" name="lineEdit"/>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="label_7">
+        <property name="text">
+         <string>Rayleigh Length (z&lt;sub&gt;R, in&lt;/sub&gt;)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QLabel" name="label_11">
+        <property name="text">
+         <string>Sagittal</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="0">
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>Waist Position (z&lt;sub&gt;0, in&lt;/sub&gt;)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="font">
+         <font>
+          <pointsize>14</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Input Beam</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="5">
+       <widget class="QLineEdit" name="lineEdit_5"/>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label_6">
+        <property name="text">
+         <string>Waist radius (w&lt;sub&gt;0, in&lt;/sub&gt;)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="4">
+       <widget class="QLabel" name="label_8">
+        <property name="text">
+         <string>Waist radius (w&lt;sub&gt;0, out&lt;/sub&gt;)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="5">
+       <widget class="QLabel" name="label_13">
+        <property name="text">
+         <string>Sagittal</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QLineEdit" name="lineEdit_2"/>
+      </item>
+      <item row="4" column="2">
+       <widget class="QLineEdit" name="lineEdit_8"/>
+      </item>
+      <item row="6" column="4">
+       <widget class="QLabel" name="label_10">
+        <property name="text">
+         <string>Waist Position (z&lt;sub&gt;0, out&lt;/sub&gt;)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="4">
+       <spacer name="horizontalSpacer_2">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item row="6" column="1">
+       <widget class="QLineEdit" name="lineEdit_4"/>
+      </item>
+      <item row="6" column="5">
+       <widget class="QLineEdit" name="lineEdit_7"/>
+      </item>
+      <item row="3" column="6">
+       <widget class="QLabel" name="label_14">
+        <property name="text">
+         <string>Tangential</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="6">
+       <widget class="QLineEdit" name="lineEdit_11"/>
+      </item>
+      <item row="5" column="6">
+       <widget class="QLineEdit" name="lineEdit_12"/>
+      </item>
+      <item row="6" column="6">
+       <widget class="QLineEdit" name="lineEdit_13"/>
+      </item>
+     </layout>
+    </item>
+    <item row="2" column="0">
+     <spacer name="verticalSpacer">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>40</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
+    <item row="4" column="0">
+     <spacer name="verticalSpacer_2">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>40</height>
+       </size>
+      </property>
+     </spacer>
     </item>
    </layout>
   </widget>

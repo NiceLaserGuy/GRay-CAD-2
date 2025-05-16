@@ -17,56 +17,58 @@ class ItemSelector(QObject):
         
         self.res = Resonator()
         
-    def open_library_window(self):
+    def open_library_window(self, parent=None):
         """
         Creates and shows the library window.
-        Loads and displays mirror configurations.
         """
-        # Create new window instance without parent
+        # Speichere das Hauptfenster
+        self.library_window = parent
+        
+        # Erstelle das neue Fenster mit dem Hauptfenster als Parent
         self.lib_resonator_window = QMainWindow()
         
-        
         # Load the library UI
-        ui_path = path.abspath(path.join(path.dirname(path.dirname(__file__)), "assets/lib_resonator_window.ui"))
-        self.ui_select_components_resonator = uic.loadUi(ui_path, 
-            self.lib_resonator_window
-        )
+        ui_path = path.abspath(path.join(path.dirname(path.dirname(__file__)), "assets/select_component_window.ui"))
+        self.ui_select_components_resonator = uic.loadUi(ui_path, self.lib_resonator_window)
         
         # Configure and show the window
         self.lib_resonator_window.setWindowTitle("Select Components")
         self.lib_resonator_window.show()
         
-        # Connect the next button to the method
-        self.ui_select_components_resonator.button_next.clicked.connect(self.handle_next_button)
-
-        # Connect the close button to the method
-        self.ui_select_components_resonator.button_close.clicked.connect(self.close_library_window)
-
-        # Load files from the Library folder and display them
-        self.load_library_files()
-
-        # Connect the listView_libraries to a click event
-        self.ui_select_components_resonator.listView_libraries.clicked.connect(self.display_file_contents)
-        
-        # Connect the pushButton_add_all to the method
-        self.ui_select_components_resonator.pushButton_add_all.clicked.connect(self.add_all_components_to_temporary_list)
-        
-        # Connect the pushButton_add to the method
-        self.ui_select_components_resonator.toolButton_add_component.clicked.connect(self.add_component_to_temporary_list)
-        
-        self.ui_select_components_resonator.pushButton_remove_component.clicked.connect(self.remove_component_from_temporary_list)
+        # Connect the back button to the method
+        self.ui_select_components_resonator.button_back.clicked.connect(self.handle_back_button)
     
-        self.ui_select_components_resonator.pushButton_remove_all.clicked.connect(self.remove_all_components_from_temporary_list)
-
+    def handle_back_button(self):
+        """
+        Zeigt das vorherige Fenster (Hauptfenster) an und schließt das aktuelle Fenster.
+        """
+        # Zuerst das aktuelle Fenster schließen
+        if self.lib_resonator_window:
+            self.lib_resonator_window.close()
+        
+        # Dann das Hauptfenster anzeigen
+        if self.library_window:
+            self.library_window.show()
+            self.library_window.raise_()  # Bringt das Fenster in den Vordergrund
+    
     def handle_next_button(self):
         """
-        Speichert die temporäre Datei und öffnet das nächste Fenster.
+        Speichert die temporäre Datei und führt je nach Kontext eine andere Aktion aus.
         """
         # Temporäre Datei speichern
         self.save_temporary_file()
 
-        # Nächstes Fenster öffnen
-        self.res.open_resonator_window()
+        # Aktion basierend auf dem Kontext ausführen
+        if self.parent().current_context == "resonator":
+            self.res.open_resonator_window()
+        elif self.parent().current_context == "modematcher":
+            self.parent().modematcher.open_modematcher_window()
+        else:
+            QMessageBox.warning(
+                self.library_window,
+                "Unknown Context",
+                "Es wurde kein gültiger Kontext erkannt."
+            )
         
     def close_library_window(self):
         """
@@ -74,6 +76,8 @@ class ItemSelector(QObject):
         """
         if self.lib_resonator_window:
             self.ui_select_components_resonator.close()
+        if self.parent():
+            self.parent().show()
      
     def load_library_files(self):
         """
