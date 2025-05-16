@@ -21,35 +21,42 @@ class ItemSelector(QObject):
         """
         Creates and shows the library window.
         """
-        # Speichere das Hauptfenster
         self.library_window = parent
-        
-        # Erstelle das neue Fenster mit dem Hauptfenster als Parent
-        self.lib_resonator_window = QMainWindow()
+        self.lib_resonator_window = QMainWindow(parent)
+        # Rest des Codes bleibt unverändert
         
         # Load the library UI
         ui_path = path.abspath(path.join(path.dirname(path.dirname(__file__)), "assets/select_component_window.ui"))
-        self.ui_select_components_resonator = uic.loadUi(ui_path, self.lib_resonator_window)
+        self.ui_select_components_resonator = uic.loadUi(ui_path, 
+            self.lib_resonator_window
+        )
         
         # Configure and show the window
         self.lib_resonator_window.setWindowTitle("Select Components")
         self.lib_resonator_window.show()
         
-        # Connect the back button to the method
-        self.ui_select_components_resonator.button_back.clicked.connect(self.handle_back_button)
-    
-    def handle_back_button(self):
-        """
-        Zeigt das vorherige Fenster (Hauptfenster) an und schließt das aktuelle Fenster.
-        """
-        # Zuerst das aktuelle Fenster schließen
-        if self.lib_resonator_window:
-            self.lib_resonator_window.close()
+        # Connect the next button to the method
+        self.ui_select_components_resonator.button_next.clicked.connect(self.handle_next_button)
+
+        # Connect the close button to the method
+        self.ui_select_components_resonator.button_close.clicked.connect(self.close_library_window)
+
+        # Load files from the Library folder and display them
+        self.load_library_files()
+
+        # Connect the listView_libraries to a click event
+        self.ui_select_components_resonator.listView_libraries.clicked.connect(self.display_file_contents)
         
-        # Dann das Hauptfenster anzeigen
-        if self.library_window:
-            self.library_window.show()
-            self.library_window.raise_()  # Bringt das Fenster in den Vordergrund
+        # Connect the pushButton_add_all to the method
+        self.ui_select_components_resonator.pushButton_add_all.clicked.connect(self.add_all_components_to_temporary_list)
+        
+        # Connect the pushButton_add to the method
+        self.ui_select_components_resonator.toolButton_add_component.clicked.connect(self.add_component_to_temporary_list)
+        
+        self.ui_select_components_resonator.pushButton_remove_component.clicked.connect(self.remove_component_from_temporary_list)
+    
+        self.ui_select_components_resonator.pushButton_remove_all.clicked.connect(self.remove_all_components_from_temporary_list)
+
     
     def handle_next_button(self):
         """

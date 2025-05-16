@@ -43,7 +43,7 @@
     <item row="0" column="0">
      <layout class="QGridLayout" name="gridLayout_2">
       <item row="5" column="2">
-       <widget class="QLineEdit" name="lineEdit_9"/>
+       <widget class="QLineEdit" name="zR_in_tan"/>
       </item>
       <item row="0" column="1">
        <spacer name="horizontalSpacer">
@@ -59,10 +59,10 @@
        </spacer>
       </item>
       <item row="6" column="2">
-       <widget class="QLineEdit" name="lineEdit_10"/>
+       <widget class="QLineEdit" name="z0_in_tan"/>
       </item>
       <item row="5" column="5">
-       <widget class="QLineEdit" name="lineEdit_6"/>
+       <widget class="QLineEdit" name="zR_out_sag"/>
       </item>
       <item row="3" column="2">
        <widget class="QLabel" name="label_12">
@@ -82,7 +82,7 @@
        </widget>
       </item>
       <item row="5" column="1">
-       <widget class="QLineEdit" name="lineEdit_3"/>
+       <widget class="QLineEdit" name="zR_in_sag"/>
       </item>
       <item row="0" column="5">
        <widget class="QLabel" name="label_3">
@@ -110,7 +110,7 @@
        </widget>
       </item>
       <item row="2" column="3">
-       <widget class="QLineEdit" name="lineEdit"/>
+       <widget class="QLineEdit" name="wavelength"/>
       </item>
       <item row="5" column="0">
        <widget class="QLabel" name="label_7">
@@ -146,7 +146,7 @@
        </widget>
       </item>
       <item row="4" column="5">
-       <widget class="QLineEdit" name="lineEdit_5"/>
+       <widget class="QLineEdit" name="w0_out_sag"/>
       </item>
       <item row="4" column="0">
        <widget class="QLabel" name="label_6">
@@ -170,10 +170,10 @@
        </widget>
       </item>
       <item row="4" column="1">
-       <widget class="QLineEdit" name="lineEdit_2"/>
+       <widget class="QLineEdit" name="w0_in_sag"/>
       </item>
       <item row="4" column="2">
-       <widget class="QLineEdit" name="lineEdit_8"/>
+       <widget class="QLineEdit" name="w0_in_tan"/>
       </item>
       <item row="6" column="4">
        <widget class="QLabel" name="label_10">
@@ -196,10 +196,10 @@
        </spacer>
       </item>
       <item row="6" column="1">
-       <widget class="QLineEdit" name="lineEdit_4"/>
+       <widget class="QLineEdit" name="z0_in_sag"/>
       </item>
       <item row="6" column="5">
-       <widget class="QLineEdit" name="lineEdit_7"/>
+       <widget class="QLineEdit" name="z0_out_sag"/>
       </item>
       <item row="3" column="6">
        <widget class="QLabel" name="label_14">
@@ -209,13 +209,13 @@
        </widget>
       </item>
       <item row="4" column="6">
-       <widget class="QLineEdit" name="lineEdit_11"/>
+       <widget class="QLineEdit" name="w0_out_tan"/>
       </item>
       <item row="5" column="6">
-       <widget class="QLineEdit" name="lineEdit_12"/>
+       <widget class="QLineEdit" name="zR_out_tan"/>
       </item>
       <item row="6" column="6">
-       <widget class="QLineEdit" name="lineEdit_13"/>
+       <widget class="QLineEdit" name="z0_out_tan"/>
       </item>
      </layout>
     </item>
