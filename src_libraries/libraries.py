@@ -29,7 +29,7 @@ class Libraries(QObject):
         
         # Load the library UI
         self.ui_library = uic.loadUi(
-            path.abspath(path.join(path.dirname(__file__), 
+            path.abspath(path.join(path.dirname(path.dirname(__file__)),
             "assets/library_window.ui")), 
             self.library_window
         )
@@ -63,7 +63,7 @@ class Libraries(QObject):
         self.ui_library.button_delete_component.clicked.connect(self.delete_component)
 
         # Connect the is_round checkbox to the method
-        self.ui_library.radioButton_is_spherical.toggled.connect(self.toggle_curvature_tangential)
+        self.ui_library.checkBox_is_spherical.toggled.connect(self.toggle_curvature_tangential)
     
     def toggle_curvature_tangential(self, checked):
         """
@@ -95,7 +95,7 @@ class Libraries(QObject):
         Loads files from the 'Library' folder and displays them in the listView_libraries.
         """
         # Path to the Library folder
-        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+        library_path = path.abspath(path.join(path.dirname(path.dirname(__file__)), "Library"))
 
         # Check if the folder exists
         if not path.exists(library_path):
@@ -129,7 +129,7 @@ class Libraries(QObject):
         selected_file = index.data()
 
         # Path to the Library folder
-        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+        library_path = path.abspath(path.join(path.dirname(path.dirname(__file__)),  "Library"))
         file_path = path.join(library_path, selected_file)
 
         # Check if the file exists
@@ -201,10 +201,10 @@ class Libraries(QObject):
 
             if component.get("properties", {}).get("IS_ROUND", 0.0) == 1.0:
                 self.toggle_curvature_tangential(True)
-                self.ui_library.radioButton_is_spherical.setChecked(True)
+                self.ui_library.checkBox_is_spherical.setChecked(True)
             else:
                 self.toggle_curvature_tangential(False)
-                self.ui_library.radioButton_is_spherical.setChecked(False)
+                self.ui_library.checkBox_is_spherical.setChecked(False)
 
             # Replace 1e30 with "Infinity"
             if curvature_tangential == 1e30:
@@ -243,7 +243,7 @@ class Libraries(QObject):
         Creates a new .json file with user-provided name and adds it to the listView_libraries.
         """
         # Path to the Library folder
-        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+        library_path = path.abspath(path.join(path.dirname(path.dirname(__file__)),  "Library"))
 
         # Prompt the user for a file name
         new_file_name, ok = QInputDialog.getText(
@@ -331,7 +331,7 @@ class Libraries(QObject):
         selected_file_name = model.item(selected_file_index).text()
 
         # Path to the Library folder
-        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+        library_path = path.abspath(path.join(path.dirname(path.dirname(__file__)),  "Library"))
         selected_file_path = path.join(library_path, selected_file_name)
 
         # Confirm deletion with the user
@@ -386,7 +386,7 @@ class Libraries(QObject):
         selected_file_name = model.item(selected_file_index).text()
 
         # Path to the Library folder
-        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+        library_path = path.abspath(path.join(path.dirname(path.dirname(__file__)),  "Library"))
         selected_file_path = path.join(library_path, selected_file_name)
 
         # Read the current library file
@@ -427,7 +427,7 @@ class Libraries(QObject):
                 component["properties"]["CURVATURE_IN_TAN"] = float(self.ui_library.edit_curvature_in_tan.text().strip())
                 component["properties"]["CURVATURE_OUT_TAN"] = float(self.ui_library.edit_curvature_out_tan.text().strip())
                 # Determine if the component is round
-                if self.ui_library.radioButton_is_spherical.isChecked():
+                if self.ui_library.checkBox_is_spherical.isChecked():
                     component["properties"]["IS_ROUND"] = 1.0 # True
                 else:
                     component["properties"]["IS_ROUND"] = 0.0 # False
@@ -454,7 +454,7 @@ class Libraries(QObject):
                     component["properties"]["CURVATURE_SAGITTAL"] = float(curvature_sagittal)
 
                 # Determine if the component is round
-                if self.ui_library.radioButton_is_spherical.isChecked():
+                if self.ui_library.checkBox_is_spherical.isChecked():
                     component["properties"]["IS_ROUND"] = 1.0 # True
                 else:
                     component["properties"]["IS_ROUND"] = 0.0 # False
@@ -503,7 +503,7 @@ class Libraries(QObject):
         selected_file_name = model.item(selected_file_index).text()
 
         # Path to the Library folder
-        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+        library_path = path.abspath(path.join(path.dirname(path.dirname(__file__)),  "Library"))
         selected_file_path = path.join(library_path, selected_file_name)
 
         # Read the current library file
@@ -585,7 +585,7 @@ class Libraries(QObject):
         selected_file_name = model.item(selected_file_index).text()
 
         # Path to the Library folder
-        library_path = path.abspath(path.join(path.dirname(__file__), "Library"))
+        library_path = path.abspath(path.join(path.dirname(path.dirname(__file__)),  "Library"))
         selected_file_path = path.join(library_path, selected_file_name)
 
         # Read the current library file

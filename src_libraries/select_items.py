@@ -8,11 +8,24 @@ from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from src_resonator.resonators import Resonator
 import config
 
+class LibraryWindow(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.item_selector = None  # Reference to ItemSelector
+
+    def closeEvent(self, event):
+        """
+        Called when the window is about to be closed (X button).
+        """
+        event.ignore()  # Prevent default closing
+        if self.item_selector:
+            self.item_selector.handle_back_button()
+
 class ItemSelector(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.library_window = None
-        self.ui_select_components_resonator = None
+        self.ui_select_component_window = None
         self.components_data = []  # Store components data
         
         self.res = Resonator()
@@ -21,13 +34,13 @@ class ItemSelector(QObject):
         """
         Creates and shows the library window.
         """
-        self.library_window = parent
-        self.lib_resonator_window = QMainWindow(parent)
-        # Rest des Codes bleibt unverändert
+        self.library_window = parent  # Store main window reference
+        self.lib_resonator_window = LibraryWindow(parent)  # Create new window with main window as parent
+        self.lib_resonator_window.item_selector = self
         
         # Load the library UI
         ui_path = path.abspath(path.join(path.dirname(path.dirname(__file__)), "assets/select_component_window.ui"))
-        self.ui_select_components_resonator = uic.loadUi(ui_path, 
+        self.ui_select_component_window = uic.loadUi(ui_path, 
             self.lib_resonator_window
         )
         
@@ -36,45 +49,61 @@ class ItemSelector(QObject):
         self.lib_resonator_window.show()
         
         # Connect the next button to the method
-        self.ui_select_components_resonator.button_next.clicked.connect(self.handle_next_button)
-
-        # Connect the close button to the method
-        self.ui_select_components_resonator.button_close.clicked.connect(self.close_library_window)
+        self.ui_select_component_window.button_next.clicked.connect(self.handle_next_button)
 
         # Load files from the Library folder and display them
         self.load_library_files()
 
         # Connect the listView_libraries to a click event
-        self.ui_select_components_resonator.listView_libraries.clicked.connect(self.display_file_contents)
+        self.ui_select_component_window.listView_libraries.clicked.connect(self.display_file_contents)
         
         # Connect the pushButton_add_all to the method
-        self.ui_select_components_resonator.pushButton_add_all.clicked.connect(self.add_all_components_to_temporary_list)
+        self.ui_select_component_window.pushButton_add_all.clicked.connect(self.add_all_components_to_temporary_list)
         
         # Connect the pushButton_add to the method
-        self.ui_select_components_resonator.toolButton_add_component.clicked.connect(self.add_component_to_temporary_list)
+        self.ui_select_component_window.toolButton_add_component.clicked.connect(self.add_component_to_temporary_list)
         
-        self.ui_select_components_resonator.pushButton_remove_component.clicked.connect(self.remove_component_from_temporary_list)
+        self.ui_select_component_window.pushButton_remove_component.clicked.connect(self.remove_component_from_temporary_list)
     
-        self.ui_select_components_resonator.pushButton_remove_all.clicked.connect(self.remove_all_components_from_temporary_list)
+        self.ui_select_component_window.pushButton_remove_all.clicked.connect(self.remove_all_components_from_temporary_list)
 
+        self.ui_select_component_window.button_back.clicked.connect(self.close_library_window)
     
     def handle_next_button(self):
         """
-        Speichert die temporäre Datei und führt je nach Kontext eine andere Aktion aus.
+        Saves the temporary file and performs actions based on context.
+        Creates a new window on first call, shows hidden window on subsequent calls.
         """
-        # Temporäre Datei speichern
+        # Save temporary file
         self.save_temporary_file()
 
-        # Aktion basierend auf dem Kontext ausführen
+        # Hide current window
+        if self.lib_resonator_window:
+            self.lib_resonator_window.hide()
+
+        # Execute action based on context
         if self.parent().current_context == "resonator":
-            self.res.open_resonator_window()
+            if not hasattr(self.res, 'resonator_window') or self.res.resonator_window is None:
+                # First time - create new window
+                self.res.open_resonator_window()
+            else:
+                # Window exists - show again
+                self.res.resonator_window.show()
+                self.res.resonator_window.raise_()  # Bring window to front
+            # Pass reference to current window
+            self.res.previous_window = self.lib_resonator_window
         elif self.parent().current_context == "modematcher":
-            self.parent().modematcher.open_modematcher_window()
+            if not hasattr(self.parent().modematcher, 'modematcher_window') or self.parent().modematcher.modematcher_window is None:
+                self.parent().modematcher.open_modematcher_parameter_window()
+                self.parent().modematcher.previous_window = self.lib_resonator_window  # Add this line
+            else:
+                self.parent().modematcher.modematcher_window.show()
+                self.parent().modematcher.modematcher_window.raise_()
         else:
             QMessageBox.warning(
                 self.library_window,
                 "Unknown Context",
-                "Es wurde kein gültiger Kontext erkannt."
+                "No valid context recognized."
             )
         
     def close_library_window(self):
@@ -82,7 +111,7 @@ class ItemSelector(QObject):
         Closes the library window.
         """
         if self.lib_resonator_window:
-            self.ui_select_components_resonator.close()
+            self.ui_select_component_window.close()
         if self.parent():
             self.parent().show()
      
@@ -114,7 +143,7 @@ class ItemSelector(QObject):
             model.appendRow(item)
 
         # Set the model to the listView
-        self.ui_select_components_resonator.listView_libraries.setModel(model)
+        self.ui_select_component_window.listView_libraries.setModel(model)
                
     def display_file_contents(self, index: QModelIndex):
         """
@@ -175,10 +204,10 @@ class ItemSelector(QObject):
             )
 
         # Set the model to the listView_lib_components
-        self.ui_select_components_resonator.listView_lib_components.setModel(model)
+        self.ui_select_component_window.listView_lib_components.setModel(model)
 
         # Connect the listView_lib_components to a click event
-        self.ui_select_components_resonator.listView_lib_components.clicked.connect(self.display_component_details)
+        self.ui_select_component_window.listView_lib_components.clicked.connect(self.display_component_details)
         
     def display_component_details(self, index: QModelIndex):
         """
@@ -197,10 +226,10 @@ class ItemSelector(QObject):
 
             if component.get("properties", {}).get("IS_ROUND", 0.0) == 1.0:
                 self.toggle_curvature_tangential(True)
-                self.ui_select_components_resonator.radioButton_is_spherical.setChecked(True)
+                self.ui_select_component_window.checkBox_is_spherical.setChecked(True)
             else:
                 self.toggle_curvature_tangential(False)
-                self.ui_select_components_resonator.radioButton_is_spherical.setChecked(False)
+                self.ui_select_component_window.checkBox_is_spherical.setChecked(False)
 
             # Replace 1e30 with "Infinity"
             if curvature_tangential == 1e30:
@@ -209,14 +238,14 @@ class ItemSelector(QObject):
                 curvature_sagittal = "Infinity"
 
             # Set the values in the UI fields
-            self.ui_select_components_resonator.edit_curvature_tangential.setText(str(curvature_tangential))
-            self.ui_select_components_resonator.edit_curvature_sagittal.setText(str(curvature_sagittal))
+            self.ui_select_component_window.edit_curvature_tangential.setText(str(curvature_tangential))
+            self.ui_select_component_window.edit_curvature_sagittal.setText(str(curvature_sagittal))
 
             # Extract and set the type in comboBox_type
             component_type = component.get("type", "N/A")
-            index_in_combobox = self.ui_select_components_resonator.comboBox_type.findText(component_type)
+            index_in_combobox = self.ui_select_component_window.comboBox_type.findText(component_type)
             if index_in_combobox != -1:
-                self.ui_select_components_resonator.comboBox_type.setCurrentIndex(index_in_combobox)
+                self.ui_select_component_window.comboBox_type.setCurrentIndex(index_in_combobox)
             else:
                 QMessageBox.warning(
                     self.library_window,
@@ -225,8 +254,8 @@ class ItemSelector(QObject):
                 )
 
             # Set the name and manufacturer in the UI fields
-            self.ui_select_components_resonator.edit_name.setText(component.get("name", ""))
-            self.ui_select_components_resonator.edit_manufacturer.setText(component.get("manufacturer", ""))
+            self.ui_select_component_window.edit_name.setText(component.get("name", ""))
+            self.ui_select_component_window.edit_manufacturer.setText(component.get("manufacturer", ""))
         else:
             QMessageBox.warning(
                 self.library_window,
@@ -237,52 +266,51 @@ class ItemSelector(QObject):
     def toggle_curvature_tangential(self, checked):
         """
         Toggles the enabled state of the edit_curvature_tangential field
-        based on the state of the radioButton_is_spherical.
+        based on the state of the checkBox_is_spherical.
         
         Args:
             checked (bool): True if the radio button is checked, False otherwise.
         """
-        self.ui_select_components_resonator.edit_curvature_tangential.setEnabled(not checked)
-        self.ui_select_components_resonator.label_6.setEnabled(not checked)
+        self.ui_select_component_window.edit_curvature_tangential.setEnabled(not checked)
+        self.ui_select_component_window.label_6.setEnabled(not checked)
         if checked:
             # Set the value of edit_curvature_tangential to match edit_curvature_sagittal
-            curvature_sagittal = self.ui_select_components_resonator.edit_curvature_sagittal.text().strip()
-            self.ui_select_components_resonator.edit_curvature_tangential.setText(curvature_sagittal)
-            self.ui_select_components_resonator.edit_curvature_tangential.setEnabled(False)  # Disable the field
+            curvature_sagittal = self.ui_select_component_window.edit_curvature_sagittal.text().strip()
+            self.ui_select_component_window.edit_curvature_tangential.setText(curvature_sagittal)
+            self.ui_select_component_window.edit_curvature_tangential.setEnabled(False)  # Disable the field
         else:
-            self.ui_select_components_resonator.edit_curvature_tangential.setEnabled(True)  # Enable the field
+            self.ui_select_component_window.edit_curvature_tangential.setEnabled(True)  # Enable the field
 
     def save_temporary_file(self):
         """
-        Speichert die temporäre Liste in einer temporären Datei.
-        Diese Methode wird beim Klicken auf button_next aufgerufen.
+        Saves the temporary list to a temporary file.
+        This method is called when clicking the next button.
         """
         if not hasattr(self, "temporary_components") or not self.temporary_components:
             QMessageBox.warning(
                 self.library_window,
                 "No Components to Save",
-                "Es gibt keine Komponenten, die gespeichert werden können."
+                "There are no components to save."
             )
             return
 
-        # Temporäre Datei erstellen
+        # Create temporary file
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w", encoding="utf-8")
         self.temp_file_path = temp_file.name
 
-        # Daten in die temporäre Datei schreiben
         try:
-            # Speichern als Dictionary mit dem Schlüssel "components"
+            # Save as dictionary with key "components"
             json.dump({"components": self.temporary_components}, temp_file, indent=4)
             temp_file.close()
         except Exception as e:
             QMessageBox.critical(
                 self.library_window,
                 "Error Saving File",
-                f"Fehler beim Speichern der temporären Datei: {e}"
+                f"Error while saving temporary file: {e}"
             )
             return
 
-        # Setzen der globalen Variable
+        # Set global variable
         config.set_temp_file_path(self.temp_file_path)
         
     def display_temporary_file(self, temp_file_path):
@@ -297,7 +325,7 @@ class ItemSelector(QObject):
         model.appendRow(item)
 
         # Modell in der listView setzen (Widget-Name anpassen, falls erforderlich)
-        self.ui_select_components_resonator.listView_temporary_component.setModel(model)
+        self.ui_select_component_window.listView_temporary_component.setModel(model)
         
     def add_component_to_temporary_list(self):
         """
@@ -305,7 +333,7 @@ class ItemSelector(QObject):
         und speichert sie in der temporären Datei.
         """
         # Überprüfen, ob eine Komponente ausgewählt ist
-        selected_indexes = self.ui_select_components_resonator.listView_lib_components.selectedIndexes()
+        selected_indexes = self.ui_select_component_window.listView_lib_components.selectedIndexes()
         if not selected_indexes:
             QMessageBox.warning(
                 self.library_window,
@@ -377,7 +405,7 @@ class ItemSelector(QObject):
             model.appendRow(item)
 
         # Setze das Modell in listView_temporary_component
-        self.ui_select_components_resonator.listView_temporary_component.setModel(model)
+        self.ui_select_component_window.listView_temporary_component.setModel(model)
 
     def add_component_to_temporary_list(self):
         """
@@ -385,7 +413,7 @@ class ItemSelector(QObject):
         und speichert sie in der temporären Datei.
         """
         # Überprüfen, ob eine Komponente ausgewählt ist
-        selected_indexes = self.ui_select_components_resonator.listView_lib_components.selectedIndexes()
+        selected_indexes = self.ui_select_component_window.listView_lib_components.selectedIndexes()
         if not selected_indexes:
             QMessageBox.warning(
                 self.library_window,
@@ -451,7 +479,7 @@ class ItemSelector(QObject):
         Entfernt die ausgewählte Komponente aus der temporären Liste.
         """
         # Überprüfen, ob eine Komponente ausgewählt ist
-        selected_indexes = self.ui_select_components_resonator.listView_temporary_component.selectedIndexes()
+        selected_indexes = self.ui_select_component_window.listView_temporary_component.selectedIndexes()
         if not selected_indexes:
             QMessageBox.warning(
                 self.library_window,
@@ -479,7 +507,7 @@ class ItemSelector(QObject):
         # Aktualisiere die Anzeige der temporären Liste
         if not self.temporary_components:
             # Wenn die Liste leer ist, setze ein leeres Modell
-            self.ui_select_components_resonator.listView_temporary_component.setModel(QStandardItemModel())
+            self.ui_select_component_window.listView_temporary_component.setModel(QStandardItemModel())
         else:
             # Aktualisiere die temporäre Datei und Liste
             self.update_temporary_file()
@@ -508,4 +536,18 @@ class ItemSelector(QObject):
         self.update_temporary_list_view()
         
         # Setze ein leeres Modell für die listView_temporary_component
-        self.ui_select_components_resonator.listView_temporary_component.setModel(QStandardItemModel())
+        self.ui_select_component_window.listView_temporary_component.setModel(QStandardItemModel())
+
+    def handle_back_button(self):
+        """
+        Verbirgt das aktuelle Fenster und zeigt das vorherige Fenster wieder an.
+        """
+        # Hole das Hauptfenster über parent()
+        main_window = self.parent()
+        
+        if self.lib_resonator_window:
+            self.lib_resonator_window.hide()  # Verbirgt das aktuelle Fenster
+            
+        if main_window:
+            main_window.show()  # Zeigt das Hauptfenster
+            main_window.raise_()  # Bringt das Hauptfenster in den Vordergrund

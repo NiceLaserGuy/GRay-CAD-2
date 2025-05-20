@@ -99,6 +99,16 @@
                 "CURVATURE_SAGITTAL": 1e+30,
                 "IS_ROUND": 1.0
             }
+        },
+        {
+            "type": "MIRROR",
+            "name": "spherical r=500mm",
+            "manufacturer": "",
+            "properties": {
+                "CURVATURE_TANGENTIAL": 1e+30,
+                "CURVATURE_SAGITTAL": 500.0,
+                "IS_ROUND": 1.0
+            }
         }
     ],
     "name": "Mirrors",

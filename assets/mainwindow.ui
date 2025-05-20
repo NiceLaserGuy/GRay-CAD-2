@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>680</width>
-    <height>272</height>
+    <width>904</width>
+    <height>765</height>
    </rect>
   </property>
   <property name="font">
@@ -19,6 +19,10 @@
   <property name="windowTitle">
    <string>GrayCAD 2 powered by LQO</string>
   </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>logo.png</normaloff>logo.png</iconset>
+  </property>
   <property name="styleSheet">
    <string notr="true"/>
   </property>
@@ -26,140 +30,112 @@
    <enum>QTabWidget::Triangular</enum>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,0,0,0,0,0,0,0,0">
-    <item row="4" column="3">
-     <spacer name="verticalSpacer_2">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
+   <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,0,0,0">
+    <item row="1" column="1">
+     <layout class="QGridLayout" name="gridLayout_2" rowstretch="0">
+      <property name="sizeConstraint">
+       <enum>QLayout::SetDefaultConstraint</enum>
       </property>
-      <property name="sizeHint" stdset="0">
+      <item row="0" column="1">
+       <widget class="QPushButton" name="pushButton">
+        <property name="styleSheet">
+         <string notr="true">background-color: rgb(115, 210, 22);</string>
+        </property>
+        <property name="text">
+         <string>+ Create Setup</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item row="0" column="2">
+       <widget class="QPushButton" name="pushButton_2">
+        <property name="styleSheet">
+         <string notr="true">background-color: rgb(204, 0, 0);</string>
+        </property>
+        <property name="text">
+         <string>- Delete Setup</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="3" column="1">
+     <widget class="PlotWidget" name="plotWidget" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="minimumSize">
        <size>
-        <width>20</width>
-        <height>20</height>
+        <width>0</width>
+        <height>0</height>
        </size>
       </property>
-     </spacer>
-    </item>
-    <item row="5" column="3">
-     <widget class="QLabel" name="label_2">
-      <property name="layoutDirection">
-       <enum>Qt::LeftToRight</enum>
-      </property>
-      <property name="text">
-       <string>Optimize your optical setup</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
+      <property name="mouseTracking">
+       <bool>true</bool>
       </property>
      </widget>
     </item>
-    <item row="6" column="3">
-     <spacer name="verticalSpacer">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
+    <item row="2" column="1">
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
       </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>40</height>
-       </size>
-      </property>
-     </spacer>
+      <widget class="QWidget" name="tab">
+       <attribute name="title">
+        <string>Setup</string>
+       </attribute>
+      </widget>
+     </widget>
     </item>
-    <item row="9" column="3">
-     <spacer name="verticalSpacer_3">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-      <property name="sizeType">
-       <enum>QSizePolicy::Fixed</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>60</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="7" column="0">
+    <item row="2" column="0">
      <spacer name="horizontalSpacer_2">
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
+      <property name="sizeType">
+       <enum>QSizePolicy::Fixed</enum>
+      </property>
       <property name="sizeHint" stdset="0">
        <size>
-        <width>40</width>
+        <width>10</width>
         <height>20</height>
        </size>
       </property>
      </spacer>
     </item>
-    <item row="7" column="4">
-     <spacer name="horizontalSpacer_4">
+    <item row="2" column="2">
+     <spacer name="horizontalSpacer_3">
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
+      <property name="sizeType">
+       <enum>QSizePolicy::Fixed</enum>
+      </property>
       <property name="sizeHint" stdset="0">
        <size>
-        <width>40</width>
+        <width>10</width>
         <height>20</height>
        </size>
       </property>
      </spacer>
     </item>
-    <item row="7" column="5">
-     <widget class="QPushButton" name="pushButton_2">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="font">
-       <font>
-        <family>MS Sans Serif</family>
-        <pointsize>14</pointsize>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">background-color: rgba(186, 189, 182, 50);</string>
-      </property>
-      <property name="text">
-       <string>Get Focus Waist</string>
-      </property>
-      <property name="flat">
-       <bool>false</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="7" column="1">
-     <widget class="QPushButton" name="button_modematcher">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="font">
-       <font>
-        <family>MS Sans Serif</family>
-        <pointsize>14</pointsize>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">background-color: rgba(186, 189, 182, 50);</string>
-      </property>
-      <property name="text">
-       <string>Modematcher</string>
-      </property>
-      <property name="flat">
-       <bool>false</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="3">
-     <spacer name="verticalSpacer_4">
+    <item row="0" column="1">
+     <spacer name="verticalSpacer">
       <property name="orientation">
        <enum>Qt::Vertical</enum>
       </property>
@@ -169,103 +145,100 @@
       <property name="sizeHint" stdset="0">
        <size>
         <width>20</width>
-        <height>20</height>
+        <height>10</height>
        </size>
       </property>
      </spacer>
     </item>
-    <item row="7" column="2">
-     <spacer name="horizontalSpacer_3">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>40</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="7" column="3">
-     <widget class="QPushButton" name="button_build_resonator">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="font">
-       <font>
-        <family>MS Sans Serif</family>
-        <pointsize>14</pointsize>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">background-color: rgba(186, 189, 182, 50);</string>
-      </property>
-      <property name="text">
-       <string>Build Resonator</string>
-      </property>
-      <property name="flat">
-       <bool>false</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="7" column="6">
-     <spacer name="horizontalSpacer_5">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>40</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="1" column="1" colspan="5">
+    <item row="4" column="1">
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="styleSheet">
+           <string notr="true">color: red;</string>
+          </property>
+          <property name="text">
+           <string>Sagittal (red)</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_2">
+          <property name="styleSheet">
+           <string notr="true">color: blue;</string>
+          </property>
+          <property name="text">
+           <string>Tangential (blue)</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
        <widget class="QLabel" name="label_3">
-        <property name="maximumSize">
-         <size>
-          <width>60</width>
-          <height>60</height>
-         </size>
-        </property>
         <property name="text">
-         <string/>
-        </property>
-        <property name="pixmap">
-         <pixmap>logo.png</pixmap>
-        </property>
-        <property name="scaledContents">
-         <bool>true</bool>
+         <string>z-Position</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="label">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="font">
-         <font>
-          <pointsize>20</pointsize>
-         </font>
-        </property>
+       <widget class="QLabel" name="label_z_position">
         <property name="text">
-         <string>Welcome to GrayCAD 2</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
+         <string>0 m</string>
         </property>
        </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Beam radius</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <widget class="QLabel" name="label_w_sag">
+          <property name="text">
+           <string>0 mm</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_w_tan">
+          <property name="text">
+           <string>0 mm</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_7">
+        <property name="text">
+         <string>Radius of curvature</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <widget class="QLabel" name="label_8">
+          <property name="text">
+           <string>Infinity m</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_9">
+          <property name="text">
+           <string>Infinity m</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </item>
@@ -276,7 +249,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>680</width>
+     <width>904</width>
      <height>22</height>
     </rect>
    </property>
@@ -297,9 +270,18 @@
      <string>&amp;Edit</string>
     </property>
     <addaction name="action_Library"/>
+    <addaction name="action_Modematcher"/>
+    <addaction name="action_Cavity_Designer"/>
+   </widget>
+   <widget class="QMenu" name="menu_Help">
+    <property name="title">
+     <string>&amp;Help</string>
+    </property>
+    <addaction name="action_About"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Edit"/>
+   <addaction name="menu_Help"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="action_Open">
@@ -327,7 +309,30 @@
     <string>&amp;Library</string>
    </property>
   </action>
+  <action name="action_About">
+   <property name="text">
+    <string>&amp;About</string>
+   </property>
+  </action>
+  <action name="action_Modematcher">
+   <property name="text">
+    <string>&amp;Modematcher</string>
+   </property>
+  </action>
+  <action name="action_Cavity_Designer">
+   <property name="text">
+    <string>&amp;Cavity Designer</string>
+   </property>
+  </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>PlotWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">pyqtgraph</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

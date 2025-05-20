@@ -52,14 +52,15 @@ class Resonator(QObject):
             self.resonator_window
         )
         
+        # Set default value for comboBox_problem_class
+        self.ui_resonator.comboBox_problem_class.setCurrentText("BowTie")  # oder einen anderen Standardwert
+        
         # Configure and show the window
         self.resonator_window.setWindowTitle("Resonator Configuration")
-        self.resonator_window.show()
-
+        
         # Connect resonator instance to UI
         self.set_ui_resonator(self.ui_resonator)
         self.temp_file_path = config.get_temp_file_path()
-
 
         # Connect resonator window buttons
         self.ui_resonator.button_evaluate_resonator.clicked.connect(
@@ -70,10 +71,33 @@ class Resonator(QObject):
         self.ui_resonator.comboBox_problem_class.currentTextChanged.connect(
             self.config_ui)
         
+        self.ui_resonator.button_back.clicked.connect(self.handle_back_button)
+        
+        # Call config_ui explicitly after setting up the UI
         self.config_ui()
         
+        # Show the window after configuration
+        self.resonator_window.show()
+
+    def close_resonator_window(self):
+        """
+        Closes the resonator window and resets the reference.
+        """
+        if self.lib_resonator_window:
+            self.ui_select_components_resonator.close()
+        if self.parent():
+            self.parent().show()
+    
+    def handle_back_button(self):
+        """
+        Verbirgt das aktuelle Fenster und zeigt das vorherige Fenster wieder an.
+        """
+        if hasattr(self, 'previous_window') and self.previous_window:
+            self.previous_window.show()  # Zeige das vorherige Fenster
+            self.previous_window.raise_()  # Bringe das vorherige Fenster in den Vordergrund
         
-        #self.ui_resonator.pushButton_plot_beamdiagram.clicked.connect(self.plotter.plot_beamdiagram)
+        if self.resonator_window:
+            self.resonator_window.hide()  # Verbirgt das aktuelle Fenster anstatt es zu schließen
         
     def load_mirror_data(self, filepath):
         """

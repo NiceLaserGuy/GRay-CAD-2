@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>520</width>
+    <width>632</width>
     <height>744</height>
    </rect>
   </property>
@@ -21,64 +21,18 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_3">
-    <item row="1" column="3" colspan="5">
-     <widget class="QFrame" name="gridFrame">
-      <layout class="QGridLayout" name="gridLayout">
-       <item row="1" column="1">
-        <widget class="QLineEdit" name="edit_name"/>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Name</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>Type</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QComboBox" name="comboBox_type">
-         <item>
-          <property name="text">
-           <string>MIRROR</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>LENS</string>
-          </property>
-         </item>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_3">
-         <property name="text">
-          <string>Manufacturer</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLineEdit" name="edit_manufacturer"/>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="7" column="0" colspan="3">
-     <widget class="QListView" name="listView_lib_components"/>
-    </item>
-    <item row="9" column="6">
-     <widget class="QPushButton" name="button_close">
+    <item row="3" column="7">
+     <widget class="QPushButton" name="pushButton_remove_all">
+      <property name="styleSheet">
+       <string notr="true">color: rgb(204, 0, 0);
+background-color: rgb(186, 189, 182);</string>
+      </property>
       <property name="text">
-       <string>Close</string>
+       <string>Remove all</string>
       </property>
      </widget>
     </item>
-    <item row="3" column="0">
+    <item row="3" column="1">
      <widget class="QLabel" name="label_8">
       <property name="font">
        <font>
@@ -90,7 +44,7 @@
       </property>
      </widget>
     </item>
-    <item row="0" column="0">
+    <item row="0" column="1">
      <widget class="QLabel" name="label_7">
       <property name="font">
        <font>
@@ -102,7 +56,73 @@
       </property>
      </widget>
     </item>
-    <item row="2" column="3" colspan="5">
+    <item row="1" column="1" rowspan="2" colspan="3">
+     <widget class="QListView" name="listView_libraries"/>
+    </item>
+    <item row="7" column="0">
+     <spacer name="horizontalSpacer_4">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>40</width>
+        <height>20</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
+    <item row="3" column="2">
+     <widget class="QPushButton" name="pushButton_add_all">
+      <property name="styleSheet">
+       <string notr="true">color: rgb(0, 170, 0);
+background-color: rgb(186, 189, 182);</string>
+      </property>
+      <property name="text">
+       <string>Add all</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="6">
+     <widget class="QPushButton" name="pushButton_remove_component">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>30</width>
+        <height>30</height>
+       </size>
+      </property>
+      <property name="layoutDirection">
+       <enum>Qt::LeftToRight</enum>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">color: rgb(204, 0, 0);
+background-color: rgb(186, 189, 182);</string>
+      </property>
+      <property name="text">
+       <string>-</string>
+      </property>
+     </widget>
+    </item>
+    <item row="7" column="4" colspan="5">
+     <widget class="QListView" name="listView_temporary_component"/>
+    </item>
+    <item row="9" column="7">
+     <widget class="QPushButton" name="button_back">
+      <property name="text">
+       <string>Back</string>
+      </property>
+     </widget>
+    </item>
+    <item row="7" column="1" colspan="3">
+     <widget class="QListView" name="listView_lib_components"/>
+    </item>
+    <item row="2" column="4" colspan="5">
      <widget class="QFrame" name="gridFrame">
       <layout class="QGridLayout" name="gridLayout_2">
        <item row="0" column="2">
@@ -161,22 +181,6 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
-        <widget class="QRadioButton" name="radioButton_is_spherical">
-         <property name="enabled">
-          <bool>true</bool>
-         </property>
-         <property name="acceptDrops">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>Spherical</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
        <item row="0" column="0">
         <spacer name="horizontalSpacer">
          <property name="orientation">
@@ -203,10 +207,20 @@
          </property>
         </widget>
        </item>
+       <item row="1" column="0">
+        <widget class="QCheckBox" name="checkBox_is_spherical">
+         <property name="text">
+          <string>Spherical</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
     </item>
-    <item row="3" column="2">
+    <item row="3" column="3">
      <widget class="QToolButton" name="toolButton_add_component">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -229,73 +243,72 @@ background-color: rgb(186, 189, 182);</string>
       </property>
      </widget>
     </item>
-    <item row="3" column="1">
-     <widget class="QPushButton" name="pushButton_add_all">
-      <property name="styleSheet">
-       <string notr="true">color: rgb(0, 170, 0);
-background-color: rgb(186, 189, 182);</string>
-      </property>
-      <property name="text">
-       <string>Add all</string>
-      </property>
+    <item row="1" column="4" colspan="5">
+     <widget class="QFrame" name="gridFrame">
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="1" column="1">
+        <widget class="QLineEdit" name="edit_name"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>Name</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Type</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QComboBox" name="comboBox_type">
+         <item>
+          <property name="text">
+           <string>MIRROR</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>LENS</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_3">
+         <property name="text">
+          <string>Manufacturer</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLineEdit" name="edit_manufacturer"/>
+       </item>
+      </layout>
      </widget>
     </item>
-    <item row="1" column="0" rowspan="2" colspan="3">
-     <widget class="QListView" name="listView_libraries"/>
-    </item>
-    <item row="7" column="3" colspan="4">
-     <widget class="QListView" name="listView_temporary_component"/>
-    </item>
-    <item row="9" column="4">
+    <item row="9" column="8">
      <widget class="QPushButton" name="button_next">
       <property name="text">
        <string>Next</string>
       </property>
      </widget>
     </item>
-    <item row="3" column="6">
-     <widget class="QPushButton" name="pushButton_remove_all">
-      <property name="styleSheet">
-       <string notr="true">color: rgb(204, 0, 0);
-background-color: rgb(186, 189, 182);</string>
+    <item row="7" column="9">
+     <spacer name="horizontalSpacer_5">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
       </property>
-      <property name="text">
-       <string>Remove all</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="5">
-     <widget class="QPushButton" name="pushButton_remove_component">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="maximumSize">
+      <property name="sizeHint" stdset="0">
        <size>
-        <width>30</width>
-        <height>30</height>
+        <width>40</width>
+        <height>20</height>
        </size>
       </property>
-      <property name="layoutDirection">
-       <enum>Qt::LeftToRight</enum>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">color: rgb(204, 0, 0);
-background-color: rgb(186, 189, 182);</string>
-      </property>
-      <property name="text">
-       <string>-</string>
-      </property>
-     </widget>
-    </item>
-    <item row="9" column="3">
-     <widget class="QPushButton" name="button_back">
-      <property name="text">
-       <string>Back</string>
-      </property>
-     </widget>
+     </spacer>
     </item>
    </layout>
   </widget>

@@ -178,22 +178,6 @@ background-color: rgb(186, 189, 182);</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
-        <widget class="QRadioButton" name="radioButton_is_spherical">
-         <property name="enabled">
-          <bool>true</bool>
-         </property>
-         <property name="acceptDrops">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>Spherical</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
        <item row="0" column="0">
         <spacer name="horizontalSpacer">
          <property name="orientation">
@@ -217,6 +201,16 @@ background-color: rgb(186, 189, 182);</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QCheckBox" name="checkBox_is_spherical">
+         <property name="text">
+          <string>Spherical</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
