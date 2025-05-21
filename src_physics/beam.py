@@ -1,12 +1,45 @@
 import numpy as np
 from src_physics.matrices import Matrices
 import pyqtgraph as pg
+from numba import njit
+
+@njit
+def beam_radius_numba(q, wavelength, n):
+    return np.sqrt(-wavelength / (np.pi * n * np.imag(1/q)))
 
 class Beam():
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.matrices = Matrices()
 
+    def q_value(self, z, beam_radius, wavelength, n):
+        """
+        Calculate the q parameter of a Gaussian beam.
+
+        Parameters:
+        w (float): Beam radius.
+        wavelength (float): Wavelength of the beam.
+        n (float): Refractive index of the medium.
+
+        Returns:
+        complex: q parameter of the beam.
+        """
+        zr = (np.pi * beam_radius**2 * n) / (wavelength)
+        return z + (1j * zr)
+    
+    def beam_radius(self, q, wavelength, n):
+        """
+        Calculate the beam radius from the q parameter.
+
+        Parameters:
+        q (complex): q parameter of the beam.
+        wavelength (float): Wavelength of the beam.
+
+        Returns:
+        float: Beam radius.
+        """
+        return np.sqrt(-wavelength / (np.pi * n * np.imag(1/q)))
+    
     def rayleigh_length(self, wavelength, beam_radius, n):
         """
         Calculate the Rayleigh length of a beam.
@@ -18,16 +51,29 @@ class Beam():
         Returns:
         float: Rayleigh length of the beam.
         """
-        return (wavelength * n) / (np.pi * beam_radius**2)
+        return np.imag(self.q_value(0, beam_radius, wavelength, n))
     
     def propagate_q(self, q_in, ABCD):
         A, B, C, D = ABCD.flatten()
         return (A * q_in + B) / (C * q_in + D)
+    
+    @staticmethod
+    @njit
+    def propagate_free_space(q_start, dz, n_steps, wavelength, n):
+        q = q_start
+        z_total = 0.0
+        z_positions = [z_total]
+        w_values = [beam_radius_numba(q, wavelength, n)]
+        for i in range(n_steps):
+            # ABCD-Matrix für Freiraum
+            A, B, C, D = 1, dz, 0, 1
+            q = (A * q + B) / (C * q + D)
+            z_total += dz
+            z_positions.append(z_total)
+            w_values.append(beam_radius_numba(q, wavelength, n))
+        return q, z_total, z_positions, w_values
 
-    def beam_radius(self, q, lambda_):
-        return np.sqrt(-lambda_ / (np.pi * np.imag(1/q)))
-
-    def propagate_through_system(self, wavelength, q_initial, elements):
+    def propagate_through_system(self, wavelength, q_initial, elements, n=1):
         """
         Propagate beam through a sequence of optical elements
         
@@ -41,24 +87,23 @@ class Beam():
         q = q_initial
         z_total = 0
         z_positions = [z_total]
-        w_values = [self.beam_radius(q, lambda_)]
+        w_values = [self.beam_radius(q, lambda_, n)]
         
         for element, param in elements:
-            if element == self.matrices.free_space:
-                # For free space, calculate multiple points
-                steps = 200
-                dz = param / steps
-                for i in range(steps):
-                    ABCD = self.matrices(dz)
-                    q = self.propagate_q(q, ABCD)
-                    z_total += dz
-                    z_positions.append(z_total)
-                    w_values.append(self.beam_radius(q, lambda_))
+            if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
+                dz = 1E-4  # oder wie gewünscht
+                steps = int(np.ceil(param[0] / dz))
+                z_start = z_total
+                q, z_total, zs, ws = Beam.propagate_free_space(q, dz, steps, lambda_, param[1])
+                z_positions.extend([z_start + z for z in np.array(zs)[1:]])
+                w_values.extend(ws[1:])
             else:
-                # For other elements (like lenses), just propagate once
-                ABCD = element(param)
+                if isinstance(param, tuple):
+                    ABCD = element(*param)
+                else:
+                    ABCD = element(param)
                 q = self.propagate_q(q, ABCD)
-                w_values.append(self.beam_radius(q, lambda_))
+                w_values.append(self.beam_radius(q, lambda_, n))
+                z_total = z_positions[-1]
                 z_positions.append(z_total)
-        
         return z_positions, w_values

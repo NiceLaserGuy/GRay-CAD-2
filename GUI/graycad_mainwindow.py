@@ -22,6 +22,8 @@ from src_libraries.libraries import Libraries
 from src_libraries.select_items import ItemSelector
 from src_modematcher.modematcher_parameters import ModematcherParameters
 from src_physics.beam import Beam
+from src_physics.matrices import Matrices
+from src_physics.value_converter import ValueConverter
 
 class MainWindow(QMainWindow):
     """
@@ -44,6 +46,9 @@ class MainWindow(QMainWindow):
         self.lib = Libraries()
         self.item_selector_res = ItemSelector(self)
         self.item_selector_modematcher = ItemSelector(self)
+        self.matrices = Matrices()
+        self.beam = Beam()
+        self.vc = ValueConverter()
 
         # Variable, um den Kontext zu speichern
         self.current_context = None
@@ -67,71 +72,89 @@ class MainWindow(QMainWindow):
         self.ui.action_Cavity_Designer.triggered.connect(self.handle_build_resonator)
         self.ui.action_Modematcher.triggered.connect(self.handle_modematcher)
 
-        self.plotWidget.setLabel('left', 'Waist radius', units='µm', color='#333333')
-        self.plotWidget.setLabel('bottom', 'z', units='cm', color='#333333')
-        self.plotWidget.setTitle("Gaussian Beam Propagation", color='#333333')
-        axis_pen = pg.mkPen(color='#333333')
-        self.plotWidget.getAxis('left').setTextPen(axis_pen)
-        self.plotWidget.getAxis('bottom').setTextPen(axis_pen)
+        # Default optical system
+        self.current_optical_system = [
+            (self.matrices.free_space, (0.1, 1)),
+            (self.matrices.lens, 0.05),
+            (self.matrices.free_space, (0.3, 1))
+        ]
 
-        # Set up the plot widget
-        self.z_data = [0,1,2,3,4,5]
-        self.w_sag_data = [1,1,1,1,1,1]
-        self.w_tan_data = [0,2,3,4,5,6]
-        self.plotWidget.setBackground('w')
-        self.plotWidget.addLegend()
-        self.plotWidget.showGrid(x=True, y=True)
+        self.plot_optical_system()
 
-        # Add text item for coordinates
-        text = pg.TextItem(text='', anchor=(0.5, 2.0), color='#333333')
-        self.plotWidget.addItem(text)
+        self.cursor_vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('k', width=1, style=Qt.DashLine))
+        self.plotWidget.addItem(self.cursor_vline, ignoreBounds=True)
+        self.cursor_vline.setZValue(100)  # Damit sie immer oben liegt
 
-        self.plotWidget.plot(self.z_data, self.w_sag_data, 
-                        pen=pg.mkPen(color='b', width=2))
-        self.plotWidget.plot(self.z_data, self.w_tan_data, 
-                        pen=pg.mkPen(color='r', width=2))
-        
         def mouseMoved(evt):
             pos = evt
             if self.plotWidget.sceneBoundingRect().contains(pos):
                 mousePoint = self.plotWidget.getViewBox().mapSceneToView(pos)
                 z = mousePoint.x()
-                z_data = np.array(self.z_data)  # Umwandlung hier!
-                idz = (np.abs(z_data - z)).argmin()
-                z_val = z_data[idz]
-                w_sag_val = np.array(self.w_sag_data)[idz]
-                w_tan_val = np.array(self.w_tan_data)[idz]
-                self.ui.label_z_position.setText(f"{z_val:.3f} mm")
-                self.ui.label_w_sag.setText(f"{w_sag_val:.3f} mm")
-                self.ui.label_w_tan.setText(f"{w_tan_val:.3f} mm")
+                self.cursor_vline.setPos(z)
+                idx = np.searchsorted(self.z_data, z)
+                if idx == 0:
+                    z_val = self.z_data[0]
+                    w_sag_val = self.w_sag_data[0]
+                    w_tan_val = self.w_tan_data[0]
+                elif idx == len(self.z_data):
+                    z_val = self.z_data[-1]
+                    w_sag_val = self.w_sag_data[-1]
+                    w_tan_val = self.w_tan_data[-1]
+                else:
+                    # Interpolation zwischen idx-1 und idx
+                    z0, z1 = self.z_data[idx-1], self.z_data[idx]
+                    w0_sag, w1_sag = self.w_sag_data[idx-1], self.w_sag_data[idx]
+                    w0_tan, w1_tan = self.w_tan_data[idx-1], self.w_tan_data[idx]
+                    t = (z - z0) / (z1 - z0) if z1 != z0 else 0
+                    z_val = z
+                    w_sag_val = w0_sag + t * (w1_sag - w0_sag)
+                    w_tan_val = w0_tan + t * (w1_tan - w0_tan)
+                self.ui.label_z_position.setText(f"{self.vc.convert_to_nearest_string(z_val)}")
+                self.ui.label_w_sag.setText(f"{self.vc.convert_to_nearest_string(w_sag_val)}")
+                self.ui.label_w_tan.setText(f"{self.vc.convert_to_nearest_string(w_tan_val)}")
 
         # Connect signal to function
         self.plotWidget.scene().sigMouseMoved.connect(mouseMoved)
+        
+    def plot_optical_system(self, z_start=0, wavelength=0.514E-6, beam_radius=1E-3, n=1, optical_system=None):
+        """
+        Plots the given optical system.
+        """
+        if optical_system is None:
+            optical_system = self.current_optical_system
+        self.plotWidget.clear()
+        self.z_data, self.w_sag_data = self.beam.propagate_through_system(
+            wavelength, self.beam.q_value(z_start, beam_radius, wavelength, n), optical_system
+        )
+        self.w_tan_data = self.w_sag_data
 
-    def generate_data(self, optical_system_sag, optical_system_tan, q0):
-        # Create PyQtGraph window
-        
-        # Define optical system: propagation(0.1m) -> lens(f=0.05m) -> propagation(0.2m)
-        self.optical_system_sag = optical_system_sag
-        self.optical_system_tan = optical_system_tan
-        
-        # Calculate beam propagation
-        z_vals, w_sag_vals = self.propagate_through_system(q0, optical_system_sag)
-        z_vals, w_tan_vals = self.propagate_through_system(q0, optical_system_tan)
-        
-        # Convert to mm for plotting
-        z_vals = np.array(z_vals) * 1e3  # meters to mm
-        w_sag_vals = np.array(w_sag_vals) * 1e3  # meters to mm
-        w_tan_vals = np.array(w_tan_vals) * 1e3
+        self.z_data = np.array(self.z_data)
+        self.w_sag_data = np.array(self.w_sag_data)
+        self.w_tan_data = np.array(self.w_tan_data)
 
-        
-        # Add vertical lines at optical element positions
+        self.plotWidget.setBackground('w')
+        self.plotWidget.addLegend()
+        self.plotWidget.showGrid(x=True, y=True)
+
+        self.plotWidget.setLabel('left', 'Waist radius', units='m', color='#333333')
+        self.plotWidget.setLabel('bottom', 'z', units='m', color='#333333')
+        self.plotWidget.setTitle("Gaussian Beam Propagation", color='#333333')
+        axis_pen = pg.mkPen(color='#333333')
+        self.plotWidget.getAxis('left').setTextPen(axis_pen)
+        self.plotWidget.getAxis('bottom').setTextPen(axis_pen)
+
+        self.plotWidget.plot(self.z_data, self.w_sag_data, pen=pg.mkPen(color='b', width=2))
+        self.plotWidget.plot(self.z_data, self.w_tan_data, pen=pg.mkPen(color='r', width=2))
+
         z_element = 0
-        for element, param in optical_system_sag:
-            if element != self.matrices.free_space:
-                self.plotWidget.addLine(x=z_element*1e3, pen=pg.mkPen('r'))
-            z_element += param if element == self.matrices.free_space else 0
-        
+        for element, param in optical_system:
+            # Prüfe, ob das Element KEINE Propagation ist
+            if not (hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__):
+                self.plotWidget.addLine(x=z_element, pen=pg.mkPen(color='#333333'))
+            # Bei Propagation z_element erhöhen
+            if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
+                z_element += param[0]
+
     def handle_build_resonator(self):
         """
         Handles the 'Build Resonator' button action.
