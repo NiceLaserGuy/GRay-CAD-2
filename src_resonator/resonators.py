@@ -8,8 +8,8 @@ from PyQt5 import uic
 from PyQt5.QtCore import QThread, pyqtSignal, QObject
 from PyQt5.QtGui import QPixmap
 from src_resonator.problem import Problem
-from src_resonator.plot_setup import Plotter
 from src_resonator.resonator_types import *
+from src_physics.value_converter import ValueConverter
 
 class Resonator(QObject):
     """
@@ -23,7 +23,7 @@ class Resonator(QObject):
         self.resonator_type = None 
         self.ui_resonator = None
         self.mirror_curvatures = []
-        self.plotter = Plotter()
+        self.vc = ValueConverter()
 
         # Attributes to store optimization results
         self.l1 = None
@@ -73,6 +73,8 @@ class Resonator(QObject):
         
         self.ui_resonator.button_back.clicked.connect(self.handle_back_button)
         
+        #self.ui_resonator.pushButton_generate_setup.clicked.connect(
+        
         # Call config_ui explicitly after setting up the UI
         self.config_ui()
         
@@ -93,11 +95,17 @@ class Resonator(QObject):
         Verbirgt das aktuelle Fenster und zeigt das vorherige Fenster wieder an.
         """
         if hasattr(self, 'previous_window') and self.previous_window:
-            self.previous_window.show()  # Zeige das vorherige Fenster
-            self.previous_window.raise_()  # Bringe das vorherige Fenster in den Vordergrund
-        
+            self.previous_window.show()
+            self.previous_window.raise_()
+            # --- NEU: temporäre Komponentenliste leeren ---
+            if hasattr(self.previous_window, 'item_selector'):
+                self.previous_window.item_selector.temporary_components = []
+                self.previous_window.item_selector.update_temporary_list_view()
+                # Optional: auch die Anzeige zurücksetzen
+                if hasattr(self.previous_window.item_selector, 'update_temporary_list_view'):
+                    self.previous_window.item_selector.update_temporary_list_view()
         if self.resonator_window:
-            self.resonator_window.hide()  # Verbirgt das aktuelle Fenster anstatt es zu schließen
+            self.resonator_window.hide()
         
     def load_mirror_data(self, filepath):
         """
@@ -202,11 +210,11 @@ class Resonator(QObject):
         Returns:
             numpy.array: Array containing [target_sag, target_tan, nc, lc, n_prop, wavelength]
         """
-        self.target_sag = float(self.ui_resonator.edit_target_waist_sag.text())*1e-3
-        self.target_tan = float(self.ui_resonator.edit_target_waist_tan.text())*1e-3
+        self.target_sag = self.vc.convert_to_float(self.ui_resonator.edit_target_waist_sag.text(), self.resonator_window)
+        self.target_tan = self.vc.convert_to_float(self.ui_resonator.edit_target_waist_tan.text(), self.resonator_window)
         self.nc = float(self.ui_resonator.edit_crystal_refractive_index.text())
-        self.lc = float(self.ui_resonator.edit_crystal_length.text())
-        self.wavelength = float(self.ui_resonator.edit_wavelength.text())*1e-3
+        self.lc = self.vc.convert_to_float(self.ui_resonator.edit_crystal_length.text(), self.resonator_window)
+        self.wavelength = self.vc.convert_to_float(self.ui_resonator.edit_wavelength.text(), self.resonator_window)
         self.n_prop = 1
         config.set_temp_light_field_parameters(self.wavelength, self.lc, self.nc)
 
@@ -220,12 +228,12 @@ class Resonator(QObject):
         Returns:
             tuple: (l1_min, l1_max, l3_min, l3_max, theta_min, theta_max)
         """
-        l1_min = float(self.ui_resonator.edit_lower_bound_l1.text())
-        l1_max = float(self.ui_resonator.edit_upper_bound_l1.text())
-        l2_min = float(self.ui_resonator.edit_lower_bound_l2.text())
-        l2_max = float(self.ui_resonator.edit_upper_bound_l2.text())
-        l3_min = float(self.ui_resonator.edit_lower_bound_l3.text())
-        l3_max = float(self.ui_resonator.edit_upper_bound_l3.text())
+        l1_min = self.vc.convert_to_float(self.ui_resonator.edit_lower_bound_l1.text(), self.resonator_window)
+        l1_max = self.vc.convert_to_float(self.ui_resonator.edit_upper_bound_l1.text(), self.resonator_window)
+        l2_min = self.vc.convert_to_float(self.ui_resonator.edit_lower_bound_l2.text(), self.resonator_window)
+        l2_max = self.vc.convert_to_float(self.ui_resonator.edit_upper_bound_l2.text(), self.resonator_window)
+        l3_min = self.vc.convert_to_float(self.ui_resonator.edit_lower_bound_l3.text(), self.resonator_window)
+        l3_max = self.vc.convert_to_float(self.ui_resonator.edit_upper_bound_l3.text(), self.resonator_window)
         theta_min = np.deg2rad(float(self.ui_resonator.edit_lower_bound_theta.text())/2)
         theta_max = np.deg2rad(float(self.ui_resonator.edit_upper_bound_theta.text())/2)
     
@@ -236,19 +244,17 @@ class Resonator(QObject):
         Retrieves optimization parameters from the UI.
         
         Returns:
-            tuple: (population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax)
+            tuple: (population_number, generation_number, phi1, phi2, smin, smax)
         """
         num_runs = int(float(self.ui_resonator.edit_num_runs.text()))
         population_number = int(float(self.ui_resonator.edit_population_number.text()))
         generation_number = int(float(self.ui_resonator.edit_generation_number.text()))
         phi1 = float(self.ui_resonator.edit_phi1_float.text())
         phi2 = float(self.ui_resonator.edit_phi2_float.text())
-        pmin = float(self.ui_resonator.edit_pmin.text())
-        pmax = float(self.ui_resonator.edit_pmax.text())
         smin = float(self.ui_resonator.edit_smin.text())
         smax = float(self.ui_resonator.edit_smax.text())
         mutation_probability = float(self.ui_resonator.edit_mutation_probability.text())
-        return num_runs, population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability
+        return num_runs, population_number, generation_number, phi1, phi2, smin, smax, mutation_probability
 
     def evaluate_resonator(self):
         """
@@ -313,10 +319,7 @@ class Resonator(QObject):
         config.TEMP_FILE_PATH_LIB = self.temp_file_path
 
         # Get optimization parameters
-        num_runs, population_number, generation_number, phi1, phi2, pmin, pmax, smin, smax, mutation_probability = self.get_optimization_parameters()
-
-        inputs = self.get_input()
-        #target_sag, target_tan, nc, lc, self.n_prop, self.wavelength = inputs
+        num_runs, population_number, generation_number, phi1, phi2, smin, smax, mutation_probability = self.get_optimization_parameters()
 
         # DEAP setup for PSO with optimization parameters
         self.size = self.problem.problem_dimension()
@@ -397,42 +400,44 @@ class Resonator(QObject):
         self.waist_sag = np.sqrt(((b_sag * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_sag**2)))))
         self.waist_tan = np.sqrt(((b_tan * wavelength) / (np.pi)) * (np.sqrt(np.abs(1 / (1 - m_tan**2)))))
 
-        r1_sag = "\u221e" if self.r1_sag >= 1e+15 else self.r1_sag
+        '''r1_sag = "\u221e" if self.r1_sag >= 1e+15 else self.r1_sag
         r1_tan = "\u221e" if self.r1_tan >= 1e+15 else self.r1_tan
         r2_sag = "\u221e" if self.r2_sag >= 1e+15 else self.r2_sag
-        r2_tan = "\u221e" if self.r2_tan >= 1e+15 else self.r2_tan        
+        r2_tan = "\u221e" if self.r2_tan >= 1e+15 else self.r2_tan'''
 
         # Ausgabe der Ergebnisse
         if self.selected_class_name == "BowTie":
             config.set_temp_resonator_setup(self.waist_sag, self.waist_tan, self.l1, self.l2, self.l3, self.theta, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
-            self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
-            self.ui_resonator.label_length2.setText(f"={((2*self.l1)+lc+self.l3)/(2*np.cos(2*self.theta)):.3f} mm")
-            self.ui_resonator.label_length3.setText(f"={self.l3:.3f} mm")
+            self.l2 = ((2*self.l1)+lc+self.l3)/(2*np.cos(2*self.theta))
+            self.ui_resonator.label_length1.setText(f"={self.vc.convert_to_nearest_string(self.l1, self.resonator_window)}")
+            self.ui_resonator.label_length2.setText(f"={self.vc.convert_to_nearest_string(self.l2, self.resonator_window)}")
+            self.ui_resonator.label_length3.setText(f"={self.vc.convert_to_nearest_string(self.l3, self.resonator_window)}")
             self.ui_resonator.label_theta.setText(f"={np.rad2deg(2*self.theta):.3f} °")
-            self.ui_resonator.label_mirror2.setText(f"={r2_sag} mm / {r2_tan} mm")
+            self.ui_resonator.label_mirror2.setText(f"={self.vc.convert_to_nearest_string(self.r2_sag, self.resonator_window)} / {self.vc.convert_to_nearest_string(self.r2_tan, self.resonator_window)}")
         elif self.selected_class_name == "FabryPerot":
             config.set_temp_resonator_setup(self.waist_sag, self.waist_tan, self.l1, self.r1_sag, self.r1_tan)
-            self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
-            self.ui_resonator.label_length2.setText(f"={self.l2:.3f} mm")
-            self.ui_resonator.label_length3.setText(f"=0.0 mm")
+            self.ui_resonator.label_length1.setText(f"={self.vc.convert_to_nearest_string(self.l1, self.resonator_window)}")
+            self.ui_resonator.label_length2.setText(f"={self.vc.convert_to_nearest_string(self.l2, self.resonator_window)}")
+            self.ui_resonator.label_length3.setText(f"=NAN")
             self.ui_resonator.label_theta.setText(f"=0.0 °")
-            self.ui_resonator.label_mirror2.setText(f"=0 mm / 0 mm")
+            self.ui_resonator.label_mirror2.setText(f"=NAN / NAN")
         elif self.selected_class_name == "Rectangle":
             config.set_temp_resonator_setup(self.waist_sag, self.waist_tan, self.l1, self.l2, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
-            self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
-            self.ui_resonator.label_length2.setText(f"={self.l2:.3f} mm")
-            self.ui_resonator.label_length3.setText(f"={self.lc + (2 * self.l1):.3f} mm")
-            self.ui_resonator.label_theta.setText(f"={np.rad2deg(2*self.theta)} °")
-            self.ui_resonator.label_mirror2.setText(f"={r2_sag} mm / {r2_tan} mm")
+            self.ui_resonator.label_length1.setText(f"={self.vc.convert_to_nearest_string(self.l1, self.resonator_window)}")
+            self.ui_resonator.label_length2.setText(f"={self.vc.convert_to_nearest_string(self.l2, self.resonator_window)}")
+            self.ui_resonator.label_length3.setText(f"={self.vc.convert_to_nearest_string(self.lc + (2 * self.l1), self.resonator_window)}")
+            self.ui_resonator.label_theta.setText(f"={np.rad2deg(2*self.theta):.3f} °")
+            self.ui_resonator.label_mirror2.setText(f"={self.vc.convert_to_nearest_string(self.r2_sag, self.resonator_window)} / {self.vc.convert_to_nearest_string(self.r2_tan, self.resonator_window)}")
         elif self.selected_class_name == "Triangle":
             config.set_temp_resonator_setup(self.waist_sag, self.waist_tan, self.l1, self.l2, self.theta, self.r1_sag, self.r1_tan, self.r2_sag, self.r2_tan)
-            self.ui_resonator.label_length1.setText(f"={self.l1:.3f} mm")
-            self.ui_resonator.label_length2.setText(f"={(self.l1 + (lc / 2))/np.cos(2 * self.theta):.3f} mm")
-            self.ui_resonator.label_length3.setText(f"=0.0 mm")
+            self.l2 = (self.l1 + (lc / 2))/np.cos(2 * self.theta)
+            self.ui_resonator.label_length1.setText(f"={self.vc.convert_to_nearest_string(self.l1, self.resonator_window)}")
+            self.ui_resonator.label_length2.setText(f"={self.vc.convert_to_nearest_string(self.l2, self.resonator_window)}")
+            self.ui_resonator.label_length3.setText(f"=NAN")
             self.ui_resonator.label_theta.setText(f"={np.rad2deg(2*self.theta):.3f} °")
-            self.ui_resonator.label_mirror2.setText(f"={r2_sag} mm / {r2_tan} mm")
-        self.ui_resonator.label_mirror1.setText(f"={r1_sag} mm / {r1_tan} mm")
-        self.ui_resonator.label_waist.setText(f"={self.waist_sag*1e3:.3f} µm / {self.waist_tan*1e3:.3f} µm")
+            self.ui_resonator.label_mirror2.setText(f"={self.vc.convert_to_nearest_string(self.r2_sag, self.resonator_window)} / {self.vc.convert_to_nearest_string(self.r2_tan, self.resonator_window)}")
+        self.ui_resonator.label_mirror1.setText(f"={self.vc.convert_to_nearest_string(self.r1_sag, self.resonator_window)} / {self.vc.convert_to_nearest_string(self.r1_tan, self.resonator_window)}")
+        self.ui_resonator.label_waist.setText(f"={self.vc.convert_to_nearest_string(self.waist_sag, self.resonator_window)} / {self.vc.convert_to_nearest_string(self.waist_tan, self.resonator_window)}")
         self.ui_resonator.label_fitness.setText(f"={best.fitness.values[0]:.3f}")
         self.ui_resonator.label_stability.setText(f"={m_sag:.3f} / {m_tan:.3f}")
         return best

@@ -6,12 +6,14 @@ from PyQt5.QtCore import QModelIndex, QObject
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 
 from src_resonator.resonators import Resonator
+from src_physics.value_converter import ValueConverter
 import config
 
 class LibraryWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.item_selector = None  # Reference to ItemSelector
+        
 
     def closeEvent(self, event):
         """
@@ -29,6 +31,7 @@ class ItemSelector(QObject):
         self.components_data = []  # Store components data
         
         self.res = Resonator()
+        self.vc = ValueConverter()  # Instance of ValueConverter
         
     def open_library_window(self, parent=None):
         """
@@ -74,8 +77,9 @@ class ItemSelector(QObject):
         Saves the temporary file and performs actions based on context.
         Creates a new window on first call, shows hidden window on subsequent calls.
         """
-        # Save temporary file
-        self.save_temporary_file()
+        # Save temporary file und prüfe Rückgabewert
+        if not self.save_temporary_file():
+            return  # Abbrechen, wenn nichts gespeichert wurde
 
         # Hide current window
         if self.lib_resonator_window:
@@ -231,15 +235,9 @@ class ItemSelector(QObject):
                 self.toggle_curvature_tangential(False)
                 self.ui_select_component_window.checkBox_is_spherical.setChecked(False)
 
-            # Replace 1e30 with "Infinity"
-            if curvature_tangential == 1e30:
-                curvature_tangential = "Infinity"
-            if curvature_sagittal == 1e30:
-                curvature_sagittal = "Infinity"
-
             # Set the values in the UI fields
-            self.ui_select_component_window.edit_curvature_tangential.setText(str(curvature_tangential))
-            self.ui_select_component_window.edit_curvature_sagittal.setText(str(curvature_sagittal))
+            self.ui_select_component_window.edit_curvature_tangential.setText(self.vc.convert_to_nearest_string(curvature_tangential, self.library_window))
+            self.ui_select_component_window.edit_curvature_sagittal.setText(self.vc.convert_to_nearest_string(curvature_sagittal, self.library_window))
 
             # Extract and set the type in comboBox_type
             component_type = component.get("type", "N/A")
@@ -292,7 +290,7 @@ class ItemSelector(QObject):
                 "No Components to Save",
                 "There are no components to save."
             )
-            return
+            return False  # <--- Änderung: False zurückgeben
 
         # Create temporary file
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w", encoding="utf-8")
@@ -313,6 +311,8 @@ class ItemSelector(QObject):
         # Set global variable
         config.set_temp_file_path(self.temp_file_path)
         
+        return True  # <--- Erfolg
+
     def display_temporary_file(self, temp_file_path):
         """
         Zeigt die temporäre Datei in der listView_temporary_component an.
@@ -345,7 +345,20 @@ class ItemSelector(QObject):
         # Hole die ausgewählte Komponente
         selected_index = selected_indexes[0].row()
         if 0 <= selected_index < len(self.components_data):
-            selected_component = self.components_data[selected_index]
+            selected_component = self.components_data[selected_index].copy()
+            # Werte aus dem UI holen und umrechnen
+            try:
+                selected_component["properties"]["CURVATURE_TANGENTIAL"] = self.vc.convert_to_float(
+                    self.ui_select_component_window.edit_curvature_tangential.text().strip(), self.library_window)
+                selected_component["properties"]["CURVATURE_SAGITTAL"] = self.vc.convert_to_float(
+                    self.ui_select_component_window.edit_curvature_sagittal.text().strip(), self.library_window)
+            except Exception:
+                QMessageBox.warning(
+                    self.library_window,
+                    "Ungültige Eingabe",
+                    "Bitte geben Sie gültige Zahlenwerte mit Einheit für die Krümmungen ein."
+                )
+                return
         else:
             QMessageBox.warning(
                 self.library_window,
@@ -392,19 +405,14 @@ class ItemSelector(QObject):
         """
         Zeigt die temporäre Liste in listView_temporary_component an.
         """
-        if not hasattr(self, "temporary_components") or not self.temporary_components:
-            return
-
-        # Erstellen eines Modells für die listView
         model = QStandardItemModel()
-
-        # Füge die Namen der Komponenten zur Liste hinzu
-        for component in self.temporary_components:
-            item_name = component.get("name", "Unbenannte Komponente")
-            item = QStandardItem(item_name)
-            model.appendRow(item)
-
-        # Setze das Modell in listView_temporary_component
+        if hasattr(self, "temporary_components") and self.temporary_components:
+            # Füge die Namen der Komponenten zur Liste hinzu
+            for component in self.temporary_components:
+                item_name = component.get("name", "Unbenannte Komponente")
+                item = QStandardItem(item_name)
+                model.appendRow(item)
+        # Setze das Modell in listView_temporary_component (immer!)
         self.ui_select_component_window.listView_temporary_component.setModel(model)
 
     def add_component_to_temporary_list(self):
@@ -425,7 +433,20 @@ class ItemSelector(QObject):
         # Hole die ausgewählte Komponente
         selected_index = selected_indexes[0].row()
         if 0 <= selected_index < len(self.components_data):
-            selected_component = self.components_data[selected_index]
+            selected_component = self.components_data[selected_index].copy()
+            # Werte aus dem UI holen und umrechnen
+            try:
+                selected_component["properties"]["CURVATURE_TANGENTIAL"] = self.vc.convert_to_float(
+                    self.ui_select_component_window.edit_curvature_tangential.text().strip(), self.library_window)
+                selected_component["properties"]["CURVATURE_SAGITTAL"] = self.vc.convert_to_float(
+                    self.ui_select_component_window.edit_curvature_sagittal.text().strip(), self.library_window)
+            except Exception:
+                QMessageBox.warning(
+                    self.library_window,
+                    "Ungültige Eingabe",
+                    "Bitte geben Sie gültige Zahlenwerte mit Einheit für die Krümmungen ein."
+                )
+                return
         else:
             QMessageBox.warning(
                 self.library_window,

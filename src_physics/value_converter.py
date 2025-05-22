@@ -1,10 +1,11 @@
 import re
+from PyQt5.QtWidgets import QMessageBox
 
 class ValueConverter():
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def convert_to_float(self, value):
+    def convert_to_float(self, value, parent=None):
         """
         Converts a string containing a number and a unit to meters.
         
@@ -28,7 +29,8 @@ class ValueConverter():
             'mm': 1e-3,   # Millimeters to meters
             'cm': 1e-2,   # Centimeters to meters
             'm': 1,       # Meters to meters
-            'km': 1e3     # Kilometers to meters
+            'km': 1e3,     # Kilometers to meters
+            'Inf': 1e30  # Infinity to meters
         }
 
         # Regex to extract number and unit
@@ -40,12 +42,16 @@ class ValueConverter():
             
             if unit in units:
                 return number * units[unit]
-            else:
-                raise ValueError(f"Unknown unit: {unit}")
-        else:
-            raise ValueError("Invalid format. Please enter a number followed by a unit (e.g. '10 mm').")
-        
-    def convert_to_nearest_string(self, value):
+
+                    # Fehlermeldung nur, wenn keine passende Einheit gefunden wurde
+        QMessageBox.critical(
+            parent,
+            "Error",
+            "Unknown unit for value: {}. Please use one of the following units: {}".format(value, list(units.keys()))
+        )
+        return
+
+    def convert_to_nearest_string(self, value, parent=None):
         """
         Converts a float value to a string with the nearest unit.
         
@@ -55,22 +61,30 @@ class ValueConverter():
         Returns:
             str: Value converted to the nearest unit
         """
-        # Units and conversion factors
         units = {
-            'am': 1e-18,  # Attometers to meters
-            'fm': 1e-15,  # Femtometers to meters
-            'pm': 1e-12,  # Picometers to meters
-            'nm': 1e-9,   # Nanometers to meters
-            'µm': 1e-6,   # Micrometers to meters
-            'um': 1e-6,   # Micrometers to meters (alternative)
-            'mm': 1e-3,   # Millimeters to meters
-            'cm': 1e-2,   # Centimeters to meters
-            'm': 1,       # Meters to meters
-            'km': 1e3     # Kilometers to meters
+            'am': 1e-18,
+            'fm': 1e-15,
+            'pm': 1e-12,
+            'nm': 1e-9,
+            'µm': 1e-6,
+            'um': 1e-6,
+            'mm': 1e-3,
+            'cm': 1e-2,
+            'm': 1,
+            'km': 1e3,
+            'Inf': 1e30
         }
-        
+
         for unit, factor in units.items():
+            if unit == 'Inf' and abs(value) >= 1e29:
+                return unit
             if abs(value / 1000) <= factor:
                 return f"{value / factor:.3f} {unit}"
-        
+
+        # Fehlermeldung nur, wenn keine passende Einheit gefunden wurde
+        QMessageBox.critical(
+            parent,
+            "Error",
+            "Unknown unit for value: {}. Please use one of the following units: {}".format(value, list(units.keys()))
+        )
         return f"{value:.3f}"

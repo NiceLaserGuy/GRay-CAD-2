@@ -5,6 +5,7 @@ from os import path, listdir
 from PyQt5 import uic
 import json
 import os
+from src_physics.value_converter import ValueConverter
 
 class Libraries(QObject):
     """
@@ -18,6 +19,7 @@ class Libraries(QObject):
         self.library_window = None
         self.ui_library = None
         self.components_data = []  # Store components data
+        self.value_converter = ValueConverter()
 
     def open_library_window(self):
         """
@@ -198,6 +200,12 @@ class Libraries(QObject):
             # Extract CURVATURE_TANGENTIAL and CURVATURE_SAGITTAL
             curvature_tangential = component.get("properties", {}).get("CURVATURE_TANGENTIAL", "N/A")
             curvature_sagittal = component.get("properties", {}).get("CURVATURE_SAGITTAL", "N/A")
+
+            # Formatierung mit ValueConverter
+            if isinstance(curvature_tangential, (int, float)):
+                curvature_tangential = self.value_converter.convert_to_nearest_string(curvature_tangential)
+            if isinstance(curvature_sagittal, (int, float)):
+                curvature_sagittal = self.value_converter.convert_to_nearest_string(curvature_sagittal)
 
             if component.get("properties", {}).get("IS_ROUND", 0.0) == 1.0:
                 self.toggle_curvature_tangential(True)
@@ -422,16 +430,20 @@ class Libraries(QObject):
         # Handle properties based on the type
         if component["type"] == "LENS":
             try:
-                component["properties"]["CURVATURE_IN_SAG"] = float(self.ui_library.edit_curvature_in_sag.text().strip())
-                component["properties"]["CURVATURE_OUT_SAG"] = float(self.ui_library.edit_curvature_out_sag.text().strip())
-                component["properties"]["CURVATURE_IN_TAN"] = float(self.ui_library.edit_curvature_in_tan.text().strip())
-                component["properties"]["CURVATURE_OUT_TAN"] = float(self.ui_library.edit_curvature_out_tan.text().strip())
+                component["properties"]["CURVATURE_IN_SAG"] = self.value_converter.convert_to_float(
+                    self.ui_library.edit_curvature_in_sag.text().strip(), self.library_window)
+                component["properties"]["CURVATURE_OUT_SAG"] = self.value_converter.convert_to_float(
+                    self.ui_library.edit_curvature_out_sag.text().strip(), self.library_window)
+                component["properties"]["CURVATURE_IN_TAN"] = self.value_converter.convert_to_float(
+                    self.ui_library.edit_curvature_in_tan.text().strip(), self.library_window)
+                component["properties"]["CURVATURE_OUT_TAN"] = self.value_converter.convert_to_float(
+                    self.ui_library.edit_curvature_out_tan.text().strip(), self.library_window)
                 # Determine if the component is round
                 if self.ui_library.checkBox_is_spherical.isChecked():
                     component["properties"]["IS_ROUND"] = 1.0 # True
                 else:
                     component["properties"]["IS_ROUND"] = 0.0 # False
-            except ValueError:
+            except Exception:
                 QMessageBox.warning(
                     self.library_window,
                     "Invalid Input",
@@ -440,25 +452,20 @@ class Libraries(QObject):
                 return
         else:  # Default to MIRROR
             try:
-                curvature_tangential = self.ui_library.edit_curvature_tangential.text().strip()
-                curvature_sagittal = self.ui_library.edit_curvature_sagittal.text().strip()
+                curvature_tangential = self.value_converter.convert_to_float(
+                    self.ui_library.edit_curvature_tangential.text().strip(), self.library_window)
+                curvature_sagittal = self.value_converter.convert_to_float(
+                    self.ui_library.edit_curvature_sagittal.text().strip(), self.library_window)
 
-                if curvature_tangential.lower() == "infinity":
-                    component["properties"]["CURVATURE_TANGENTIAL"] = 1e30
-                else:
-                    component["properties"]["CURVATURE_TANGENTIAL"] = float(curvature_tangential)
-
-                if curvature_sagittal.lower() == "infinity":
-                    component["properties"]["CURVATURE_SAGITTAL"] = 1e30
-                else:
-                    component["properties"]["CURVATURE_SAGITTAL"] = float(curvature_sagittal)
+                component["properties"]["CURVATURE_TANGENTIAL"] = curvature_tangential
+                component["properties"]["CURVATURE_SAGITTAL"] = curvature_sagittal
 
                 # Determine if the component is round
                 if self.ui_library.checkBox_is_spherical.isChecked():
                     component["properties"]["IS_ROUND"] = 1.0 # True
                 else:
                     component["properties"]["IS_ROUND"] = 0.0 # False
-            except ValueError:
+            except Exception:
                 QMessageBox.warning(
                     self.library_window,
                     "Invalid Input",

@@ -154,7 +154,7 @@ background-color: rgb(186, 189, 182);</string>
        <item row="2" column="0">
         <widget class="QLabel" name="label_5">
          <property name="text">
-          <string>Curvature / mm</string>
+          <string>Curvature</string>
          </property>
         </widget>
        </item>

@@ -65,6 +65,9 @@ class MainWindow(QMainWindow):
         self.ui.action_Save.triggered.connect(self.action_save)
         self.ui.action_Save_as.triggered.connect(self.action_save_as)
         self.ui.action_Exit.triggered.connect(self.action_exit)
+        self.ui.action_About.triggered.connect(self.action_about)
+        self.ui.action_Tips_and_tricks.triggered.connect(self.action_tips_and_tricks)
+        
         # Connect library menu item to the library window
         self.ui.action_Library.triggered.connect(self.lib.open_library_window)
         
@@ -109,10 +112,13 @@ class MainWindow(QMainWindow):
                     z_val = z
                     w_sag_val = w0_sag + t * (w1_sag - w0_sag)
                     w_tan_val = w0_tan + t * (w1_tan - w0_tan)
-                self.ui.label_z_position.setText(f"{self.vc.convert_to_nearest_string(z_val)}")
-                self.ui.label_w_sag.setText(f"{self.vc.convert_to_nearest_string(w_sag_val)}")
-                self.ui.label_w_tan.setText(f"{self.vc.convert_to_nearest_string(w_tan_val)}")
-
+                self.ui.label_z_position.setText(f"{self.vc.convert_to_nearest_string(z_val, self)}")
+                self.ui.label_w_sag.setText(f"{self.vc.convert_to_nearest_string(w_sag_val, self)}")
+                self.ui.label_w_tan.setText(f"{self.vc.convert_to_nearest_string(w_tan_val, self)}")
+                #TODO
+                #self.ui.label_roc_sag.setText(f"{self.vc.convert_to_nearest_string(self.beam.radius_of_curvature(z_val, 0.514E-6, 1))}")
+                #self.ui.label_roc_tan.setText(f"{self.vc.convert_to_nearest_string(self.beam.radius_of_curvature(z_val, 0.514E-6, 1))}")
+                
         # Connect signal to function
         self.plotWidget.scene().sigMouseMoved.connect(mouseMoved)
         
@@ -162,7 +168,6 @@ class MainWindow(QMainWindow):
         """
         self.current_context = "resonator"
         self.item_selector_res.open_library_window(self)
-        self.hide()
 
     def handle_modematcher(self):
         """
@@ -171,7 +176,6 @@ class MainWindow(QMainWindow):
         """
         self.current_context = "modematcher"
         self.item_selector_modematcher.open_library_window()
-        self.hide()
 
     def action_open(self):
         """
@@ -210,8 +214,35 @@ class MainWindow(QMainWindow):
         if file_name:
             with open(file_name, 'w') as file:
                 file.write("test")  # Placeholder for save logic
+                
+    def action_about(self):
+        """
+        Handles the 'About' menu action.
+        Displays information about the application.
+        """
+        QMessageBox.information(
+            self, 
+            "About", 
+            "GRay-CAD 2\nVersion 1.0\nDeveloped by Jens Gumm, TU Darmstadt, LQO-Group"
+        )
 
-    
+    def action_tips_and_tricks(self):
+        """
+        Handles the 'Tips and Tricks' menu action.
+        Displays helpful tips for using the application.
+        """
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Tips and Tricks")
+        msg.setTextFormat(Qt.RichText)
+        msg.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        msg.setIcon(QMessageBox.Information)
+        msg.setText(
+            "1. Use the library to manage your components.<br>"
+            "2. Take advantage of the simulation features like the Modematcher and the Cavity Designer.<br>"
+            "3. Don't forget to save your work!<br>"
+            '4. Report bugs on GitHub: <a href="https://github.com/NiceLaserGuy/GRay-CAD-2">https://github.com/NiceLaserGuy/GRay-CAD-2</a>'
+        )
+        msg.exec()
 
     def action_exit(self):
         """

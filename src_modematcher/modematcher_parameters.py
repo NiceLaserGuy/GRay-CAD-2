@@ -70,7 +70,13 @@ class ModematcherParameters(QObject):
         if hasattr(self, 'previous_window') and self.previous_window:
             self.previous_window.show()  # Show the previous window
             self.previous_window.raise_()  # Bring previous window to front
-        
+            # --- NEU: temporäre Komponentenliste leeren ---
+            if hasattr(self.previous_window, 'item_selector'):
+                self.previous_window.item_selector.temporary_components = []
+                self.previous_window.item_selector.update_temporary_list_view()
+                # Optional: auch die Anzeige zurücksetzen
+                if hasattr(self.previous_window.item_selector, 'update_temporary_list_view'):
+                    self.previous_window.item_selector.update_temporary_list_view()
         if self.modematcher_parameter_window:
             self.modematcher_parameter_window.hide()  # Hide current window instead of closing
     
@@ -99,8 +105,8 @@ class ModematcherParameters(QObject):
     def get_parameters(self):
 
         #General paramters
-        wavelength = self.convert_to_float(self.ui_modematcher.lineEdit_wavelength.text())
-        distance = self.convert_to_float(self.ui_modematcher.lineEdit_distance.text())
+        wavelength = self.vc.convert_to_float(self.ui_modematcher.lineEdit_wavelength.text())
+        distance = self.vc.convert_to_float(self.ui_modematcher.lineEdit_distance.text())
 
         #Input Beam
         waist_input_sag = self.vc.convert_to_float(self.ui_modematcher.lineEdit_waist_input_sag.text())
