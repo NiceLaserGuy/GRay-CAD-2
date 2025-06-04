@@ -1,0 +1,65 @@
+{
+    "components": [
+        {
+            "type": "GENERIC",
+            "name": "Beam",
+            "manufacturer": "",
+            "properties": {
+              "Wavelength": 514E-9,
+              "Waist radius": 1.0E-3,
+              "Waist position": 0.0,
+              "Rayleigh range": 0.0
+            }
+          },
+        {
+            "type": "GENERIC",
+            "name": "ABCD",
+            "manufacturer": "",
+            "properties": {
+              "A_TANGENTIAL": 1.0,
+              "A_SAGITTAL": 1.0,
+              "B_TANGENTIAL": 0.0,
+              "B_SAGITTAL": 0.0,
+              "C_TANGENTIAL": 0.0,
+              "C_SAGITTAL": 0.0,
+              "D_TANGENTIAL": 1.0,
+              "D_SAGITTAL": 1.0
+            }
+          },
+        
+          {
+            "type": "GENERIC",
+            "name": "Propagation",
+            "manufacturer": "",
+            "properties": {
+              "A": 1.0,
+              "B": 0.0,
+              "C": 0.0,
+              "D": 1.0
+            }
+          },
+        {
+            "type": "GENERIC",
+            "name": "Free space",
+            "manufacturer": "",
+            "properties": {
+              "Length": 1.0
+            }
+          },
+        {
+            "type": "GENERIC",
+            "name": "Lens",
+            "manufacturer": "",
+            "properties": {
+              "Focal length": 0.1,
+              "Radius of curvature tangential": 0.1,
+              "Radius of curvature sagittal": 0.1,
+              "Thickness": 0.01
+            }
+          }
+          
+      
+    ],
+    "name": "Generic",
+    "type": "LIBRARY"
+}

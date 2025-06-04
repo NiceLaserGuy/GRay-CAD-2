@@ -16,6 +16,7 @@ class Resonator(QObject):
     Main class for resonator optimization using Particle Swarm Optimization (PSO).
     Handles mirror configurations and resonator calculations.
     """
+    setup_generated = pyqtSignal(object)  # Signal für das optische System
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -73,13 +74,22 @@ class Resonator(QObject):
         
         self.ui_resonator.button_back.clicked.connect(self.handle_back_button)
         
-        #self.ui_resonator.pushButton_generate_setup.clicked.connect(
+        self.ui_resonator.pushButton_generate_setup.clicked.connect(self.emit_setup)
         
         # Call config_ui explicitly after setting up the UI
         self.config_ui()
         
         # Show the window after configuration
         self.resonator_window.show()
+
+    def emit_setup(self):
+        # Erzeuge das optische System (als Beispiel, passe ggf. an)
+        optical_system = [
+            (self.parent().matrices.free_space, (0.1, 1)),
+            (self.parent().matrices.lens, 0.01),
+            (self.parent().matrices.free_space, (0.3, 1))
+        ]
+        self.setup_generated.emit(optical_system)
 
     def close_resonator_window(self):
         """

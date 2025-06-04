@@ -52,8 +52,8 @@ class Beam():
         float: Rayleigh length of the beam.
         """
         return np.imag(self.q_value(0, beam_radius, wavelength, n))
-    #TODO
-    '''def radius_of_curvature(self, z, wavelength, n):
+
+    def radius_of_curvature(self, z, waist, wavelength, n=1):
         """
         Calculate the radius of curvature of a beam.
 
@@ -65,10 +65,9 @@ class Beam():
         Returns:
         float: Radius of curvature of the beam.
         """
-        w=self.beam_radius(q, wavelength, n)
-        q= self.q_value(z, w, wavelength, n)
-        zr = self.rayleigh_length(wavelength, w, n)
-        return z*(1+(zr/z)**2) if z != 0 else np.inf'''
+        
+        zr = self.rayleigh_length(wavelength, waist, n)
+        return z*(1+(zr/z)**2) if z != 0 else np.inf
     
     def propagate_q(self, q_in, ABCD):
         A, B, C, D = ABCD.flatten()

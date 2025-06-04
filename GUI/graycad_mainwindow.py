@@ -12,7 +12,8 @@ from pyqtgraph import *
 from os import path
 from PyQt5.QtCore import *
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QMainWindow, QMessageBox, QFileDialog
+from PyQt5.QtWidgets import QMainWindow, QMessageBox, QFileDialog, QTreeWidgetItem, QLabel, QLineEdit, QHBoxLayout
+import json
 import pyqtgraph as pg
 import numpy as np
 
@@ -24,6 +25,7 @@ from src_modematcher.modematcher_parameters import ModematcherParameters
 from src_physics.beam import Beam
 from src_physics.matrices import Matrices
 from src_physics.value_converter import ValueConverter
+from GUI.actions import Action
 
 class MainWindow(QMainWindow):
     """
@@ -49,9 +51,11 @@ class MainWindow(QMainWindow):
         self.matrices = Matrices()
         self.beam = Beam()
         self.vc = ValueConverter()
+        self.action = Action()
 
         # Variable, um den Kontext zu speichern
         self.current_context = None
+        self.wavelength = None  # Default wavelength
 
         # Set application window icon
         self.setWindowIcon(QIcon(path.abspath(path.join(path.dirname(__file__), 
@@ -59,21 +63,47 @@ class MainWindow(QMainWindow):
 
         # Load the main UI from .ui file
         self.ui = uic.loadUi(path.abspath(path.join(path.dirname(__file__), "../assets/mainwindow.ui")), self)
+        old_component_tree = self.findChild(QtWidgets.QTreeWidget, "componentTree")
+        old_setup_tree = self.findChild(QtWidgets.QTreeWidget, "setupTree")
+
+        # Neue ersetzen (mit gleichem parent und objectName)
+        self.componentTree = ComponentTree(self)
+        self.componentTree.setObjectName("componentTree")
+
+        self.setupTree = SetupTree(self)
+        self.setupTree.setObjectName("setupTree")
+
+        # Im Layout ersetzen
+        parent1 = old_component_tree.parent()
+        parent2 = old_setup_tree.parent()
+
+        layout1 = parent1.layout()
+        layout2 = parent2.layout()
+
+        layout1.replaceWidget(old_component_tree, self.componentTree)
+        layout2.replaceWidget(old_setup_tree, self.setupTree)
+
+        # Alte verstecken oder löschen
+        old_component_tree.deleteLater()
+        old_setup_tree.deleteLater()
 
         # Connect menu items to their respective handlers
-        self.ui.action_Open.triggered.connect(self.action_open)
-        self.ui.action_Save.triggered.connect(self.action_save)
-        self.ui.action_Save_as.triggered.connect(self.action_save_as)
-        self.ui.action_Exit.triggered.connect(self.action_exit)
-        self.ui.action_About.triggered.connect(self.action_about)
-        self.ui.action_Tips_and_tricks.triggered.connect(self.action_tips_and_tricks)
+        self.ui.action_Open.triggered.connect(lambda: self.action.action_open(self))
+        self.ui.action_Save.triggered.connect(lambda: self.action.action_save(self))
+        self.ui.action_Save_as.triggered.connect(lambda: self.action.action_save_as(self))
+        self.ui.action_Exit.triggered.connect(lambda: self.action.action_exit(self))
+        self.ui.action_Tips_and_tricks.triggered.connect(lambda: self.action.action_tips_and_tricks(self))
+        self.ui.action_About.triggered.connect(lambda: self.action.action_about(self))
         
         # Connect library menu item to the library window
         self.ui.action_Library.triggered.connect(self.lib.open_library_window)
         
         # Connect buttons to their respective handlers
-        self.ui.action_Cavity_Designer.triggered.connect(self.handle_build_resonator)
-        self.ui.action_Modematcher.triggered.connect(self.handle_modematcher)
+        self.ui.action_Cavity_Designer.triggered.connect(lambda: self.action.handle_build_resonator(self))
+        self.ui.action_Modematcher.triggered.connect(lambda: self.action.handle_modematcher(self))
+
+        #self.ui.pushButton_create_setup.clicked.connect(self.new_setup)
+        #self.ui.pushButton_delete_setup.clicked.connect(self.delete_setup)
 
         # Default optical system
         self.current_optical_system = [
@@ -116,11 +146,94 @@ class MainWindow(QMainWindow):
                 self.ui.label_w_sag.setText(f"{self.vc.convert_to_nearest_string(w_sag_val, self)}")
                 self.ui.label_w_tan.setText(f"{self.vc.convert_to_nearest_string(w_tan_val, self)}")
                 #TODO
-                #self.ui.label_roc_sag.setText(f"{self.vc.convert_to_nearest_string(self.beam.radius_of_curvature(z_val, 0.514E-6, 1))}")
-                #self.ui.label_roc_tan.setText(f"{self.vc.convert_to_nearest_string(self.beam.radius_of_curvature(z_val, 0.514E-6, 1))}")
+                self.ui.label_roc_sag.setText(f"{self.vc.convert_to_nearest_string(self.beam.radius_of_curvature(z_val, w_sag_val, self.wavelength))}")
+                self.ui.label_roc_tan.setText(f"{self.vc.convert_to_nearest_string(self.beam.radius_of_curvature(z_val, w_tan_val, self.wavelength))}")
                 
         # Connect signal to function
         self.plotWidget.scene().sigMouseMoved.connect(mouseMoved)
+        self.res.setup_generated.connect(self.plot_optical_system_from_resonator)
+        
+        # Set up the component tree
+        self.load_component_tree_from_folder("Library")
+        self.componentTree.itemClicked.connect(self.on_component_clicked)
+        self.setupTree.itemClicked.connect(self.on_setup_item_clicked)
+
+    def show_properties(self, properties: dict):
+        # Bestehende Einträge entfernen
+        layout: QtWidgets.QGridLayout = self.propertyLayout
+        while layout.count():
+            child = layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+        # Neue Einträge einfügen
+        for row, (key, value) in enumerate(properties.items()):
+            label = QtWidgets.QLabel(key + ":")
+            if key.upper() == "IS_ROUND":
+                checkbox = QtWidgets.QCheckBox()
+                checkbox.setChecked(float(value) == 1.0)
+                checkbox.setEnabled(True)
+                layout.addWidget(label, row, 0)
+                layout.addWidget(checkbox, row, 1)
+            else:
+                field = QtWidgets.QLineEdit(str(value))
+                field.setReadOnly(False)
+                field.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+                layout.addWidget(label, row, 0)
+                layout.addWidget(field, row, 1)
+        # Vertical Spacer am Ende hinzufügen
+        spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        layout.addItem(spacer, layout.rowCount(), 0, 1, 2)
+
+    def on_component_clicked(self, item, column):
+        component = item.data(0, QtCore.Qt.UserRole)
+        if not isinstance(component, dict):
+            return
+
+        self.labelType.setText(component.get("type", ""))
+        self.labelName.setText(component.get("name", ""))
+        self.labelManufacturer.setText(component.get("manufacturer", ""))
+        props = component.get("properties", {})
+        self.show_properties(props)
+
+    def on_setup_item_clicked(self, item, column):
+        component = item.data(0, QtCore.Qt.UserRole)
+        if not isinstance(component, dict):
+            return
+        
+        self.labelType.setText(component.get("type", ""))
+        self.labelName.setText(component.get("name", ""))
+        self.labelManufacturer.setText(component.get("manufacturer", ""))
+        props = component.get("properties", {})
+        self.show_properties(props)
+
+    def load_component_tree_from_folder(self, folder_path):
+        self.componentTree.clear()
+
+        for filename in os.listdir(folder_path):
+            if filename.endswith(".json"):
+                filepath = os.path.join(folder_path, filename)
+                with open(filepath, "r") as f:
+                    try:
+                        data = json.load(f)
+                    except json.JSONDecodeError:
+                        continue
+
+                # Verwende 'name' in JSON oder den Dateinamen als Titel
+                group_name = data.get("name") or filename.replace(".json", "")
+                top_item = QTreeWidgetItem([group_name])
+                self.componentTree.addTopLevelItem(top_item)
+
+                for component in data.get("components", []):
+                    name = component.get("name", "Unnamed Component")
+                    item = QTreeWidgetItem([name])
+                    item.setData(0, QtCore.Qt.UserRole, component)
+                    top_item.addChild(item)
+
+                top_item.setExpanded(True)
+
+    def plot_optical_system_from_resonator(self, optical_system):
+        self.plot_optical_system(optical_system=optical_system)
         
     def plot_optical_system(self, z_start=0, wavelength=0.514E-6, beam_radius=1E-3, n=1, optical_system=None):
         """
@@ -128,6 +241,8 @@ class MainWindow(QMainWindow):
         """
         if optical_system is None:
             optical_system = self.current_optical_system
+            self.wavelength = wavelength
+        
         self.plotWidget.clear()
         self.z_data, self.w_sag_data = self.beam.propagate_through_system(
             wavelength, self.beam.q_value(z_start, beam_radius, wavelength, n), optical_system
@@ -161,100 +276,49 @@ class MainWindow(QMainWindow):
             if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
                 z_element += param[0]
 
-    def handle_build_resonator(self):
-        """
-        Handles the 'Build Resonator' button action.
-        Sets the current context to 'resonator' and opens the library window.
-        """
-        self.current_context = "resonator"
-        self.item_selector_res.open_library_window(self)
+class ComponentTree(QtWidgets.QTreeWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragOnly)
+        self.setHeaderHidden(True)
+        self.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
 
-    def handle_modematcher(self):
-        """
-        Handles the 'Modematcher' button action.
-        Sets the current context to 'modematcher' and opens the library window.
-        """
-        self.current_context = "modematcher"
-        self.item_selector_modematcher.open_library_window()
+    def mimeData(self, items):
+        mime = QtCore.QMimeData()
+        component = items[0].data(0, QtCore.Qt.UserRole)
+        if component:
+            mime.setData("application/x-component", QtCore.QByteArray(json.dumps(component).encode()))
+        return mime
 
-    def action_open(self):
-        """
-        Handles the 'Open' menu action.
-        Opens a file dialog for selecting and loading files.
-        """
-        file_name, _ = QFileDialog.getOpenFileName(
-            self, 
-            "Open File", 
-            "", 
-            "All Files (*);;Python Files (*.py)"
-        )
-        if file_name:
-            with open(file_name, 'r') as file:
-                content = file.read()
-                print(content)  # Placeholder for file handling logic
+class SetupTree(QtWidgets.QTreeWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+        self.setHeaderHidden(True)
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
+        self.setDefaultDropAction(Qt.MoveAction)
 
-    def action_save(self):
-        """
-        Handles the 'Save' menu action.
-        Placeholder for save functionality.
-        """
-        print("Save action triggered")  # Placeholder for save logic
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasFormat("application/x-component") or event.source() == self:
+            event.acceptProposedAction()
+        else:
+            event.ignore()
 
-    def action_save_as(self):
-        """
-        Handles the 'Save As' menu action.
-        Opens a file dialog for saving files to a new location.
-        """
-        file_name, _ = QFileDialog.getSaveFileName(
-            self, 
-            "Save File As", 
-            "", 
-            "All Files (*);;Python Files (*.py)"
-        )
-        if file_name:
-            with open(file_name, 'w') as file:
-                file.write("test")  # Placeholder for save logic
-                
-    def action_about(self):
-        """
-        Handles the 'About' menu action.
-        Displays information about the application.
-        """
-        QMessageBox.information(
-            self, 
-            "About", 
-            "GRay-CAD 2\nVersion 1.0\nDeveloped by Jens Gumm, TU Darmstadt, LQO-Group"
-        )
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasFormat("application/x-component") or event.source() == self:
+            event.acceptProposedAction()
+        else:
+            event.ignore()
 
-    def action_tips_and_tricks(self):
-        """
-        Handles the 'Tips and Tricks' menu action.
-        Displays helpful tips for using the application.
-        """
-        msg = QMessageBox(self)
-        msg.setWindowTitle("Tips and Tricks")
-        msg.setTextFormat(Qt.RichText)
-        msg.setTextInteractionFlags(Qt.TextBrowserInteraction)
-        msg.setIcon(QMessageBox.Information)
-        msg.setText(
-            "1. Use the library to manage your components.<br>"
-            "2. Take advantage of the simulation features like the Modematcher and the Cavity Designer.<br>"
-            "3. Don't forget to save your work!<br>"
-            '4. Report bugs on GitHub: <a href="https://github.com/NiceLaserGuy/GRay-CAD-2">https://github.com/NiceLaserGuy/GRay-CAD-2</a>'
-        )
-        msg.exec()
-
-    def action_exit(self):
-        """
-        Handles the 'Exit' menu action.
-        Shows a confirmation dialog before closing the application.
-        """
-        reply = QMessageBox.question(
-            self, 
-            "Exit", 
-            "Do you really want to close the program? All unsaved data will be lost!",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
-        if reply == QMessageBox.StandardButton.Yes:
-            self.close()
+    def dropEvent(self, event):
+        # Externer Drop (aus ComponentTree)
+        if event.mimeData().hasFormat("application/x-component") and event.source() != self:
+            data = event.mimeData().data("application/x-component")
+            component = json.loads(bytes(data).decode())
+            item = QtWidgets.QTreeWidgetItem([component.get("name", "Unnamed")])
+            item.setData(0, QtCore.Qt.UserRole, component)
+            self.addTopLevelItem(item)
+            event.acceptProposedAction()
+        else:
+            # Internes Verschieben: Standardverhalten nutzen
+            super().dropEvent(event)
