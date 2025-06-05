@@ -12,7 +12,7 @@ from pyqtgraph import *
 from os import path
 from PyQt5.QtCore import *
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QMainWindow, QMessageBox, QFileDialog, QTreeWidgetItem, QLabel, QLineEdit, QHBoxLayout
+from PyQt5.QtWidgets import QMainWindow, QTreeWidgetItem
 import json
 import pyqtgraph as pg
 import numpy as np
@@ -44,9 +44,8 @@ class MainWindow(QMainWindow):
         # Create instances of helper classes
         self.res = Resonator()
         self.beam = Beam()
-        self.modematcher = ModematcherParameters()
-        self.lib = Libraries()
-        self.item_selector_res = ItemSelector(self)
+        self.modematcher = ModematcherParameters(self)
+        self.lib = Libraries(self)
         self.item_selector_modematcher = ItemSelector(self)
         self.matrices = Matrices()
         self.beam = Beam()
@@ -63,29 +62,6 @@ class MainWindow(QMainWindow):
 
         # Load the main UI from .ui file
         self.ui = uic.loadUi(path.abspath(path.join(path.dirname(__file__), "../assets/mainwindow.ui")), self)
-        old_component_tree = self.findChild(QtWidgets.QTreeWidget, "componentTree")
-        old_setup_tree = self.findChild(QtWidgets.QTreeWidget, "setupTree")
-
-        # Neue ersetzen (mit gleichem parent und objectName)
-        self.componentTree = ComponentTree(self)
-        self.componentTree.setObjectName("componentTree")
-
-        self.setupTree = SetupTree(self)
-        self.setupTree.setObjectName("setupTree")
-
-        # Im Layout ersetzen
-        parent1 = old_component_tree.parent()
-        parent2 = old_setup_tree.parent()
-
-        layout1 = parent1.layout()
-        layout2 = parent2.layout()
-
-        layout1.replaceWidget(old_component_tree, self.componentTree)
-        layout2.replaceWidget(old_setup_tree, self.setupTree)
-
-        # Alte verstecken oder löschen
-        old_component_tree.deleteLater()
-        old_setup_tree.deleteLater()
 
         # Connect menu items to their respective handlers
         self.ui.action_Open.triggered.connect(lambda: self.action.action_open(self))
@@ -94,7 +70,7 @@ class MainWindow(QMainWindow):
         self.ui.action_Exit.triggered.connect(lambda: self.action.action_exit(self))
         self.ui.action_Tips_and_tricks.triggered.connect(lambda: self.action.action_tips_and_tricks(self))
         self.ui.action_About.triggered.connect(lambda: self.action.action_about(self))
-        
+
         # Connect library menu item to the library window
         self.ui.action_Library.triggered.connect(self.lib.open_library_window)
         
@@ -102,16 +78,45 @@ class MainWindow(QMainWindow):
         self.ui.action_Cavity_Designer.triggered.connect(lambda: self.action.handle_build_resonator(self))
         self.ui.action_Modematcher.triggered.connect(lambda: self.action.handle_modematcher(self))
 
+        # Library and component list setup
+        old_component_list = self.findChild(QtWidgets.QListWidget, "componentList")
+        old_setup_list = self.findChild(QtWidgets.QListWidget, "setupList")
+
+        self.componentList = ComponentList(self)
+        self.componentList.setObjectName("componentList")
+        self.setupList = SetupList(self)
+        self.setupList.setObjectName("setupList")
+
+        # Im Layout ersetzen
+        parent1 = old_component_list.parent()
+        parent2 = old_setup_list.parent()
+        layout1 = parent1.layout()
+        layout2 = parent2.layout()
+        layout1.replaceWidget(old_component_list, self.componentList)
+        layout2.replaceWidget(old_setup_list, self.setupList)
+        old_component_list.deleteLater()
+        old_setup_list.deleteLater()
+
+        self.load_library_list_from_folder("Library")
+        self.componentList.itemClicked.connect(self.on_component_clicked)
+        self.setupList.itemClicked.connect(self.on_component_clicked)
+        self.libraryList.itemClicked.connect(self.on_library_selected)
+
+        
+
         #self.ui.pushButton_create_setup.clicked.connect(self.new_setup)
         #self.ui.pushButton_delete_setup.clicked.connect(self.delete_setup)
 
+        # Connect buttons in the setupTree
+        self.ui.buttonDeleteItem.clicked.connect(lambda: self.action.delete_selected_setup_item(self))
+        self.ui.buttonMoveUp.clicked.connect(lambda: self.action.move_selected_setup_item_up(self))
+        self.ui.buttonMoveDown.clicked.connect(lambda: self.action.move_selected_setup_item_down(self))
+        
         # Default optical system
         self.current_optical_system = [
             (self.matrices.free_space, (0.1, 1)),
             (self.matrices.lens, 0.05),
-            (self.matrices.free_space, (0.3, 1))
-        ]
-
+            (self.matrices.free_space, (0.3, 1))]
         self.plot_optical_system()
 
         self.cursor_vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('k', width=1, style=Qt.DashLine))
@@ -152,12 +157,7 @@ class MainWindow(QMainWindow):
         # Connect signal to function
         self.plotWidget.scene().sigMouseMoved.connect(mouseMoved)
         self.res.setup_generated.connect(self.plot_optical_system_from_resonator)
-        
-        # Set up the component tree
-        self.load_component_tree_from_folder("Library")
-        self.componentTree.itemClicked.connect(self.on_component_clicked)
-        self.setupTree.itemClicked.connect(self.on_setup_item_clicked)
-
+    
     def show_properties(self, properties: dict):
         # Bestehende Einträge entfernen
         layout: QtWidgets.QGridLayout = self.propertyLayout
@@ -176,7 +176,12 @@ class MainWindow(QMainWindow):
                 layout.addWidget(label, row, 0)
                 layout.addWidget(checkbox, row, 1)
             else:
-                field = QtWidgets.QLineEdit(str(value))
+                # Zahlen formatieren
+                if isinstance(value, (int, float)):
+                    value_str = self.vc.convert_to_nearest_string(value, self)
+                else:
+                    value_str = str(value)
+                field = QtWidgets.QLineEdit(value_str)
                 field.setReadOnly(False)
                 field.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
                 layout.addWidget(label, row, 0)
@@ -185,8 +190,8 @@ class MainWindow(QMainWindow):
         spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         layout.addItem(spacer, layout.rowCount(), 0, 1, 2)
 
-    def on_component_clicked(self, item, column):
-        component = item.data(0, QtCore.Qt.UserRole)
+    def on_component_clicked(self, item):
+        component = item.data(QtCore.Qt.UserRole)
         if not isinstance(component, dict):
             return
 
@@ -196,41 +201,31 @@ class MainWindow(QMainWindow):
         props = component.get("properties", {})
         self.show_properties(props)
 
-    def on_setup_item_clicked(self, item, column):
-        component = item.data(0, QtCore.Qt.UserRole)
-        if not isinstance(component, dict):
-            return
-        
-        self.labelType.setText(component.get("type", ""))
-        self.labelName.setText(component.get("name", ""))
-        self.labelManufacturer.setText(component.get("manufacturer", ""))
-        props = component.get("properties", {})
-        self.show_properties(props)
-
-    def load_component_tree_from_folder(self, folder_path):
-        self.componentTree.clear()
-
+    def load_library_list_from_folder(self, folder_path):
+        self.libraryList.clear()
         for filename in os.listdir(folder_path):
             if filename.endswith(".json"):
-                filepath = os.path.join(folder_path, filename)
-                with open(filepath, "r") as f:
-                    try:
-                        data = json.load(f)
-                    except json.JSONDecodeError:
-                        continue
-
-                # Verwende 'name' in JSON oder den Dateinamen als Titel
-                group_name = data.get("name") or filename.replace(".json", "")
-                top_item = QTreeWidgetItem([group_name])
-                self.componentTree.addTopLevelItem(top_item)
-
-                for component in data.get("components", []):
-                    name = component.get("name", "Unnamed Component")
-                    item = QTreeWidgetItem([name])
-                    item.setData(0, QtCore.Qt.UserRole, component)
-                    top_item.addChild(item)
-
-                top_item.setExpanded(True)
+                lib_name = filename[:-5]  # Entfernt ".json"
+                self.libraryList.addItem(lib_name)
+    
+    def on_library_selected(self, item):
+        # Name der Bibliothek aus dem Listeneintrag
+        lib_name = item.text()
+        # Lade die entsprechende JSON-Datei
+        lib_path = path.join("Library", lib_name + ".json")
+        try:
+            with open(lib_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            components = data.get("components", [])
+            self.componentList.clear()
+            for comp in components:
+                name = comp.get("name", "Unnamed")
+                list_item = QtWidgets.QListWidgetItem(name)
+                list_item.setData(QtCore.Qt.UserRole, comp)
+                self.componentList.addItem(list_item)
+        except Exception as e:
+            self.componentList.clear()
+            QtWidgets.QMessageBox.warning(self, "Fehler", f"Bibliothek konnte nicht geladen werden:\n{e}")
 
     def plot_optical_system_from_resonator(self, optical_system):
         self.plot_optical_system(optical_system=optical_system)
@@ -276,49 +271,86 @@ class MainWindow(QMainWindow):
             if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
                 z_element += param[0]
 
-class ComponentTree(QtWidgets.QTreeWidget):
+class ComponentList(QtWidgets.QListWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setDragDropMode(QtWidgets.QAbstractItemView.DragOnly)
-        self.setHeaderHidden(True)
-        self.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.setDragEnabled(True)
 
     def mimeData(self, items):
+        item = items[0]
+        component = item.data(QtCore.Qt.UserRole)
         mime = QtCore.QMimeData()
-        component = items[0].data(0, QtCore.Qt.UserRole)
-        if component:
-            mime.setData("application/x-component", QtCore.QByteArray(json.dumps(component).encode()))
+        mime.setData("application/x-component", QtCore.QByteArray(json.dumps(component).encode()))
         return mime
 
-class SetupTree(QtWidgets.QTreeWidget):
+class SetupList(QtWidgets.QListWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setAcceptDrops(True)
-        self.setHeaderHidden(True)
         self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
-        self.setDefaultDropAction(Qt.MoveAction)
+        self.setAcceptDrops(True)
+        self.setDragEnabled(True)
+        self.setDefaultDropAction(QtCore.Qt.MoveAction)
+
+        # Beam wie in Generic.json hinzufügen
+        beam_component = {
+            "type": "GENERIC",
+            "name": "Beam",
+            "manufacturer": "",
+            "properties": {
+                "Wavelength": 514E-9,
+                "Waist radius": 1.0E-3,
+                "Waist position": 0.0,
+                "Rayleigh range": 0.0
+            }
+        }
+        beam_item = QtWidgets.QListWidgetItem(beam_component["name"])
+        beam_item.setData(QtCore.Qt.UserRole, beam_component)
+        self.addItem(beam_item)
 
     def dragEnterEvent(self, event):
-        if event.mimeData().hasFormat("application/x-component") or event.source() == self:
+        if event.mimeData().hasFormat("application/x-component"):
             event.acceptProposedAction()
         else:
-            event.ignore()
+            super().dragEnterEvent(event)
 
     def dragMoveEvent(self, event):
-        if event.mimeData().hasFormat("application/x-component") or event.source() == self:
+        if event.mimeData().hasFormat("application/x-component"):
             event.acceptProposedAction()
         else:
-            event.ignore()
+            super().dragMoveEvent(event)
 
     def dropEvent(self, event):
-        # Externer Drop (aus ComponentTree)
-        if event.mimeData().hasFormat("application/x-component") and event.source() != self:
-            data = event.mimeData().data("application/x-component")
-            component = json.loads(bytes(data).decode())
-            item = QtWidgets.QTreeWidgetItem([component.get("name", "Unnamed")])
-            item.setData(0, QtCore.Qt.UserRole, component)
-            self.addTopLevelItem(item)
-            event.acceptProposedAction()
+        # Externes Drag & Drop (z.B. von componentList)
+        if event.source() != self and event.mimeData().hasFormat("application/x-component"):
+            component = json.loads(bytes(event.mimeData().data("application/x-component")).decode())
+            is_beam = (
+                component.get("name", "").strip().lower() == "beam"
+                or component.get("type", "").strip().lower() == "beam"
+            )
+            # Prüfe, ob schon ein Beam existiert
+            for i in range(self.count()):
+                c = self.item(i).data(QtCore.Qt.UserRole)
+                if isinstance(c, dict) and (
+                    c.get("name", "").strip().lower() == "beam"
+                    or c.get("type", "").strip().lower() == "beam"
+                ):
+                    if is_beam:
+                        event.ignore()
+                        return
+            # Füge Beam immer an Position 0 ein, andere Komponenten ans Ende
+            if is_beam:
+                item = QtWidgets.QListWidgetItem(component.get("name", "Unnamed"))
+                item.setData(QtCore.Qt.UserRole, component)
+                self.insertItem(0, item)
+                self.setCurrentItem(item)
+                event.acceptProposedAction()
+            else:
+                item = QtWidgets.QListWidgetItem(component.get("name", "Unnamed"))
+                item.setData(QtCore.Qt.UserRole, component)
+                self.addItem(item)
+                self.setCurrentItem(item)
+                event.acceptProposedAction()
         else:
-            # Internes Verschieben: Standardverhalten nutzen
+            # Internes Verschieben innerhalb der Liste
             super().dropEvent(event)

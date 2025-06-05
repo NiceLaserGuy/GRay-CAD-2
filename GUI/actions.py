@@ -1,8 +1,10 @@
-from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
+from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from PyQt5.QtCore import *
+from PyQt5 import QtCore
 
 class Action:
 
+    #TODO
     def action_open(self, parent):
         """
         Handles the 'Open' menu action.
@@ -86,3 +88,45 @@ class Action:
         """
         parent.current_context = "modematcher"
         parent.item_selector_modematcher.open_library_window()
+
+    def delete_selected_setup_item(self, parent):
+        for item in parent.setupList.selectedItems():
+            row = parent.setupList.row(item)
+            # Beam (immer an Position 0) darf nicht gelöscht werden
+            if row == 0:
+                continue
+            parent.setupList.takeItem(row)
+
+    def move_selected_setup_item_up(self, parent):
+        listw = parent.setupList
+        items = listw.selectedItems()
+        if not items:
+            return
+        item = items[0]
+        row = listw.row(item)
+        # Beam (immer an Position 0) darf nicht verschoben werden
+        if row <= 1:
+            return
+        listw.takeItem(row)
+        listw.insertItem(row - 1, item)
+        listw.setCurrentItem(item)
+
+    def move_selected_setup_item_down(self, parent):
+        listw = parent.setupList
+        items = listw.selectedItems()
+        if not items:
+            return
+        item = items[0]
+        row = listw.row(item)
+        # Beam (immer an Position 0) darf nicht verschoben werden
+        if row == 0 or row >= listw.count() - 1:
+            return
+        listw.takeItem(row)
+        listw.insertItem(row + 1, item)
+        listw.setCurrentItem(item)
+    
+    def is_beam_item(self, item):
+        component = item.data(0, QtCore.Qt.UserRole)
+        if not isinstance(component, dict):
+            return False
+        return component.get("type", "").lower() == "beam"
