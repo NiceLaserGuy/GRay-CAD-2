@@ -94,7 +94,8 @@ class Libraries(QObject):
 
     def load_library_files(self):
         """
-        Loads files from the 'Library' folder and displays them in the listView_libraries.
+        Loads files from the 'Library' folder and displays them in the listView_libraries,
+        except 'Generic.json'.
         """
         # Path to the Library folder
         library_path = path.abspath(path.join(path.dirname(path.dirname(__file__)), "Library"))
@@ -108,8 +109,13 @@ class Libraries(QObject):
             )
             return
 
-        # Get a list of files in the Library folder
-        files = [f for f in listdir(library_path) if path.isfile(path.join(library_path, f))]
+        # Get a list of files in the Library folder, excluding 'Generic.json'
+        files = [
+            f for f in listdir(library_path)
+            if path.isfile(path.join(library_path, f))
+            and f.endswith(".json")
+            and f != "Generic.json"
+        ]
 
         # Create a model for the listView
         model = QStandardItemModel()

@@ -40,7 +40,7 @@ class Beam():
         """
         return np.sqrt(-wavelength / (np.pi * n * np.imag(1/q)))
     
-    def rayleigh_length(self, wavelength, beam_radius, n):
+    def rayleigh_length(self, wavelength, beam_radius, n=1):
         """
         Calculate the Rayleigh length of a beam.
 

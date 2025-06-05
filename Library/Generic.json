@@ -16,19 +16,19 @@
             "name": "ABCD",
             "manufacturer": "",
             "properties": {
-              "A_TANGENTIAL": 1.0,
-              "A_SAGITTAL": 1.0,
-              "B_TANGENTIAL": 0.0,
-              "B_SAGITTAL": 0.0,
-              "C_TANGENTIAL": 0.0,
-              "C_SAGITTAL": 0.0,
-              "D_TANGENTIAL": 1.0,
-              "D_SAGITTAL": 1.0
+              "A tangential": 1.0,
+              "A sagittal": 1.0,
+              "B tangential": 0.0,
+              "B sagittal": 0.0,
+              "C tangential": 0.0,
+              "C sagittal": 0.0,
+              "D tangential": 1.0,
+              "D sagittal": 1.0
             }
           },
         {
             "type": "GENERIC",
-            "name": "Free space",
+            "name": "Propagation",
             "manufacturer": "",
             "properties": {
               "Length": 0.1

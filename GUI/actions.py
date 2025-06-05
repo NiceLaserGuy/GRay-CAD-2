@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from PyQt5.QtCore import *
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
 
 class Action:
 
@@ -130,3 +130,36 @@ class Action:
         if not isinstance(component, dict):
             return False
         return component.get("type", "").lower() == "beam"
+    
+    def move_selected_component_to_setupList(self, parent):
+        # Hole das aktuell ausgewählte Item aus der componentList
+        items = parent.componentList.selectedItems()
+        if not items:
+            return
+        item = items[0]
+        component = item.data(QtCore.Qt.UserRole)
+        if not isinstance(component, dict):
+            return
+
+        is_beam = (
+            component.get("name", "").strip().lower() == "beam"
+            or component.get("type", "").strip().lower() == "beam"
+        )
+        # Prüfe, ob schon ein Beam in setupList existiert
+        if is_beam:
+            for i in range(parent.setupList.count()):
+                c = parent.setupList.item(i).data(QtCore.Qt.UserRole)
+                if isinstance(c, dict) and (
+                    c.get("name", "").strip().lower() == "beam"
+                    or c.get("type", "").strip().lower() == "beam"
+                ):
+                    return  # Kein zweiter Beam erlaubt
+
+        # Füge das Item in setupList ein
+        new_item = QtWidgets.QListWidgetItem(component.get("name", "Unnamed"))
+        new_item.setData(QtCore.Qt.UserRole, component)
+        if is_beam:
+            parent.setupList.insertItem(0, new_item)
+        else:
+            parent.setupList.addItem(new_item)
+        parent.setupList.setCurrentItem(new_item)

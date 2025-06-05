@@ -111,6 +111,7 @@ class MainWindow(QMainWindow):
         self.ui.buttonDeleteItem.clicked.connect(lambda: self.action.delete_selected_setup_item(self))
         self.ui.buttonMoveUp.clicked.connect(lambda: self.action.move_selected_setup_item_up(self))
         self.ui.buttonMoveDown.clicked.connect(lambda: self.action.move_selected_setup_item_down(self))
+        self.ui.buttonAddComponent.clicked.connect(lambda: self.action.move_selected_component_to_setupList(self))
         
         # Default optical system
         self.current_optical_system = [
@@ -159,14 +160,37 @@ class MainWindow(QMainWindow):
         self.res.setup_generated.connect(self.plot_optical_system_from_resonator)
     
     def show_properties(self, properties: dict):
-        # Bestehende Einträge entfernen
         layout: QtWidgets.QGridLayout = self.propertyLayout
         while layout.count():
             child = layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
 
-        # Neue Einträge einfügen
+        is_beam = "Wavelength" in properties and "Waist radius" in properties
+        self._property_fields = {}
+
+        # Verzögerungs-Timer für dynamische Updates
+        self._property_update_timer = QtCore.QTimer(self)
+        self._property_update_timer.setSingleShot(True)
+        self._property_update_timer.setInterval(500)  # 500 ms
+
+        def update_rayleigh_delayed():
+            self._property_update_timer.stop()
+            self._property_update_timer.start()
+
+        def update_rayleigh():
+            try:
+                wavelength = self.vc.convert_to_float(self._property_fields["Wavelength"].text(), self)
+                waist = self.vc.convert_to_float(self._property_fields["Waist radius"].text(), self)
+                n = 1
+                rayleigh = self.beam.rayleigh_length(wavelength, waist, n)
+                value_str = self.vc.convert_to_nearest_string(rayleigh, self)
+                self._property_fields["Rayleigh range"].setText(value_str)
+            except Exception:
+                self._property_fields["Rayleigh range"].setText("")
+
+        self._property_update_timer.timeout.connect(update_rayleigh)
+
         for row, (key, value) in enumerate(properties.items()):
             label = QtWidgets.QLabel(key + ":")
             if key.upper() == "IS_ROUND":
@@ -175,8 +199,15 @@ class MainWindow(QMainWindow):
                 checkbox.setEnabled(True)
                 layout.addWidget(label, row, 0)
                 layout.addWidget(checkbox, row, 1)
+                self._property_fields[key] = checkbox
+            elif is_beam and key == "Rayleigh range":
+                field = QtWidgets.QLineEdit()
+                field.setReadOnly(True)
+                field.setStyleSheet("background-color: #eee; color: #888;")
+                layout.addWidget(label, row, 0)
+                layout.addWidget(field, row, 1)
+                self._property_fields[key] = field
             else:
-                # Zahlen formatieren
                 if isinstance(value, (int, float)):
                     value_str = self.vc.convert_to_nearest_string(value, self)
                 else:
@@ -186,7 +217,14 @@ class MainWindow(QMainWindow):
                 field.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
                 layout.addWidget(label, row, 0)
                 layout.addWidget(field, row, 1)
-        # Vertical Spacer am Ende hinzufügen
+                self._property_fields[key] = field
+                if is_beam and key in ("Wavelength", "Waist radius"):
+                    field.textChanged.connect(update_rayleigh_delayed)
+
+        # Initial berechnen
+        if is_beam and "Rayleigh range" in self._property_fields:
+            update_rayleigh()
+
         spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         layout.addItem(spacer, layout.rowCount(), 0, 1, 2)
 
@@ -307,6 +345,17 @@ class SetupList(QtWidgets.QListWidget):
         beam_item = QtWidgets.QListWidgetItem(beam_component["name"])
         beam_item.setData(QtCore.Qt.UserRole, beam_component)
         self.addItem(beam_item)
+
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_Delete:
+            # Mehrere markierte Items löschen, aber nie den Beam (Index 0)
+            for item in self.selectedItems():
+                row = self.row(item)
+                if row == 0:
+                    continue  # Beam nicht löschen
+                self.takeItem(row)
+        else:
+            super().keyPressEvent(event)
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasFormat("application/x-component"):
