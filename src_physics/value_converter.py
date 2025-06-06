@@ -29,8 +29,9 @@ class ValueConverter():
             'mm': 1e-3,   # Millimeters to meters
             'cm': 1e-2,   # Centimeters to meters
             'm': 1,       # Meters to meters
-            'km': 1e3,     # Kilometers to meters
-            'Inf': 1e30  # Infinity to meters
+            'km': 1e3,    # Kilometers to meters
+            'Inf': 1e30,  # Infinity to meters
+            'inf': 1e30   # Infinity to meters (case insensitive)
         }
 
         # Regex to extract number and unit
@@ -79,7 +80,9 @@ class ValueConverter():
             if unit == 'Inf' and abs(value) >= 1e29:
                 return unit
             if abs(value / 1000) <= factor:
-                return f"{value / factor:.3f} {unit}"
+                num = value / factor
+                num_str = f"{num:.3f}".rstrip('0').rstrip('.')
+                return f"{num_str} {unit}"
 
         # Fehlermeldung nur, wenn keine passende Einheit gefunden wurde
         QMessageBox.critical(

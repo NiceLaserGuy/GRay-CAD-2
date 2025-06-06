@@ -26,6 +26,8 @@ from src_physics.beam import Beam
 from src_physics.matrices import Matrices
 from src_physics.value_converter import ValueConverter
 from GUI.actions import Action
+from GUI.setupList import SetupList
+from GUI.componentList import ComponentList
 
 class MainWindow(QMainWindow):
     """
@@ -55,6 +57,7 @@ class MainWindow(QMainWindow):
         # Variable, um den Kontext zu speichern
         self.current_context = None
         self.wavelength = None  # Default wavelength
+        self._last_component_item = None
 
         # Set application window icon
         self.setWindowIcon(QIcon(path.abspath(path.join(path.dirname(__file__), 
@@ -73,6 +76,9 @@ class MainWindow(QMainWindow):
 
         # Connect library menu item to the library window
         self.ui.action_Library.triggered.connect(self.lib.open_library_window)
+        
+        # Plot from resonator setup
+        self.res.setup_generated.connect(self.plot_optical_system_from_resonator)
         
         # Connect buttons to their respective handlers
         self.ui.action_Cavity_Designer.triggered.connect(lambda: self.action.handle_build_resonator(self))
@@ -102,8 +108,6 @@ class MainWindow(QMainWindow):
         self.setupList.itemClicked.connect(self.on_component_clicked)
         self.libraryList.itemClicked.connect(self.on_library_selected)
 
-        
-
         #self.ui.pushButton_create_setup.clicked.connect(self.new_setup)
         #self.ui.pushButton_delete_setup.clicked.connect(self.delete_setup)
 
@@ -112,13 +116,13 @@ class MainWindow(QMainWindow):
         self.ui.buttonMoveUp.clicked.connect(lambda: self.action.move_selected_setup_item_up(self))
         self.ui.buttonMoveDown.clicked.connect(lambda: self.action.move_selected_setup_item_down(self))
         self.ui.buttonAddComponent.clicked.connect(lambda: self.action.move_selected_component_to_setupList(self))
+        self.update_live_plot()
         
-        # Default optical system
-        self.current_optical_system = [
-            (self.matrices.free_space, (0.1, 1)),
-            (self.matrices.lens, 0.05),
-            (self.matrices.free_space, (0.3, 1))]
-        self.plot_optical_system()
+        # Live update for the optical system plot
+        self.setupList.itemChanged.connect(lambda _: self.update_live_plot())
+        self.setupList.model().rowsInserted.connect(lambda *_: self.update_live_plot())
+        self.setupList.model().rowsRemoved.connect(lambda *_: self.update_live_plot())
+        self.setupList.model().modelReset.connect(lambda *_: self.update_live_plot())
 
         self.cursor_vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('k', width=1, style=Qt.DashLine))
         self.plotWidget.addItem(self.cursor_vline, ignoreBounds=True)
@@ -157,7 +161,7 @@ class MainWindow(QMainWindow):
                 
         # Connect signal to function
         self.plotWidget.scene().sigMouseMoved.connect(mouseMoved)
-        self.res.setup_generated.connect(self.plot_optical_system_from_resonator)
+        
     
     def show_properties(self, properties: dict):
         layout: QtWidgets.QGridLayout = self.propertyLayout
@@ -200,6 +204,8 @@ class MainWindow(QMainWindow):
                 layout.addWidget(label, row, 0)
                 layout.addWidget(checkbox, row, 1)
                 self._property_fields[key] = checkbox
+                # Live-Plot-Update für Checkbox
+                checkbox.stateChanged.connect(lambda _: self.update_live_plot())
             elif is_beam and key == "Rayleigh range":
                 field = QtWidgets.QLineEdit()
                 field.setReadOnly(True)
@@ -207,6 +213,7 @@ class MainWindow(QMainWindow):
                 layout.addWidget(label, row, 0)
                 layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
+                # Kein Live-Plot nötig, da berechnet
             else:
                 if isinstance(value, (int, float)):
                     value_str = self.vc.convert_to_nearest_string(value, self)
@@ -218,6 +225,8 @@ class MainWindow(QMainWindow):
                 layout.addWidget(label, row, 0)
                 layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
+                # Live-Plot-Update für LineEdit
+                field.textChanged.connect(lambda _: self.update_live_plot())
                 if is_beam and key in ("Wavelength", "Waist radius"):
                     field.textChanged.connect(update_rayleigh_delayed)
 
@@ -229,15 +238,22 @@ class MainWindow(QMainWindow):
         layout.addItem(spacer, layout.rowCount(), 0, 1, 2)
 
     def on_component_clicked(self, item):
+        # Vorherigen Eintrag speichern
+        if hasattr(self, "_last_component_item") and self._last_component_item is not None:
+            last_component = self._last_component_item.data(QtCore.Qt.UserRole)
+            if isinstance(last_component, dict):
+                self.save_properties_to_component(last_component)
+        # Neuen Eintrag anzeigen
         component = item.data(QtCore.Qt.UserRole)
         if not isinstance(component, dict):
             return
-
         self.labelType.setText(component.get("type", ""))
         self.labelName.setText(component.get("name", ""))
         self.labelManufacturer.setText(component.get("manufacturer", ""))
         props = component.get("properties", {})
         self.show_properties(props)
+        # Merke aktuellen Eintrag
+        self._last_component_item = item
 
     def load_library_list_from_folder(self, folder_path):
         self.libraryList.clear()
@@ -265,16 +281,77 @@ class MainWindow(QMainWindow):
             self.componentList.clear()
             QtWidgets.QMessageBox.warning(self, "Fehler", f"Bibliothek konnte nicht geladen werden:\n{e}")
 
+    def build_optical_system_from_setup_list(self):
+        """
+        Baut das optische System aus den Komponenten in setupList.
+        Gibt eine Liste von (matrix_funktion, parameter) zurück.
+        """
+        optical_system = []
+        for i in range(self.setupList.count()):
+            item = self.setupList.item(i)
+            component = item.data(QtCore.Qt.UserRole)
+            if not isinstance(component, dict):
+                continue
+            ctype = component.get("type", "").strip().upper()
+            props = component.get("properties", {})
+
+            # Beispiel für verschiedene Komponenten
+            if ctype == "GENERIC" and component.get("name", "").strip().lower() == "beam":
+                # Beam ist nur Startparameter, kein optisches Element
+                continue
+            elif ctype == "GENERIC" and component.get("name", "").strip().lower() == "propagation":
+                length = props.get("Length", 0.1)
+                n = props.get("refractive index", 1)
+                optical_system.append((self.matrices.free_space, (length, n)))
+            elif ctype == "GENERIC" and component.get("name", "").strip().lower() == "lens":
+                f = props.get("Focal length", 0.1)
+                optical_system.append((self.matrices.lens, (f,)))
+            elif ctype == "GENERIC" and component.get("name", "").strip().lower() == "abcd":
+                # ABCD-Matrix direkt
+                A = props.get("A tangential", 1.0)
+                B = props.get("B tangential", 0.0)
+                C = props.get("C tangential", 0.0)
+                D = props.get("D tangential", 1.0)
+                optical_system.append((self.matrices.ABCD, (A, B, C, D)))
+            # ... weitere Typen nach Bedarf ergänzen ...
+            # Für Spiegel, Kristalle, etc. kannst du analog vorgehen
+
+        return optical_system
+    
+    def update_live_plot(self):
+        optical_system = self.build_optical_system_from_setup_list()
+        # Hole Startparameter aus dem Beam (immer an Position 0)
+        beam_item = self.setupList.item(0)
+        beam = beam_item.data(QtCore.Qt.UserRole)
+        props = beam.get("properties", {})
+        wavelength = props.get("Wavelength", 514E-9)
+        waist = props.get("Waist radius", 1E-3)
+        waist_pos = props.get("Waist position", 0.0)
+        n = 1  # Optional: aus Beam-Properties holen
+        self.plot_optical_system(z_start=waist_pos, wavelength=wavelength, beam_radius=waist, n=n, optical_system=optical_system)
+    
+    def save_properties_to_component(self, component):
+        for key, field in self._property_fields.items():
+            if isinstance(field, QtWidgets.QLineEdit):
+                text = field.text()
+                try:
+                    value = self.vc.convert_to_float(text, self)
+                except Exception:
+                    value = text
+                component["properties"][key] = value
+            elif isinstance(field, QtWidgets.QCheckBox):
+                component["properties"][key] = 1.0 if field.isChecked() else 0.0
+        
     def plot_optical_system_from_resonator(self, optical_system):
         self.plot_optical_system(optical_system=optical_system)
         
-    def plot_optical_system(self, z_start=0, wavelength=0.514E-6, beam_radius=1E-3, n=1, optical_system=None):
+    def plot_optical_system(self, z_start, wavelength, beam_radius, n, optical_system):
         """
         Plots the given optical system.
         """
-        if optical_system is None:
-            optical_system = self.current_optical_system
-            self.wavelength = wavelength
+        self.wavelength = wavelength
+        self.beam_radius = beam_radius
+        self.z_start = z_start
         
         self.plotWidget.clear()
         self.z_data, self.w_sag_data = self.beam.propagate_through_system(
@@ -308,98 +385,3 @@ class MainWindow(QMainWindow):
             # Bei Propagation z_element erhöhen
             if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
                 z_element += param[0]
-
-class ComponentList(QtWidgets.QListWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setDragDropMode(QtWidgets.QAbstractItemView.DragOnly)
-        self.setDragEnabled(True)
-
-    def mimeData(self, items):
-        item = items[0]
-        component = item.data(QtCore.Qt.UserRole)
-        mime = QtCore.QMimeData()
-        mime.setData("application/x-component", QtCore.QByteArray(json.dumps(component).encode()))
-        return mime
-
-class SetupList(QtWidgets.QListWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
-        self.setAcceptDrops(True)
-        self.setDragEnabled(True)
-        self.setDefaultDropAction(QtCore.Qt.MoveAction)
-
-        # Beam wie in Generic.json hinzufügen
-        beam_component = {
-            "type": "GENERIC",
-            "name": "Beam",
-            "manufacturer": "",
-            "properties": {
-                "Wavelength": 514E-9,
-                "Waist radius": 1.0E-3,
-                "Waist position": 0.0,
-                "Rayleigh range": 0.0
-            }
-        }
-        beam_item = QtWidgets.QListWidgetItem(beam_component["name"])
-        beam_item.setData(QtCore.Qt.UserRole, beam_component)
-        self.addItem(beam_item)
-
-    def keyPressEvent(self, event):
-        if event.key() == QtCore.Qt.Key_Delete:
-            # Mehrere markierte Items löschen, aber nie den Beam (Index 0)
-            for item in self.selectedItems():
-                row = self.row(item)
-                if row == 0:
-                    continue  # Beam nicht löschen
-                self.takeItem(row)
-        else:
-            super().keyPressEvent(event)
-
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasFormat("application/x-component"):
-            event.acceptProposedAction()
-        else:
-            super().dragEnterEvent(event)
-
-    def dragMoveEvent(self, event):
-        if event.mimeData().hasFormat("application/x-component"):
-            event.acceptProposedAction()
-        else:
-            super().dragMoveEvent(event)
-
-    def dropEvent(self, event):
-        # Externes Drag & Drop (z.B. von componentList)
-        if event.source() != self and event.mimeData().hasFormat("application/x-component"):
-            component = json.loads(bytes(event.mimeData().data("application/x-component")).decode())
-            is_beam = (
-                component.get("name", "").strip().lower() == "beam"
-                or component.get("type", "").strip().lower() == "beam"
-            )
-            # Prüfe, ob schon ein Beam existiert
-            for i in range(self.count()):
-                c = self.item(i).data(QtCore.Qt.UserRole)
-                if isinstance(c, dict) and (
-                    c.get("name", "").strip().lower() == "beam"
-                    or c.get("type", "").strip().lower() == "beam"
-                ):
-                    if is_beam:
-                        event.ignore()
-                        return
-            # Füge Beam immer an Position 0 ein, andere Komponenten ans Ende
-            if is_beam:
-                item = QtWidgets.QListWidgetItem(component.get("name", "Unnamed"))
-                item.setData(QtCore.Qt.UserRole, component)
-                self.insertItem(0, item)
-                self.setCurrentItem(item)
-                event.acceptProposedAction()
-            else:
-                item = QtWidgets.QListWidgetItem(component.get("name", "Unnamed"))
-                item.setData(QtCore.Qt.UserRole, component)
-                self.addItem(item)
-                self.setCurrentItem(item)
-                event.acceptProposedAction()
-        else:
-            # Internes Verschieben innerhalb der Liste
-            super().dropEvent(event)

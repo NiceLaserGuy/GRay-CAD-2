@@ -31,7 +31,8 @@
             "name": "Propagation",
             "manufacturer": "",
             "properties": {
-              "Length": 0.1
+              "Length": 0.1,
+              "Refractive index": 1.0
             }
           },
         {
