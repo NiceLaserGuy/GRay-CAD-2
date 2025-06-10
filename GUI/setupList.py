@@ -16,9 +16,12 @@ class SetupList(QtWidgets.QListWidget):
             "manufacturer": "",
             "properties": {
                 "Wavelength": 514E-9,
-                "Waist radius": 1.0E-3,
-                "Waist position": 0.0,
-                "Rayleigh range": 0.0
+                "Waist radius sagittal": 1.0E-3,
+                "Waist radius tangential": 1.0E-3,
+                "Waist position sagittal": 0.0,
+                "Waist position tangential": 0.0,
+                "Rayleigh range sagittal": 0.0,
+                "Rayleigh range tangential": 0.0
             }
         }
         beam_item = QtWidgets.QListWidgetItem(beam_component["name"])
@@ -45,7 +48,11 @@ class SetupList(QtWidgets.QListWidget):
             "name": "Lens",
             "manufacturer": "",
             "properties": {
-                "Focal length": 0.1
+                "Focal length tangential": 0.1,
+                "Focal length sagittal": 0.1,
+                "Radius of curvature tangential": 0.1,
+                "Radius of curvature sagittal": 0.1,
+                "Thickness": 0.01
             }
         }
         lens_item = QtWidgets.QListWidgetItem(lens["name"])

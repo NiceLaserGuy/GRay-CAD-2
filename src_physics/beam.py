@@ -92,7 +92,7 @@ class Beam():
     def propagate_through_system(self, wavelength, q_initial, elements, n=1):
         """
         Propagate beam through a sequence of optical elements
-        
+
         Args:
             q_initial: Initial q parameter
             elements: List of tuples (element_function, parameter)
@@ -101,25 +101,27 @@ class Beam():
         """
         lambda_ = wavelength
         q = q_initial
-        z_total = 0
+        z_total = 0.0
         z_positions = [z_total]
         w_values = [self.beam_radius(q, lambda_, n)]
-        
+
         for element, param in elements:
             if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
-                dz = 1E-4  # oder wie gewünscht
+                dz = 1E-4  # Schrittweite
                 steps = int(np.ceil(param[0] / dz))
-                z_start = z_total
-                q, z_total, zs, ws = Beam.propagate_free_space(q, dz, steps, lambda_, param[1])
-                z_positions.extend([z_start + z for z in np.array(zs)[1:]])
+                q, z_inc, zs, ws = Beam.propagate_free_space(q, dz, steps, lambda_, param[1])
+                # zs startet immer bei 0, daher Offset z_total
+                z_positions.extend([z_total + z for z in np.array(zs)[1:]])
                 w_values.extend(ws[1:])
+                z_total += param[0]
             else:
+                # Optisches Element: q ändern, aber z bleibt gleich!
                 if isinstance(param, tuple):
                     ABCD = element(*param)
                 else:
                     ABCD = element(param)
                 q = self.propagate_q(q, ABCD)
+                # Kein z_total-Update!
                 w_values.append(self.beam_radius(q, lambda_, n))
-                z_total = z_positions[-1]
                 z_positions.append(z_total)
         return z_positions, w_values

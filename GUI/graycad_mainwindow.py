@@ -162,8 +162,29 @@ class MainWindow(QMainWindow):
         # Connect signal to function
         self.plotWidget.scene().sigMouseMoved.connect(mouseMoved)
         
+    def closeEvent(self, event):
+        try:
+            self.setupList.model().modelReset.disconnect()
+            self.setupList.itemChanged.disconnect()
+            self.setupList.model().rowsInserted.disconnect()
+            self.setupList.model().rowsRemoved.disconnect()
+        except Exception:
+            pass
+        super().closeEvent(event)
+        
+    def make_field_slot(self, key, comp):
+        def slot():
+            self.save_properties_to_component(comp)
+            self.update_live_plot()
+        return slot
     
-    def show_properties(self, properties: dict):
+    def make_checkbox_slot(self, key, comp):
+        def slot():
+            self.save_properties_to_component(comp)
+            self.update_live_plot()
+        return slot
+    
+    def show_properties(self, properties: dict, component=None):
         layout: QtWidgets.QGridLayout = self.propertyLayout
         while layout.count():
             child = layout.takeAt(0)
@@ -185,13 +206,18 @@ class MainWindow(QMainWindow):
         def update_rayleigh():
             try:
                 wavelength = self.vc.convert_to_float(self._property_fields["Wavelength"].text(), self)
-                waist = self.vc.convert_to_float(self._property_fields["Waist radius"].text(), self)
+                waist_tan = self.vc.convert_to_float(self._property_fields["Waist radius tangential"].text(), self)
+                waist_sag = self.vc.convert_to_float(self._property_fields["Waist radius sagittal"].text(), self)
                 n = 1
-                rayleigh = self.beam.rayleigh_length(wavelength, waist, n)
-                value_str = self.vc.convert_to_nearest_string(rayleigh, self)
-                self._property_fields["Rayleigh range"].setText(value_str)
+                rayleigh_sag = self.beam.rayleigh_length(wavelength, waist_sag, n)
+                rayleigh_tan = self.beam.rayleigh_length(wavelength, waist_tan, n)
+                value_str_sag = self.vc.convert_to_nearest_string(rayleigh_sag, self)
+                value_str_tan = self.vc.convert_to_nearest_string(rayleigh_tan, self)
+                self._property_fields["Rayleigh range sagittal"].setText(value_str_sag)
+                self._property_fields["Rayleigh range tangential"].setText(value_str_tan)
             except Exception:
-                self._property_fields["Rayleigh range"].setText("")
+                self._property_fields["Rayleigh range sagittal"].setText("")
+                self._property_fields["Rayleigh range tangential"].setText("")
 
         self._property_update_timer.timeout.connect(update_rayleigh)
 
@@ -204,8 +230,8 @@ class MainWindow(QMainWindow):
                 layout.addWidget(label, row, 0)
                 layout.addWidget(checkbox, row, 1)
                 self._property_fields[key] = checkbox
-                # Live-Plot-Update für Checkbox
-                checkbox.stateChanged.connect(lambda _: self.update_live_plot())
+                # Korrekt: component explizit binden!
+                checkbox.stateChanged.connect(self.make_checkbox_slot(key, component))
             elif is_beam and key == "Rayleigh range":
                 field = QtWidgets.QLineEdit()
                 field.setReadOnly(True)
@@ -213,7 +239,6 @@ class MainWindow(QMainWindow):
                 layout.addWidget(label, row, 0)
                 layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
-                # Kein Live-Plot nötig, da berechnet
             else:
                 if isinstance(value, (int, float)):
                     value_str = self.vc.convert_to_nearest_string(value, self)
@@ -225,13 +250,14 @@ class MainWindow(QMainWindow):
                 layout.addWidget(label, row, 0)
                 layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
-                # Live-Plot-Update für LineEdit
-                field.textChanged.connect(lambda _: self.update_live_plot())
+                # Korrekt: component explizit binden!
+                field.textChanged.connect(self.make_field_slot(key, component))
+                
                 if is_beam and key in ("Wavelength", "Waist radius"):
                     field.textChanged.connect(update_rayleigh_delayed)
-
+                    
         # Initial berechnen
-        if is_beam and "Rayleigh range" in self._property_fields:
+        if is_beam and ("Rayleigh range sagittal" in self._property_fields or "Rayleigh range tangential" in self._property_fields):
             update_rayleigh()
 
         spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
@@ -251,7 +277,7 @@ class MainWindow(QMainWindow):
         self.labelName.setText(component.get("name", ""))
         self.labelManufacturer.setText(component.get("manufacturer", ""))
         props = component.get("properties", {})
-        self.show_properties(props)
+        self.show_properties(props, component)
         # Merke aktuellen Eintrag
         self._last_component_item = item
 
@@ -281,7 +307,7 @@ class MainWindow(QMainWindow):
             self.componentList.clear()
             QtWidgets.QMessageBox.warning(self, "Fehler", f"Bibliothek konnte nicht geladen werden:\n{e}")
 
-    def build_optical_system_from_setup_list(self):
+    def build_optical_system_from_setup_list(self, mode="sagittal"):
         """
         Baut das optische System aus den Komponenten in setupList.
         Gibt eine Liste von (matrix_funktion, parameter) zurück.
@@ -295,40 +321,44 @@ class MainWindow(QMainWindow):
             ctype = component.get("type", "").strip().upper()
             props = component.get("properties", {})
 
-            # Beispiel für verschiedene Komponenten
             if ctype == "GENERIC" and component.get("name", "").strip().lower() == "beam":
-                # Beam ist nur Startparameter, kein optisches Element
                 continue
             elif ctype == "GENERIC" and component.get("name", "").strip().lower() == "propagation":
                 length = props.get("Length", 0.1)
-                n = props.get("refractive index", 1)
+                n = props.get("Refractive index", 1)
                 optical_system.append((self.matrices.free_space, (length, n)))
             elif ctype == "GENERIC" and component.get("name", "").strip().lower() == "lens":
-                f = props.get("Focal length", 0.1)
+                if mode == "sagittal":
+                    f = props.get("Focal length sagittal", 0.1)
+                else:
+                    f = props.get("Focal length tangential", 0.1)
                 optical_system.append((self.matrices.lens, (f,)))
-            elif ctype == "GENERIC" and component.get("name", "").strip().lower() == "abcd":
-                # ABCD-Matrix direkt
-                A = props.get("A tangential", 1.0)
-                B = props.get("B tangential", 0.0)
-                C = props.get("C tangential", 0.0)
-                D = props.get("D tangential", 1.0)
-                optical_system.append((self.matrices.ABCD, (A, B, C, D)))
-            # ... weitere Typen nach Bedarf ergänzen ...
-            # Für Spiegel, Kristalle, etc. kannst du analog vorgehen
-
+            # ... weitere Typen ...
         return optical_system
     
     def update_live_plot(self):
-        optical_system = self.build_optical_system_from_setup_list()
+        optical_system_sag = self.build_optical_system_from_setup_list(mode="sagittal")
+        optical_system_tan = self.build_optical_system_from_setup_list(mode="tangential")
         # Hole Startparameter aus dem Beam (immer an Position 0)
         beam_item = self.setupList.item(0)
         beam = beam_item.data(QtCore.Qt.UserRole)
         props = beam.get("properties", {})
         wavelength = props.get("Wavelength", 514E-9)
-        waist = props.get("Waist radius", 1E-3)
-        waist_pos = props.get("Waist position", 0.0)
+        waist_sag = props.get("Waist radius sagittal", 1E-3)
+        waist_tan = props.get("Waist radius tangential", 1E-3)
+        waist_pos_sag = props.get("Waist position sagittal", 0.0)
+        waist_pos_tan = props.get("Waist position tangential", 0.0)
         n = 1  # Optional: aus Beam-Properties holen
-        self.plot_optical_system(z_start=waist_pos, wavelength=wavelength, beam_radius=waist, n=n, optical_system=optical_system)
+        self.plot_optical_system(
+            z_start_sag=waist_pos_sag,
+            z_start_tan=waist_pos_tan,
+            wavelength=wavelength,
+            waist_sag=waist_sag,
+            waist_tan=waist_tan,
+            n=n,
+            optical_system_sag=optical_system_sag,
+            optical_system_tan=optical_system_tan
+        )
     
     def save_properties_to_component(self, component):
         for key, field in self._property_fields.items():
@@ -341,23 +371,27 @@ class MainWindow(QMainWindow):
                 component["properties"][key] = value
             elif isinstance(field, QtWidgets.QCheckBox):
                 component["properties"][key] = 1.0 if field.isChecked() else 0.0
+        if hasattr(self, "_last_component_item") and self._last_component_item is not None:
+            self._last_component_item.setData(QtCore.Qt.UserRole, component)
         
     def plot_optical_system_from_resonator(self, optical_system):
         self.plot_optical_system(optical_system=optical_system)
         
-    def plot_optical_system(self, z_start, wavelength, beam_radius, n, optical_system):
-        """
-        Plots the given optical system.
-        """
+    def plot_optical_system(self, z_start_sag, z_start_tan, wavelength, waist_sag, waist_tan, n, optical_system_sag, optical_system_tan):
         self.wavelength = wavelength
-        self.beam_radius = beam_radius
-        self.z_start = z_start
-        
+        self.beam_radius = waist_sag  # oder None, falls nicht global benötigt
+        self.z_start = z_start_sag    # oder None, falls nicht global benötigt
+
         self.plotWidget.clear()
+
+        # Sagittal
         self.z_data, self.w_sag_data = self.beam.propagate_through_system(
-            wavelength, self.beam.q_value(z_start, beam_radius, wavelength, n), optical_system
+            wavelength, self.beam.q_value(z_start_sag, waist_sag, wavelength, n), optical_system_sag, n=n
         )
-        self.w_tan_data = self.w_sag_data
+        # Tangential
+        _, self.w_tan_data = self.beam.propagate_through_system(
+            wavelength, self.beam.q_value(z_start_tan, waist_tan, wavelength, n), optical_system_tan, n=n
+        )
 
         self.z_data = np.array(self.z_data)
         self.w_sag_data = np.array(self.w_sag_data)
@@ -374,14 +408,13 @@ class MainWindow(QMainWindow):
         self.plotWidget.getAxis('left').setTextPen(axis_pen)
         self.plotWidget.getAxis('bottom').setTextPen(axis_pen)
 
-        self.plotWidget.plot(self.z_data, self.w_sag_data, pen=pg.mkPen(color='b', width=2))
-        self.plotWidget.plot(self.z_data, self.w_tan_data, pen=pg.mkPen(color='r', width=2))
+        self.plotWidget.plot(self.z_data, self.w_sag_data, pen=pg.mkPen(color='b', width=2), name="Sagittal")
+        self.plotWidget.plot(self.z_data, self.w_tan_data, pen=pg.mkPen(color='r', width=2), name="Tangential")
 
+        # Vertikale Linien wie gehabt...
         z_element = 0
-        for element, param in optical_system:
-            # Prüfe, ob das Element KEINE Propagation ist
-            if not (hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__):
-                self.plotWidget.addLine(x=z_element, pen=pg.mkPen(color='#333333'))
-            # Bei Propagation z_element erhöhen
+        for idx, (element, param) in enumerate(optical_system_sag):
             if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
                 z_element += param[0]
+            else:
+                self.plotWidget.addLine(x=z_element, pen=pg.mkPen(color='#333333'))
