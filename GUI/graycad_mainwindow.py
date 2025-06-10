@@ -191,7 +191,10 @@ class MainWindow(QMainWindow):
             if child.widget():
                 child.widget().deleteLater()
 
-        is_beam = "Wavelength" in properties and "Waist radius" in properties
+        is_beam = (
+            "Wavelength" in properties and
+            ("Waist radius sagittal" in properties or "Waist radius tangential" in properties)
+        )
         self._property_fields = {}
 
         # Verzögerungs-Timer für dynamische Updates
@@ -232,7 +235,7 @@ class MainWindow(QMainWindow):
                 self._property_fields[key] = checkbox
                 # Korrekt: component explizit binden!
                 checkbox.stateChanged.connect(self.make_checkbox_slot(key, component))
-            elif is_beam and key == "Rayleigh range":
+            elif is_beam and key == "Rayleigh range ":
                 field = QtWidgets.QLineEdit()
                 field.setReadOnly(True)
                 field.setStyleSheet("background-color: #eee; color: #888;")
@@ -253,7 +256,7 @@ class MainWindow(QMainWindow):
                 # Korrekt: component explizit binden!
                 field.textChanged.connect(self.make_field_slot(key, component))
                 
-                if is_beam and key in ("Wavelength", "Waist radius"):
+                if is_beam and key in ("Wavelength", "Waist radius sagittal", "Waist radius tangential"):
                     field.textChanged.connect(update_rayleigh_delayed)
                     
         # Initial berechnen

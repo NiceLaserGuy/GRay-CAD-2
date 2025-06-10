@@ -1,5 +1,6 @@
 import numpy as np
 from src_physics.matrices import Matrices
+from PyQt5.QtWidgets import QMessageBox
 import pyqtgraph as pg
 from numba import njit
 
@@ -24,9 +25,12 @@ class Beam():
         Returns:
         complex: q parameter of the beam.
         """
+        if beam_radius <= 0:
+            QMessageBox.critical(None, "Error", "Beam radius must be greater than zero.")
+            return None
         zr = (np.pi * beam_radius**2 * n) / (wavelength)
         return z + (1j * zr)
-    
+        
     def beam_radius(self, q, wavelength, n):
         """
         Calculate the beam radius from the q parameter.

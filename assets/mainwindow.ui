@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>980</width>
-    <height>872</height>
+    <width>985</width>
+    <height>934</height>
    </rect>
   </property>
   <property name="font">
@@ -102,25 +102,6 @@
        </size>
       </property>
      </spacer>
-    </item>
-    <item row="7" column="1">
-     <widget class="PlotWidget" name="plotWidget" native="true">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="minimumSize">
-       <size>
-        <width>0</width>
-        <height>0</height>
-       </size>
-      </property>
-      <property name="mouseTracking">
-       <bool>true</bool>
-      </property>
-     </widget>
     </item>
     <item row="8" column="1">
      <layout class="QHBoxLayout" name="horizontalLayout">
@@ -445,6 +426,25 @@
       </property>
      </spacer>
     </item>
+    <item row="7" column="1">
+     <widget class="PlotWidget" name="plotWidget" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>500</height>
+       </size>
+      </property>
+      <property name="mouseTracking">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -452,8 +452,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>980</width>
-     <height>22</height>
+     <width>985</width>
+     <height>21</height>
     </rect>
    </property>
    <property name="tabletTracking">
