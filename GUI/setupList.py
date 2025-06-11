@@ -21,7 +21,8 @@ class SetupList(QtWidgets.QListWidget):
                 "Waist position sagittal": 0.0,
                 "Waist position tangential": 0.0,
                 "Rayleigh range sagittal": 0.0,
-                "Rayleigh range tangential": 0.0
+                "Rayleigh range tangential": 0.0,
+                "IS_ROUND": 1.0
             }
         }
         beam_item = QtWidgets.QListWidgetItem(beam_component["name"])
@@ -35,7 +36,7 @@ class SetupList(QtWidgets.QListWidget):
             "manufacturer": "",
             "properties": {
                 "Length": 0.2,
-                "refractive index": 1.0
+                "Refractive index": 1.0
             }
         }
         prop1_item = QtWidgets.QListWidgetItem(propagation1["name"])
@@ -52,7 +53,8 @@ class SetupList(QtWidgets.QListWidget):
                 "Focal length sagittal": 0.1,
                 "Radius of curvature tangential": 0.1,
                 "Radius of curvature sagittal": 0.1,
-                "Thickness": 0.01
+                "Thickness": 0.01,
+                "IS_ROUND": 1.0
             }
         }
         lens_item = QtWidgets.QListWidgetItem(lens["name"])
@@ -66,7 +68,7 @@ class SetupList(QtWidgets.QListWidget):
             "manufacturer": "",
             "properties": {
                 "Length": 0.3,
-                "refractive index": 1.0
+                "Refractive index": 1.0
             }
         }
         prop2_item = QtWidgets.QListWidgetItem(propagation2["name"])

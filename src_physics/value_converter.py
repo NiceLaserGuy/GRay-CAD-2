@@ -24,7 +24,7 @@ class ValueConverter():
             unit = match.group(2)
             if unit is None:
                 self._cancel_error()
-                return number * units['mm']
+                return number * units['m']
             if unit in units:
                 self._cancel_error()
                 return number * units[unit]

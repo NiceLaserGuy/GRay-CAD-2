@@ -8,6 +8,7 @@ from numba import njit
 def beam_radius_numba(q, wavelength, n):
     return np.sqrt(-wavelength / (np.pi * n * np.imag(1/q)))
 
+
 class Beam():
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -30,7 +31,7 @@ class Beam():
             return None
         zr = (np.pi * beam_radius**2 * n) / (wavelength)
         return z + (1j * zr)
-        
+
     def beam_radius(self, q, wavelength, n):
         """
         Calculate the beam radius from the q parameter.
@@ -43,7 +44,7 @@ class Beam():
         float: Beam radius.
         """
         return np.sqrt(-wavelength / (np.pi * n * np.imag(1/q)))
-    
+
     def rayleigh_length(self, wavelength, beam_radius, n=1):
         """
         Calculate the Rayleigh length of a beam.

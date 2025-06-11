@@ -55,10 +55,12 @@ class Action:
         msg.setTextInteractionFlags(Qt.TextBrowserInteraction)
         msg.setIcon(QMessageBox.Information)
         msg.setText(
-            "1. Use the library to manage your components.<br>"
-            "2. Take advantage of the simulation features like the Modematcher and the Cavity Designer.<br>"
-            "3. Don't forget to save your work!<br>"
-            '4. Report bugs on GitHub: <a href="https://github.com/NiceLaserGuy/GRay-CAD-2">https://github.com/NiceLaserGuy/GRay-CAD-2</a>'
+            "1. Use the Edit/Library to manage your components.<br>"
+            "2. You can drag and drop components into the setup list.<br>"
+            "3. If you dont type a unit, it will be interpreted as meters.<br>"
+            "4. Take advantage of the simulation features like the Modematcher and the Cavity Designer.<br>"
+            "5. Don't forget to save your work!<br>"
+            '6. Report bugs on GitHub: <a href="https://github.com/NiceLaserGuy/GRay-CAD-2">https://github.com/NiceLaserGuy/GRay-CAD-2</a>'
         )
         msg.exec()
 

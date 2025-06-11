@@ -1,4 +1,6 @@
 {
+    "name": "MIRRORS",
+    "type": "LIBRARY",
     "components": [
         {
             "type": "MIRROR",
@@ -110,7 +112,5 @@
                 "IS_ROUND": 1.0
             }
         }
-    ],
-    "name": "MIRRORS",
-    "type": "LIBRARY"
+    ]
 }
