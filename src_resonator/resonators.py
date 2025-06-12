@@ -139,8 +139,8 @@ class Resonator(QObject):
         for component in data.get("components", []):
             if component.get("type") == "MIRROR":
                 properties = component.get("properties", {})
-                curvature_tangential = properties.get("CURVATURE_TANGENTIAL", 0.0)
-                curvature_sagittal = properties.get("CURVATURE_SAGITTAL", 0.0)
+                curvature_tangential = properties.get("Radius of curvature tangential", 0.0)
+                curvature_sagittal = properties.get("Radius of curvature sagittal", 0.0)
                 is_round = properties.get("IS_ROUND", 0.0)
                 
                 # Normale Variante speichern

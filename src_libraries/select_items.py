@@ -225,8 +225,8 @@ class ItemSelector(QObject):
             component = self.components_data[selected_index]
 
             # Extract CURVATURE_TANGENTIAL and CURVATURE_SAGITTAL
-            curvature_tangential = component.get("properties", {}).get("CURVATURE_TANGENTIAL", "N/A")
-            curvature_sagittal = component.get("properties", {}).get("CURVATURE_SAGITTAL", "N/A")
+            curvature_tangential = component.get("properties", {}).get("Radius of curvature tangential", "N/A")
+            curvature_sagittal = component.get("properties", {}).get("Radius of curvature sagittal", "N/A")
 
             if component.get("properties", {}).get("IS_ROUND", 0.0) == 1.0:
                 self.toggle_curvature_tangential(True)
@@ -348,9 +348,9 @@ class ItemSelector(QObject):
             selected_component = self.components_data[selected_index].copy()
             # Werte aus dem UI holen und umrechnen
             try:
-                selected_component["properties"]["CURVATURE_TANGENTIAL"] = self.vc.convert_to_float(
+                selected_component["properties"]["Radius of curvature tangential"] = self.vc.convert_to_float(
                     self.ui_select_component_window.edit_curvature_tangential.text().strip(), self.library_window)
-                selected_component["properties"]["CURVATURE_SAGITTAL"] = self.vc.convert_to_float(
+                selected_component["properties"]["Radius of curvature sagittal"] = self.vc.convert_to_float(
                     self.ui_select_component_window.edit_curvature_sagittal.text().strip(), self.library_window)
             except Exception:
                 QMessageBox.warning(
@@ -436,9 +436,9 @@ class ItemSelector(QObject):
             selected_component = self.components_data[selected_index].copy()
             # Werte aus dem UI holen und umrechnen
             try:
-                selected_component["properties"]["CURVATURE_TANGENTIAL"] = self.vc.convert_to_float(
+                selected_component["properties"]["Radius of curvature tangential"] = self.vc.convert_to_float(
                     self.ui_select_component_window.edit_curvature_tangential.text().strip(), self.library_window)
-                selected_component["properties"]["CURVATURE_SAGITTAL"] = self.vc.convert_to_float(
+                selected_component["properties"]["Radius of curvature sagittal"] = self.vc.convert_to_float(
                     self.ui_select_component_window.edit_curvature_sagittal.text().strip(), self.library_window)
             except Exception:
                 QMessageBox.warning(

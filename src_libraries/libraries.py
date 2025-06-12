@@ -541,10 +541,11 @@ class Libraries(QObject):
                 "name": "new lens",
                 "manufacturer": "",
                 "properties": {
-                    "CURVATURE_IN_SAG": "",
-                    "CURVATURE_OUT_SAG": "",
-                    "CURVATURE_IN_TAN": "",
-                    "CURVATURE_OUT_TAN": ""
+                    "Focal length tangential": "",
+                    "Focal length sagittal": "",
+                    "Radius of curvature tangential": "",
+                    "Radius of curvature sagittal": "",
+
                 }
             }
         else:  # Default to MIRROR
@@ -553,8 +554,8 @@ class Libraries(QObject):
                 "name": "new mirror",
                 "manufacturer": "",
                 "properties": {
-                    "CURVATURE_TANGENTIAL": "",
-                    "CURVATURE_SAGITTAL": "",
+                    "Radius of curvature tangential": "",
+                    "Radius of curvature sagittal": "",
                     "IS_ROUND": ""
                 }
             }

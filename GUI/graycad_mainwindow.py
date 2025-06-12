@@ -49,6 +49,7 @@ class MainWindow(QMainWindow):
         self.modematcher = ModematcherParameters(self)
         self.lib = Libraries(self)
         self.item_selector_modematcher = ItemSelector(self)
+        self.item_selector_res = ItemSelector(self)
         self.matrices = Matrices()
         self.beam = Beam()
         self.vc = ValueConverter()

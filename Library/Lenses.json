@@ -1,5 +1,17 @@
 {
     "name": "Lenses",
     "type": "LIBRARY",
-    "components": []
+    "components": [
+        {
+            "type": "LENS",
+            "name": "new lens",
+            "manufacturer": "",
+            "properties": {
+                "CURVATURE_IN_SAG": "",
+                "CURVATURE_OUT_SAG": "",
+                "CURVATURE_IN_TAN": "",
+                "CURVATURE_OUT_TAN": ""
+            }
+        }
+    ]
 }
