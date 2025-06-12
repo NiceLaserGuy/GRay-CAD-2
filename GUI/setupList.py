@@ -1,5 +1,6 @@
 from PyQt5 import QtWidgets, QtCore
 import json
+import copy
 
 class SetupList(QtWidgets.QListWidget):
     def __init__(self, parent=None):
@@ -9,71 +10,31 @@ class SetupList(QtWidgets.QListWidget):
         self.setDragEnabled(True)
         self.setDefaultDropAction(QtCore.Qt.MoveAction)
 
-        # Beam wie in Generic.json hinzufügen
-        beam_component = {
-            "type": "GENERIC",
-            "name": "Beam",
-            "manufacturer": "",
-            "properties": {
-                "Wavelength": 514E-9,
-                "Waist radius sagittal": 1.0E-3,
-                "Waist radius tangential": 1.0E-3,
-                "Waist position sagittal": 0.0,
-                "Waist position tangential": 0.0,
-                "Rayleigh range sagittal": 0.0,
-                "Rayleigh range tangential": 0.0,
-                "IS_ROUND": 1.0
-            }
-        }
-        beam_item = QtWidgets.QListWidgetItem(beam_component["name"])
-        beam_item.setData(QtCore.Qt.UserRole, beam_component)
-        self.addItem(beam_item)
-        
-        # Erste Propagation
-        propagation1 = {
-            "type": "GENERIC",
-            "name": "Propagation",
-            "manufacturer": "",
-            "properties": {
-                "Length": 0.2,
-                "Refractive index": 1.0
-            }
-        }
-        prop1_item = QtWidgets.QListWidgetItem(propagation1["name"])
-        prop1_item.setData(QtCore.Qt.UserRole, propagation1)
-        self.addItem(prop1_item)
+        # Lade Komponenten aus Generic.json
+        try:
+            with open("Library/Generic.json", "r", encoding="utf-8") as f:
+                generic_data = json.load(f)
+            components = generic_data.get("components", [])
 
-        # Linse
-        lens = {
-            "type": "GENERIC",
-            "name": "Lens",
-            "manufacturer": "",
-            "properties": {
-                "Focal length tangential": 0.1,
-                "Focal length sagittal": 0.1,
-                "Radius of curvature tangential": 0.1,
-                "Radius of curvature sagittal": 0.1,
-                "Thickness": 0.01,
-                "IS_ROUND": 1.0
-            }
-        }
-        lens_item = QtWidgets.QListWidgetItem(lens["name"])
-        lens_item.setData(QtCore.Qt.UserRole, lens)
-        self.addItem(lens_item)
+            # Finde die gewünschten Komponenten anhand von type oder name
+            def find_component(key, value):
+                for comp in components:
+                    if comp.get(key, "").strip().lower() == value:
+                        return comp
+                return None
 
-        # Zweite Propagation
-        propagation2 = {
-            "type": "GENERIC",
-            "name": "Propagation",
-            "manufacturer": "",
-            "properties": {
-                "Length": 0.3,
-                "Refractive index": 1.0
-            }
-        }
-        prop2_item = QtWidgets.QListWidgetItem(propagation2["name"])
-        prop2_item.setData(QtCore.Qt.UserRole, propagation2)
-        self.addItem(prop2_item)
+            beam = find_component("type", "beam") or find_component("name", "beam")
+            propagation = find_component("type", "propagation") or find_component("name", "propagation")
+            lens = find_component("type", "lens") or find_component("name", "lens")
+
+            # Füge sie in der gewünschten Reihenfolge hinzu
+            for comp in [beam, propagation, lens, propagation]:
+                if comp is not None:
+                    item = QtWidgets.QListWidgetItem(comp.get("name", "Unnamed"))
+                    item.setData(QtCore.Qt.UserRole, copy.deepcopy(comp))
+                    self.addItem(item)
+        except Exception as e:
+            print(f"Fehler beim Laden von Generic.json: {e}")
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Delete:

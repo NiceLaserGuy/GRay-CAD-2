@@ -333,6 +333,59 @@ class MainWindow(QMainWindow):
         layout.addItem(spacer, row, 0, 1, 3)
         
         # ...nachdem alle Felder angelegt wurden...
+        
+        self._syncing_focal_curvature = False
+
+        def make_focal_to_curvature_slot(focal_key, curvature_key):
+            def slot():
+                if self._syncing_focal_curvature:
+                    return
+                try:
+                    self._syncing_focal_curvature = True
+                    focal_field = self._property_fields.get(focal_key)
+                    curvature_field = self._property_fields.get(curvature_key)
+                    if focal_field and curvature_field:
+                        focal_val = self.vc.convert_to_float(focal_field.text(), self)
+                        if focal_val is not None:
+                            curvature_val = 2 * focal_val
+                            curvature_field.setText(self.vc.convert_to_nearest_string(curvature_val, self))
+                finally:
+                    self._syncing_focal_curvature = False
+            return slot
+
+        def make_curvature_to_focal_slot(curvature_key, focal_key):
+            def slot():
+                if self._syncing_focal_curvature:
+                    return
+                try:
+                    self._syncing_focal_curvature = True
+                    curvature_field = self._property_fields.get(curvature_key)
+                    focal_field = self._property_fields.get(focal_key)
+                    if curvature_field and focal_field:
+                        curvature_val = self.vc.convert_to_float(curvature_field.text(), self)
+                        if curvature_val is not None:
+                            focal_val = curvature_val / 2
+                            focal_field.setText(self.vc.convert_to_nearest_string(focal_val, self))
+                finally:
+                    self._syncing_focal_curvature = False
+            return slot
+
+        # Verbinde die Felder
+        if "Focal length sagittal" in self._property_fields and "Radius of curvature sagittal" in self._property_fields:
+            self._property_fields["Focal length sagittal"].textChanged.connect(
+                make_focal_to_curvature_slot("Focal length sagittal", "Radius of curvature sagittal")
+            )
+            self._property_fields["Radius of curvature sagittal"].textChanged.connect(
+                make_curvature_to_focal_slot("Radius of curvature sagittal", "Focal length sagittal")
+            )
+
+        if "Focal length tangential" in self._property_fields and "Radius of curvature tangential" in self._property_fields:
+            self._property_fields["Focal length tangential"].textChanged.connect(
+                make_focal_to_curvature_slot("Focal length tangential", "Radius of curvature tangential")
+            )
+            self._property_fields["Radius of curvature tangential"].textChanged.connect(
+                make_curvature_to_focal_slot("Radius of curvature tangential", "Focal length tangential")
+            )
 
         def update_spherical_state():
             is_spherical = self._property_fields["IS_ROUND"].isChecked()
@@ -461,23 +514,29 @@ class MainWindow(QMainWindow):
         waist_pos_sag = props.get("Waist position sagittal", 0.0)
         waist_pos_tan = props.get("Waist position tangential", 0.0)
         n = 1  # Optional: aus Beam-Properties holen
-        self.plot_optical_system(
-            z_start_sag=waist_pos_sag,
-            z_start_tan=waist_pos_tan,
-            wavelength=wavelength,
-            waist_sag=waist_sag,
-            waist_tan=waist_tan,
-            n=n,
-            optical_system_sag=optical_system_sag,
-            optical_system_tan=optical_system_tan
-        )
+        try:
+            self.plot_optical_system(
+                z_start_sag=waist_pos_sag,
+                z_start_tan=waist_pos_tan,
+                wavelength=wavelength,
+                waist_sag=waist_sag,
+                waist_tan=waist_tan,
+                n=n,
+                optical_system_sag=optical_system_sag,
+                optical_system_tan=optical_system_tan
+            )
+        except Exception:
+            pass
     
     def save_properties_to_component(self, component):
         for key, field in self._property_fields.items():
             if isinstance(field, QtWidgets.QLineEdit):
                 text = field.text()
                 try:
-                    value = self.vc.convert_to_float(text, self)
+                    if key == "Refractive index":
+                        value = float(text)  # Nur in float umwandeln, KEIN ValueConverter!
+                    else:
+                        value = self.vc.convert_to_float(text, self)
                 except Exception:
                     value = text
                 component["properties"][key] = value

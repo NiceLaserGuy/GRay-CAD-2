@@ -18,20 +18,20 @@ class ValueConverter():
             'µm': 1e-6, 'um': 1e-6, 'mm': 1e-3, 'cm': 1e-2,
             'm': 1, 'km': 1e3, 'Inf': 1e30, 'inf': 1e30
         }
-        match = re.match(r"(\d+\.?\d*)\s*(\w+)?", value)
+        match = re.match(r"(-?\d+\.?\d*)\s*([a-zA-Zµ]+)?", value)
         if match:
             number = float(match.group(1))
             unit = match.group(2)
             if unit is None:
                 self._cancel_error()
-                return number * units['m']
+                return number * units['cm']
             if unit in units:
                 self._cancel_error()
                 return number * units[unit]
         # Fehler verzögert anzeigen
         self._pending_error = value
         self._pending_parent = parent
-        self._error_timer.start(500)
+        self._error_timer.start(1000)
         return None
 
     def _show_delayed_error(self):
@@ -78,7 +78,7 @@ class ValueConverter():
         for unit, factor in units.items():
             if unit == 'Inf' and abs(value) >= 1e29:
                 return unit
-            if abs(value / 100) <= factor:
+            if abs(value / 1000) <= factor:
                 num = value / factor
                 num_str = f"{num:.3f}".rstrip('0').rstrip('.')
                 return f"{num_str} {unit}"
@@ -86,5 +86,5 @@ class ValueConverter():
         # Fehlermeldung nur, wenn keine passende Einheit gefunden wurde
         self._pending_error = value
         self._pending_parent = parent
-        self._error_timer.start(500)
+        self._error_timer.start(1000)
         return f"{value:.3f}"

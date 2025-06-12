@@ -204,8 +204,8 @@ class Libraries(QObject):
             component = self.components_data[selected_index]
 
             # Extract CURVATURE_TANGENTIAL and CURVATURE_SAGITTAL
-            curvature_tangential = component.get("properties", {}).get("CURVATURE_TANGENTIAL", "N/A")
-            curvature_sagittal = component.get("properties", {}).get("CURVATURE_SAGITTAL", "N/A")
+            curvature_tangential = component.get("properties", {}).get("Radius of curvature tangential", "N/A")
+            curvature_sagittal = component.get("properties", {}).get("Radius of curvature sagittal", "N/A")
 
             # Formatierung mit ValueConverter
             if isinstance(curvature_tangential, (int, float)):
@@ -436,14 +436,15 @@ class Libraries(QObject):
         # Handle properties based on the type
         if component["type"] == "LENS":
             try:
-                component["properties"]["CURVATURE_IN_SAG"] = self.value_converter.convert_to_float(
-                    self.ui_library.edit_curvature_in_sag.text().strip(), self.library_window)
-                component["properties"]["CURVATURE_OUT_SAG"] = self.value_converter.convert_to_float(
-                    self.ui_library.edit_curvature_out_sag.text().strip(), self.library_window)
-                component["properties"]["CURVATURE_IN_TAN"] = self.value_converter.convert_to_float(
-                    self.ui_library.edit_curvature_in_tan.text().strip(), self.library_window)
-                component["properties"]["CURVATURE_OUT_TAN"] = self.value_converter.convert_to_float(
-                    self.ui_library.edit_curvature_out_tan.text().strip(), self.library_window)
+                component["properties"]["Radius of curvature tangential"] = self.value_converter.convert_to_float(
+                    self.ui_library.edit_curvature_tangential.text().strip(), self.library_window)
+                component["properties"]["Radius of curvature sagittal"] = self.value_converter.convert_to_float(
+                    self.ui_library.edit_curvature_sagittal.text().strip(), self.library_window)
+                component["properties"]["Focal length tangential"] = self.value_converter.convert_to_float(
+                    self.ui_library.edit_focal_length_tangential.text().strip(), self.library_window)
+                component["properties"]["Focal length sagittal"] = self.value_converter.convert_to_float(
+                    self.ui_library.edit_focal_length_sagittal.text().strip(), self.library_window)
+                
                 # Determine if the component is round
                 if self.ui_library.checkBox_is_spherical.isChecked():
                     component["properties"]["IS_ROUND"] = 1.0 # True
@@ -463,8 +464,8 @@ class Libraries(QObject):
                 curvature_sagittal = self.value_converter.convert_to_float(
                     self.ui_library.edit_curvature_sagittal.text().strip(), self.library_window)
 
-                component["properties"]["CURVATURE_TANGENTIAL"] = curvature_tangential
-                component["properties"]["CURVATURE_SAGITTAL"] = curvature_sagittal
+                component["properties"]["Radius of curvature tangential"] = curvature_tangential
+                component["properties"]["Radius of curvature sagittal"] = curvature_sagittal
 
                 # Determine if the component is round
                 if self.ui_library.checkBox_is_spherical.isChecked():

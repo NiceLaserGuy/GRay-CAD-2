@@ -138,38 +138,12 @@ background-color: rgb(186, 189, 182);</string>
        <item row="2" column="1">
         <widget class="QLineEdit" name="edit_curvature_sagittal"/>
        </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="label_4">
-         <property name="layoutDirection">
-          <enum>Qt::LeftToRight</enum>
-         </property>
-         <property name="text">
-          <string>Sagittal</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
        <item row="2" column="0">
         <widget class="QLabel" name="label_5">
          <property name="text">
           <string>Curvature</string>
          </property>
         </widget>
-       </item>
-       <item row="2" column="2">
-        <spacer name="horizontalSpacer_3">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
        </item>
        <item row="2" column="3">
         <widget class="QLineEdit" name="edit_curvature_tangential">
@@ -191,6 +165,19 @@ background-color: rgb(186, 189, 182);</string>
          </property>
         </spacer>
        </item>
+       <item row="0" column="1">
+        <widget class="QLabel" name="label_4">
+         <property name="layoutDirection">
+          <enum>Qt::LeftToRight</enum>
+         </property>
+         <property name="text">
+          <string>Sagittal</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="3">
         <widget class="QLabel" name="label_6">
          <property name="enabled">
@@ -204,6 +191,19 @@ background-color: rgb(186, 189, 182);</string>
          </property>
         </widget>
        </item>
+       <item row="2" column="2">
+        <spacer name="horizontalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
        <item row="1" column="0">
         <widget class="QCheckBox" name="checkBox_is_spherical">
          <property name="text">
@@ -211,6 +211,23 @@ background-color: rgb(186, 189, 182);</string>
          </property>
          <property name="checked">
           <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="label_9">
+         <property name="text">
+          <string>Focal length</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QLineEdit" name="edit_focal_length_sagittal"/>
+       </item>
+       <item row="3" column="3">
+        <widget class="QLineEdit" name="edit_focal_length_tangential">
+         <property name="enabled">
+          <bool>false</bool>
          </property>
         </widget>
        </item>

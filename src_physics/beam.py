@@ -30,7 +30,7 @@ class Beam():
             QMessageBox.critical(None, "Error", "Beam radius must be greater than zero.")
             return None
         zr = (np.pi * beam_radius**2 * n) / (wavelength)
-        return z + (1j * zr)
+        return - z + (1j * zr)
 
     def beam_radius(self, q, wavelength, n):
         """
@@ -111,14 +111,24 @@ class Beam():
         w_values = [self.beam_radius(q, lambda_, n)]
 
         for element, param in elements:
+            # Prüfe auf gültige Parameter für Freiraum
             if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
-                dz = 1E-4  # Schrittweite
-                steps = int(np.ceil(param[0] / dz))
-                q, z_inc, zs, ws = Beam.propagate_free_space(q, dz, steps, lambda_, param[1])
-                # zs startet immer bei 0, daher Offset z_total
+                length = param[0]
+                n_medium = param[1]
+                try:
+                    length_val = float(length)
+                    n_val = float(n_medium)
+                    if length_val <= 0 or n_val <= 0:
+                        # Ungültige Werte: überspringen oder abbrechen
+                        continue
+                except Exception:
+                    continue
+                dz = 1e-4  # Schrittweite
+                steps = int(np.ceil(length_val / dz))
+                q, z_inc, zs, ws = Beam.propagate_free_space(q, dz, steps, lambda_, n_val)
                 z_positions.extend([z_total + z for z in np.array(zs)[1:]])
                 w_values.extend(ws[1:])
-                z_total += param[0]
+                z_total += length_val
             else:
                 # Optisches Element: q ändern, aber z bleibt gleich!
                 if isinstance(param, tuple):
@@ -126,7 +136,6 @@ class Beam():
                 else:
                     ABCD = element(param)
                 q = self.propagate_q(q, ABCD)
-                # Kein z_total-Update!
                 w_values.append(self.beam_radius(q, lambda_, n))
                 z_positions.append(z_total)
         return z_positions, w_values
