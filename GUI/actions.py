@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from PyQt5.QtCore import *
 from PyQt5 import QtCore, QtWidgets
+import copy
 
 class Action:
 
@@ -157,9 +158,9 @@ class Action:
                 ):
                     return  # Kein zweiter Beam erlaubt
 
-        # Füge das Item in setupList ein
+        # Füge das Item nur EINMAL in setupList ein (mit deepcopy!)
         new_item = QtWidgets.QListWidgetItem(component.get("name", "Unnamed"))
-        new_item.setData(QtCore.Qt.UserRole, component)
+        new_item.setData(QtCore.Qt.UserRole, copy.deepcopy(component))
         if is_beam:
             parent.setupList.insertItem(0, new_item)
         else:

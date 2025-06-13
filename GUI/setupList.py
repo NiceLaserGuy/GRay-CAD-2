@@ -23,9 +23,9 @@ class SetupList(QtWidgets.QListWidget):
                         return comp
                 return None
 
-            beam = find_component("type", "beam") or find_component("name", "beam")
-            propagation = find_component("type", "propagation") or find_component("name", "propagation")
-            lens = find_component("type", "lens") or find_component("name", "lens")
+            beam = find_component("name", "beam")
+            propagation = find_component("name", "propagation")
+            lens = find_component("name", "lens")
 
             # Füge sie in der gewünschten Reihenfolge hinzu
             for comp in [beam, propagation, lens, propagation]:

@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import QMainWindow, QTreeWidgetItem
 import json
 import pyqtgraph as pg
 import numpy as np
+import copy
 
 # Custom module imports
 from src_resonator.resonators import Resonator
@@ -42,7 +43,7 @@ class MainWindow(QMainWindow):
         Sets up menu actions and button connections.
         """
         super().__init__(*args, **kwargs)
-        
+        self._property_fields = {}
         # Create instances of helper classes
         self.res = Resonator()
         self.beam = Beam()
@@ -64,6 +65,7 @@ class MainWindow(QMainWindow):
         self.current_context = None
         self.wavelength = None  # Default wavelength
         self._last_component_item = None
+        
 
         # Set application window icon
         self.setWindowIcon(QIcon(path.abspath(path.join(path.dirname(__file__), 
@@ -420,25 +422,54 @@ class MainWindow(QMainWindow):
 
         # Initial synchronisieren, falls Spherical gesetzt ist
         update_spherical_state()
-
+    
     def on_component_clicked(self, item):
-        # Vorherigen Eintrag speichern
+        """Handle clicks on components in the setup list."""
+        # 1. Create deep copy of new component
+        clicked_component = copy.deepcopy(item.data(QtCore.Qt.UserRole))
+        if not isinstance(clicked_component, dict):
+            return
+        
+        # 2. Save current field values if we have a last component
         if hasattr(self, "_last_component_item") and self._last_component_item is not None:
             last_component = self._last_component_item.data(QtCore.Qt.UserRole)
             if isinstance(last_component, dict):
-                self.save_properties_to_component(last_component)
-        # Neuen Eintrag anzeigen
-        component = item.data(QtCore.Qt.UserRole)
-        if not isinstance(component, dict):
-            return
-        self.labelType.setText(component.get("type", ""))
-        self.labelName.setText(component.get("name", ""))
-        self.labelManufacturer.setText(component.get("manufacturer", ""))
-        props = component.get("properties", {})
-        self.show_properties(props, component)
-        # Merke aktuellen Eintrag
+                # Create a deep copy of the last component
+                updated_last = copy.deepcopy(last_component)
+                
+                # Update with current field values
+                if hasattr(self, '_property_fields'):
+                    for key, field in self._property_fields.items():
+                        if key not in updated_last["properties"]:
+                            continue
+                            
+                        if isinstance(field, QtWidgets.QLineEdit):
+                            try:
+                                if key == "Refractive index":
+                                    value = float(field.text())
+                                else:
+                                    value = self.vc.convert_to_float(field.text(), self)
+                            except:
+                                value = field.text()
+                            updated_last["properties"][key] = value
+                        elif isinstance(field, QtWidgets.QCheckBox):
+                            updated_last["properties"][key] = 1.0 if field.isChecked() else 0.0
+                
+                # Update the last item with its modified copy
+                self._last_component_item.setData(QtCore.Qt.UserRole, updated_last)
+        
+        # 3. Show new component
+        self.labelType.setText(clicked_component.get("type", ""))
+        self.labelName.setText(clicked_component.get("name", ""))
+        self.labelManufacturer.setText(clicked_component.get("manufacturer", ""))
+        
+        # 4. Update properties display
+        props = clicked_component.get("properties", {})
+        self.show_properties(props, clicked_component)
+        
+        # 5. Store current item as last item and update its data
         self._last_component_item = item
-
+        
     def load_library_list_from_folder(self, folder_path):
         self.libraryList.clear()
         for filename in os.listdir(folder_path):
@@ -529,21 +560,35 @@ class MainWindow(QMainWindow):
             pass
     
     def save_properties_to_component(self, component):
+        """Save current field values to the given component."""
+        if not isinstance(component, dict) or "properties" not in component:
+            return
+            
+        # Create a copy to modify
+        updated = copy.deepcopy(component)
+        
         for key, field in self._property_fields.items():
+            # Skip if property doesn't belong to this component
+            if key not in updated["properties"]:
+                continue
+                
+            # Skip calculated fields
+            if "Rayleigh range" in key:
+                continue
+                
             if isinstance(field, QtWidgets.QLineEdit):
-                text = field.text()
                 try:
                     if key == "Refractive index":
-                        value = float(text)  # Nur in float umwandeln, KEIN ValueConverter!
+                        value = float(field.text())
                     else:
-                        value = self.vc.convert_to_float(text, self)
-                except Exception:
-                    value = text
-                component["properties"][key] = value
+                        value = self.vc.convert_to_float(field.text(), self)
+                except:
+                    value = field.text()
+                updated["properties"][key] = value
             elif isinstance(field, QtWidgets.QCheckBox):
-                component["properties"][key] = 1.0 if field.isChecked() else 0.0
-        if hasattr(self, "_last_component_item") and self._last_component_item is not None:
-            self._last_component_item.setData(QtCore.Qt.UserRole, component)
+                updated["properties"][key] = 1.0 if field.isChecked() else 0.0
+        
+        return updated
         
     def plot_optical_system_from_resonator(self, optical_system):
         self.plot_optical_system(optical_system=optical_system)
