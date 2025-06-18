@@ -3,11 +3,11 @@ from src_physics.matrices import Matrices
 from PyQt5.QtWidgets import QMessageBox
 import pyqtgraph as pg
 from numba import njit
+import time
 
 @njit
 def beam_radius_numba(q, wavelength, n):
-    return np.sqrt(-wavelength / (np.pi * n * np.imag(1/q)))
-
+    return np.sqrt(-wavelength / (np.pi * np.imag(1/q)))
 
 class Beam():
     def __init__(self, *args, **kwargs):
@@ -29,7 +29,7 @@ class Beam():
         if beam_radius <= 0:
             QMessageBox.critical(None, "Error", "Beam radius must be greater than zero.")
             return None
-        zr = (np.pi * beam_radius**2 * n) / (wavelength)
+        zr = (np.pi * beam_radius**2) / (wavelength)
         return - z + (1j * zr)
 
     def beam_radius(self, q, wavelength, n):
@@ -43,7 +43,7 @@ class Beam():
         Returns:
         float: Beam radius.
         """
-        return np.sqrt(-wavelength / (np.pi * n * np.imag(1/q)))
+        return np.sqrt(-wavelength / (np.pi *  np.imag(1/q)))
 
     def rayleigh_length(self, wavelength, beam_radius, n=1):
         """
@@ -87,7 +87,7 @@ class Beam():
         w_values = [beam_radius_numba(q, wavelength, n)]
         for i in range(n_steps):
             # ABCD-Matrix für Freiraum
-            A, B, C, D = 1, dz, 0, 1
+            A, B, C, D = 1, dz/n, 0, 1
             q = (A * q + B) / (C * q + D)
             z_total += dz
             z_positions.append(z_total)
@@ -104,6 +104,7 @@ class Beam():
         Returns:
             z_positions, w_values: Lists of positions and beam radii
         """
+        t0=time.time()
         lambda_ = wavelength
         q = q_initial
         z_total = 0.0
@@ -123,7 +124,7 @@ class Beam():
                         continue
                 except Exception:
                     continue
-                dz = 1e-4  # Schrittweite
+                dz = 5e-4  # Schrittweite
                 steps = int(np.ceil(length_val / dz))
                 q, z_inc, zs, ws = Beam.propagate_free_space(q, dz, steps, lambda_, n_val)
                 z_positions.extend([z_total + z for z in np.array(zs)[1:]])
@@ -138,4 +139,6 @@ class Beam():
                 q = self.propagate_q(q, ABCD)
                 w_values.append(self.beam_radius(q, lambda_, n))
                 z_positions.append(z_total)
+                
+        print(f"data aquired time {time.time()-t0:.4f}s")
         return z_positions, w_values

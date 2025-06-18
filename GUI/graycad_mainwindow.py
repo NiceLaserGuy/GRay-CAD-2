@@ -10,13 +10,13 @@ Handles the primary UI and window management.
 from PyQt5 import uic
 from pyqtgraph import *
 from os import path
-from PyQt5.QtCore import *
+from PyQt5.QtCore import QThread, QObject, pyqtSignal, Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QMainWindow, QTreeWidgetItem
+from PyQt5.QtWidgets import QMainWindow
 import json
 import pyqtgraph as pg
 import numpy as np
-import copy
+import copy, time
 
 # Custom module imports
 from src_resonator.resonators import Resonator
@@ -29,6 +29,23 @@ from src_physics.value_converter import ValueConverter
 from GUI.actions import Action
 from GUI.setupList import SetupList
 from GUI.componentList import ComponentList
+
+class PlotWorker(QObject):
+    finished = pyqtSignal(tuple)  # (z_data, w_data)
+
+    def __init__(self, beam, wavelength, q_value, optical_system, n=1):
+        super().__init__()
+        self.beam = beam
+        self.wavelength = wavelength
+        self.q_value = q_value
+        self.optical_system = optical_system
+        self.n = n
+
+    def run(self):
+        z_data, w_data = self.beam.propagate_through_system(
+            self.wavelength, self.q_value, self.optical_system, n=self.n
+        )
+        self.finished.emit((z_data, w_data))
 
 class MainWindow(QMainWindow):
     """
@@ -43,6 +60,18 @@ class MainWindow(QMainWindow):
         Sets up menu actions and button connections.
         """
         super().__init__(*args, **kwargs)
+        
+        # Timer vor allen Verbindungen initialisieren
+        self._live_plot_update_timer = QtCore.QTimer(self)
+        self._live_plot_update_timer.setSingleShot(True)
+        self._live_plot_update_timer.setInterval(10)
+        self._live_plot_update_timer.timeout.connect(self.update_live_plot)
+
+        self._property_update_timer = QtCore.QTimer(self)
+        self._property_update_timer.setSingleShot(True)
+        self._property_update_timer.setInterval(100)
+        self._property_update_timer.timeout.connect(self.update_rayleigh)
+
         self._property_fields = {}
         # Create instances of helper classes
         self.res = Resonator()
@@ -56,10 +85,7 @@ class MainWindow(QMainWindow):
         self.vc = ValueConverter()
         self.action = Action()
         
-        self._property_update_timer = QtCore.QTimer(self)
-        self._property_update_timer.setSingleShot(True)
-        self._property_update_timer.setInterval(500)
-        self._property_update_timer.timeout.connect(self.update_rayleigh)
+        self._plot_busy = False
 
         # Variable, um den Kontext zu speichern
         self.current_context = None
@@ -127,11 +153,11 @@ class MainWindow(QMainWindow):
         self.update_live_plot()
         
         # Live update for the optical system plot
-        self.setupList.itemChanged.connect(lambda _: self.update_live_plot())
-        self.setupList.model().rowsInserted.connect(lambda *_: self.update_live_plot())
-        self.setupList.model().rowsRemoved.connect(lambda *_: self.update_live_plot())
-        self.setupList.model().modelReset.connect(lambda *_: self.update_live_plot())
-        self.setupList.model().rowsMoved.connect(lambda *args: self.update_live_plot())
+        #self.setupList.itemChanged.connect(lambda _: self.update_live_plot_delayed())
+        self.setupList.model().rowsInserted.connect(lambda *_: self.update_live_plot_delayed())
+        self.setupList.model().rowsRemoved.connect(lambda *_: self.update_live_plot_delayed())
+        self.setupList.model().modelReset.connect(lambda *_: self.update_live_plot_delayed())
+        self.setupList.model().rowsMoved.connect(lambda *args: self.update_live_plot_delayed())
         
         self.cursor_vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('k', width=1, style=Qt.DashLine))
         self.plotWidget.addItem(self.cursor_vline, ignoreBounds=True)
@@ -184,18 +210,23 @@ class MainWindow(QMainWindow):
     def make_field_slot(self, key, comp):
         def slot():
             self.save_properties_to_component(comp)
-            self.update_live_plot()
+            self.update_live_plot_delayed()
         return slot
     
     def make_checkbox_slot(self, key, comp):
         def slot():
             self.save_properties_to_component(comp)
-            self.update_live_plot()
+            self.update_live_plot_delayed()
         return slot
     
     def update_rayleigh_delayed(self):
         self._property_update_timer.stop()
         self._property_update_timer.start()
+
+    def update_live_plot_delayed(self):
+        if hasattr(self, '_live_plot_update_timer'):
+            self._live_plot_update_timer.stop()
+            self._live_plot_update_timer.start()
 
     def update_rayleigh(self):
         try:
@@ -256,6 +287,8 @@ class MainWindow(QMainWindow):
                 field.textChanged.connect(self.make_field_slot(key, component))
                 if key == "Wavelength":
                     field.textChanged.connect(self.update_rayleigh_delayed)
+                if not field.isReadOnly():
+                    field.textChanged.connect(self.update_live_plot_delayed)
                 row += 1
 
         # Jetzt die Header-Zeile für sagittal/tangential
@@ -297,6 +330,8 @@ class MainWindow(QMainWindow):
                     field_sag.textChanged.connect(self.make_field_slot(sag_key, component))
                     if "Waist radius" in sag_key:
                         field_sag.textChanged.connect(self.update_rayleigh_delayed)
+                    if not field_sag.isReadOnly():
+                        field_sag.textChanged.connect(self.update_live_plot_delayed)
                 # Tangential Field
                 if tan_key in properties:
                     # ValueConverter für die Anzeige nutzen
@@ -310,6 +345,8 @@ class MainWindow(QMainWindow):
                     field_tan.textChanged.connect(self.make_field_slot(tan_key, component))
                     if "Waist radius" in tan_key:
                         field_tan.textChanged.connect(self.update_rayleigh_delayed)
+                    if not field_tan.isReadOnly():
+                        field_tan.textChanged.connect(self.update_live_plot_delayed)
 
                 row += 1
 
@@ -323,6 +360,8 @@ class MainWindow(QMainWindow):
                 layout.addWidget(field, row, 1, 1, 2)
                 self._property_fields[key] = field
                 field.textChanged.connect(self.make_field_slot(key, component))
+                if isinstance(field, QtWidgets.QLineEdit) and not field.isReadOnly():
+                    field.textChanged.connect(self.update_live_plot_delayed)
                 
                 row += 1
 
@@ -533,31 +572,46 @@ class MainWindow(QMainWindow):
         return optical_system
     
     def update_live_plot(self):
-        optical_system_sag = self.build_optical_system_from_setup_list(mode="sagittal")
-        optical_system_tan = self.build_optical_system_from_setup_list(mode="tangential")
-        # Hole Startparameter aus dem Beam (immer an Position 0)
-        beam_item = self.setupList.item(0)
-        beam = beam_item.data(QtCore.Qt.UserRole)
-        props = beam.get("properties", {})
-        wavelength = props.get("Wavelength", 514E-9)
-        waist_sag = props.get("Waist radius sagittal", 1E-3)
-        waist_tan = props.get("Waist radius tangential", 1E-3)
-        waist_pos_sag = props.get("Waist position sagittal", 0.0)
-        waist_pos_tan = props.get("Waist position tangential", 0.0)
-        n = 1  # Optional: aus Beam-Properties holen
+        if self._plot_busy:
+            return
+        self._plot_busy = True
         try:
-            self.plot_optical_system(
-                z_start_sag=waist_pos_sag,
-                z_start_tan=waist_pos_tan,
-                wavelength=wavelength,
-                waist_sag=waist_sag,
-                waist_tan=waist_tan,
-                n=n,
-                optical_system_sag=optical_system_sag,
-                optical_system_tan=optical_system_tan
-            )
-        except Exception:
-            pass
+            if hasattr(self, '_live_plot_update_timer'):
+                self._live_plot_update_timer.stop()
+            beam_item = self.setupList.currentItem()
+            if beam_item is None:
+                beam_item = self.setupList.item(0)
+            if beam_item is not None and hasattr(self, '_property_fields'):
+                updated_beam = self.save_properties_to_component(beam_item.data(QtCore.Qt.UserRole))
+                if updated_beam is not None:
+                    beam_item.setData(QtCore.Qt.UserRole, updated_beam)
+            optical_system_sag = self.build_optical_system_from_setup_list(mode="sagittal")
+            optical_system_tan = self.build_optical_system_from_setup_list(mode="tangential")
+            # Hole Startparameter aus dem Beam (immer an Position 0)
+            beam_item = self.setupList.item(0)
+            beam = beam_item.data(QtCore.Qt.UserRole)
+            props = beam.get("properties", {})
+            wavelength = props.get("Wavelength", 514E-9)
+            waist_sag = props.get("Waist radius sagittal", 1E-3)
+            waist_tan = props.get("Waist radius tangential", 1E-3)
+            waist_pos_sag = props.get("Waist position sagittal", 0.0)
+            waist_pos_tan = props.get("Waist position tangential", 0.0)
+            n = 1  # Optional: aus Beam-Properties holen
+            try:
+                self.plot_optical_system(
+                    z_start_sag=waist_pos_sag,
+                    z_start_tan=waist_pos_tan,
+                    wavelength=wavelength,
+                    waist_sag=waist_sag,
+                    waist_tan=waist_tan,
+                    n=n,
+                    optical_system_sag=optical_system_sag,
+                    optical_system_tan=optical_system_tan
+                )
+            except Exception:
+                pass
+        finally:
+            self._plot_busy = False
     
     def save_properties_to_component(self, component):
         """Save current field values to the given component."""
@@ -595,28 +649,76 @@ class MainWindow(QMainWindow):
         
     def plot_optical_system(self, z_start_sag, z_start_tan, wavelength, waist_sag, waist_tan, n, optical_system_sag, optical_system_tan):
         self.wavelength = wavelength
-        self.beam_radius = waist_sag  # oder None, falls nicht global benötigt
-        self.z_start = z_start_sag    # oder None, falls nicht global benötigt
-
+        self.beam_radius = waist_sag
+        self.z_start = z_start_sag
         self.plotWidget.clear()
 
-        # Sagittal
-        self.z_data, self.w_sag_data = self.beam.propagate_through_system(
-            wavelength, self.beam.q_value(z_start_sag, waist_sag, wavelength, n), optical_system_sag, n=n
-        )
-        # Tangential
-        _, self.w_tan_data = self.beam.propagate_through_system(
-            wavelength, self.beam.q_value(z_start_tan, waist_tan, wavelength, n), optical_system_tan, n=n
-        )
+        # Threads für parallele Berechnung
+        self.thread_sag = QThread()
+        self.thread_tan = QThread()
 
+        # Worker für sagittal/tangential
+        self.worker_sag = PlotWorker(
+            self.beam, wavelength, 
+            self.beam.q_value(z_start_sag, waist_sag, wavelength, n),
+            optical_system_sag, n
+        )
+        self.worker_tan = PlotWorker(
+            self.beam, wavelength,
+            self.beam.q_value(z_start_tan, waist_tan, wavelength, n),
+            optical_system_tan, n
+        )
+        
+        # Verschiebe Worker in Threads
+        self.worker_sag.moveToThread(self.thread_sag)
+        self.worker_tan.moveToThread(self.thread_tan)
+
+        # Verbinde Signals/Slots
+        self.thread_sag.started.connect(self.worker_sag.run)
+        self.thread_tan.started.connect(self.worker_tan.run)
+
+        # Speichere Ergebnisse
+        self.results = {}
+        
+        def handle_sag_result(result):
+            self.results['sag'] = result
+            if len(self.results) == 2:  # Beide fertig
+                self.plot_results()
+
+        def handle_tan_result(result):
+            self.results['tan'] = result
+            if len(self.results) == 2:  # Beide fertig
+                self.plot_results()
+
+        self.worker_sag.finished.connect(handle_sag_result)
+        self.worker_tan.finished.connect(handle_tan_result)
+
+        # Cleanup
+        self.worker_sag.finished.connect(self.thread_sag.quit)
+        self.worker_tan.finished.connect(self.thread_tan.quit)
+        self.worker_sag.finished.connect(self.worker_sag.deleteLater)
+        self.worker_tan.finished.connect(self.worker_tan.deleteLater)
+        self.thread_sag.finished.connect(self.thread_sag.deleteLater)
+        self.thread_tan.finished.connect(self.thread_tan.deleteLater)
+
+        # Starte Threads
+        self.thread_sag.start()
+        self.thread_tan.start()
+
+    def plot_results(self):
+        """Plot die Ergebnisse mit effizientem Downsampling"""
+        self.z_data, self.w_sag_data = self.results['sag']
+        _, self.w_tan_data = self.results['tan']
+
+        # Konvertiere zu NumPy Arrays für schnelleres Processing
         self.z_data = np.array(self.z_data)
         self.w_sag_data = np.array(self.w_sag_data)
         self.w_tan_data = np.array(self.w_tan_data)
 
+        # Plot Setup
         self.plotWidget.setBackground('w')
         self.plotWidget.addLegend()
         self.plotWidget.showGrid(x=True, y=True)
-
         self.plotWidget.setLabel('left', 'Waist radius', units='m', color='#333333')
         self.plotWidget.setLabel('bottom', 'z', units='m', color='#333333')
         self.plotWidget.setTitle("Gaussian Beam Propagation", color='#333333')
@@ -624,12 +726,29 @@ class MainWindow(QMainWindow):
         self.plotWidget.getAxis('left').setTextPen(axis_pen)
         self.plotWidget.getAxis('bottom').setTextPen(axis_pen)
 
-        self.plotWidget.plot(self.z_data, self.w_sag_data, pen=pg.mkPen(color='r', width=2), name="Sagittal")
-        self.plotWidget.plot(self.z_data, self.w_tan_data, pen=pg.mkPen(color='b', width=2), name="Tangential")
+        # Erstelle PlotDataItems statt PlotCurveItems für bessere Performance
+        curve_sag = pg.PlotDataItem(
+            x=self.z_data, y=self.w_sag_data,
+            pen=pg.mkPen('r', width=1),
+            name="Sagittal",
+        )
+        curve_sag.setDownsampling(ds=1000, method='peak', auto=True)
+        curve_sag.setDynamicRangeLimit(limit=1e3, hysteresis=3)
 
-        # Vertikale Linien wie gehabt...
+        curve_tan = pg.PlotDataItem(
+            x=self.z_data, y=self.w_tan_data,
+            pen=pg.mkPen('b', width=1),
+            name="Tangential",
+        )
+        curve_tan.setDownsampling(ds=1000, method='peak', auto=True)
+        curve_tan.setDynamicRangeLimit(limit=1e3, hysteresis=3)
+
+        self.plotWidget.addItem(curve_sag)
+        self.plotWidget.addItem(curve_tan)
+
+        # Vertikale Linien für optische Elemente
         z_element = 0
-        for idx, (element, param) in enumerate(optical_system_sag):
+        for idx, (element, param) in enumerate(self.build_optical_system_from_setup_list(mode="sagittal")):
             if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
                 z_element += param[0]
             else:
