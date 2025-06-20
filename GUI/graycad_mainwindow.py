@@ -85,6 +85,9 @@ class MainWindow(QMainWindow):
         self.vc = ValueConverter()
         self.action = Action()
         
+        self.vlines = []
+        self.curves = []
+        
         self._plot_busy = False
 
         # Variable, um den Kontext zu speichern
@@ -196,6 +199,7 @@ class MainWindow(QMainWindow):
                 
         # Connect signal to function
         self.plotWidget.scene().sigMouseMoved.connect(mouseMoved)
+        self.plotWidget.getViewBox().sigXRangeChanged.connect(self.update_plot_for_visible_range)
         
     def closeEvent(self, event):
         try:
@@ -648,108 +652,93 @@ class MainWindow(QMainWindow):
         self.plot_optical_system(optical_system=optical_system)
         
     def plot_optical_system(self, z_start_sag, z_start_tan, wavelength, waist_sag, waist_tan, n, optical_system_sag, optical_system_tan):
+        # Speichere die aktuellen Parameter als Attribute, damit update_plot_for_visible_range darauf zugreifen kann
+        
         self.wavelength = wavelength
-        self.beam_radius = waist_sag
-        self.z_start = z_start_sag
+        self.waist_sag = waist_sag
+        self.waist_tan = waist_tan
+        self.waist_pos_sag = z_start_sag
+        self.waist_pos_tan = z_start_tan
+        self.n = n
+        self.optical_system_sag = optical_system_sag
+        self.optical_system_tan = optical_system_tan
+        
+        self.curve_sag = None
+        self.curve_tan = None
         self.plotWidget.clear()
 
-        # Threads für parallele Berechnung
-        self.thread_sag = QThread()
-        self.thread_tan = QThread()
+        # Initialplot (z.B. gesamter Bereich)
+        z_min, z_max = self.plotWidget.getViewBox().viewRange()[0]
+        if not np.isfinite(z_min) or not np.isfinite(z_max) or z_min == z_max:
+            # Fallback: Bereich aus optischem System bestimmen
+            z_min = 0
+            z_max = sum([p[1][0] for p in optical_system_sag if hasattr(p[0], "__func__") and p[0].__func__ is self.matrices.free_space.__func__])
 
-        # Worker für sagittal/tangential
-        self.worker_sag = PlotWorker(
-            self.beam, wavelength, 
-            self.beam.q_value(z_start_sag, waist_sag, wavelength, n),
-            optical_system_sag, n
-        )
-        self.worker_tan = PlotWorker(
-            self.beam, wavelength,
-            self.beam.q_value(z_start_tan, waist_tan, wavelength, n),
-            optical_system_tan, n
-        )
-        
-        # Verschiebe Worker in Threads
-        self.worker_sag.moveToThread(self.thread_sag)
-        self.worker_tan.moveToThread(self.thread_tan)
+        self.update_plot_for_visible_range(z_min, z_max)
 
-        # Verbinde Signals/Slots
-        self.thread_sag.started.connect(self.worker_sag.run)
-        self.thread_tan.started.connect(self.worker_tan.run)
+    def update_plot_for_visible_range(self, *args, **kwargs):
+        z_min, z_max = self.plotWidget.getViewBox().viewRange()[0]
+        if not np.isfinite(z_min) or not np.isfinite(z_max) or z_min == z_max:
+            z_min = 0
+            z_max = sum([p[1][0] for p in self.optical_system_sag if hasattr(p[0], "__func__") and p[0].__func__ is self.matrices.free_space.__func__])
+        n_points = 5000
 
-        # Speichere Ergebnisse
-        self.results = {}
-        
-        def handle_sag_result(result):
-            self.results['sag'] = result
-            if len(self.results) == 2:  # Beide fertig
-                self.plot_results()
+        # Hole gespeicherte Parameter
+        wavelength = self.wavelength
+        waist_sag = self.waist_sag
+        waist_tan = self.waist_tan
+        waist_pos_sag = self.waist_pos_sag
+        waist_pos_tan = self.waist_pos_tan
+        n = self.n
+        optical_system_sag = self.optical_system_sag
+        optical_system_tan = self.optical_system_tan
 
-        def handle_tan_result(result):
-            self.results['tan'] = result
-            if len(self.results) == 2:  # Beide fertig
-                self.plot_results()
+        self.z_visible = np.linspace(z_min, z_max, n_points)
+        q_sag = self.beam.q_value(waist_pos_sag, waist_sag, wavelength, n)
+        q_tan = self.beam.q_value(waist_pos_tan, waist_tan, wavelength, n)
+        self.w_sag_visible = self.beam.propagate_to_z_array(wavelength, q_sag, optical_system_sag, self.z_visible, n=n)
+        self.w_tan_visible = self.beam.propagate_to_z_array(wavelength, q_tan, optical_system_tan, self.z_visible, n=n)
 
-        self.worker_sag.finished.connect(handle_sag_result)
-        self.worker_tan.finished.connect(handle_tan_result)
+        # Arrays immer ersetzen!
+        self.z_data = self.z_visible
+        self.w_sag_data = self.w_sag_visible
+        self.w_tan_data = self.w_tan_visible
 
-        # Cleanup
-        self.worker_sag.finished.connect(self.thread_sag.quit)
-        self.worker_tan.finished.connect(self.thread_tan.quit)
-        self.worker_sag.finished.connect(self.worker_sag.deleteLater)
-        self.worker_tan.finished.connect(self.worker_tan.deleteLater)
-        self.thread_sag.finished.connect(self.thread_sag.deleteLater)
-        self.thread_tan.finished.connect(self.thread_tan.deleteLater)
+        # Kurven nur einmal erzeugen, sonst setData
+        if not hasattr(self, "curve_sag") or self.curve_sag is None:
+            self.plotWidget.clear()
+            self.plotWidget.setBackground('w')
+            self.plotWidget.addLegend()
+            self.plotWidget.showGrid(x=True, y=True)
+            self.plotWidget.setLabel('left', 'Waist radius', units='m', color='#333333')
+            self.plotWidget.setLabel('bottom', 'z', units='m', color='#333333')
+            self.plotWidget.setTitle("Gaussian Beam Propagation", color='#333333')
+            axis_pen = pg.mkPen(color='#333333')
+            self.plotWidget.getAxis('left').setTextPen(axis_pen)
+            self.plotWidget.getAxis('bottom').setTextPen(axis_pen)
+            
+            # Vor dem Erzeugen neuer Kurven:
+            for curve in getattr(self, "curves", []):
+                self.plotWidget.removeItem(curve)
+            self.curves = []
 
-        # Starte Threads
-        self.thread_sag.start()
-        self.thread_tan.start()
+            self.curve_sag = self.plotWidget.plot(self.z_data, self.w_sag_data, pen=pg.mkPen('r', width=1), name="Sagittal")
+            self.curve_tan = self.plotWidget.plot(self.z_data, self.w_tan_data, pen=pg.mkPen('b', width=1), name="Tangential")
+            self.curves = [self.curve_sag, self.curve_tan]
+            self.plotWidget.getViewBox().setRange(xRange=(z_min, z_max), padding=0)
+        else:
+            self.curve_sag.setData(self.z_data, self.w_sag_data)
+            self.curve_tan.setData(self.z_data, self.w_tan_data)
 
-    def plot_results(self):
-        """Plot die Ergebnisse mit effizientem Downsampling"""
-        self.z_data, self.w_sag_data = self.results['sag']
-        _, self.w_tan_data = self.results['tan']
-
-        # Konvertiere zu NumPy Arrays für schnelleres Processing
-        self.z_data = np.array(self.z_data)
-        self.w_sag_data = np.array(self.w_sag_data)
-        self.w_tan_data = np.array(self.w_tan_data)
-
-        # Plot Setup
-        self.plotWidget.setBackground('w')
-        self.plotWidget.addLegend()
-        self.plotWidget.showGrid(x=True, y=True)
-        self.plotWidget.setLabel('left', 'Waist radius', units='m', color='#333333')
-        self.plotWidget.setLabel('bottom', 'z', units='m', color='#333333')
-        self.plotWidget.setTitle("Gaussian Beam Propagation", color='#333333')
-        axis_pen = pg.mkPen(color='#333333')
-        self.plotWidget.getAxis('left').setTextPen(axis_pen)
-        self.plotWidget.getAxis('bottom').setTextPen(axis_pen)
-
-        # Erstelle PlotDataItems statt PlotCurveItems für bessere Performance
-        curve_sag = pg.PlotDataItem(
-            x=self.z_data, y=self.w_sag_data,
-            pen=pg.mkPen('r', width=1),
-            name="Sagittal",
-        )
-        curve_sag.setDownsampling(ds=1000, method='peak', auto=True)
-        curve_sag.setDynamicRangeLimit(limit=1e3, hysteresis=3)
-
-        curve_tan = pg.PlotDataItem(
-            x=self.z_data, y=self.w_tan_data,
-            pen=pg.mkPen('b', width=1),
-            name="Tangential",
-        )
-        curve_tan.setDownsampling(ds=1000, method='peak', auto=True)
-        curve_tan.setDynamicRangeLimit(limit=1e3, hysteresis=3)
-
-        self.plotWidget.addItem(curve_sag)
-        self.plotWidget.addItem(curve_tan)
-
-        # Vertikale Linien für optische Elemente
+        # Vertikale Linien verwalten
+        for vline in getattr(self, "vlines", []):
+            self.plotWidget.removeItem(vline)
+        self.vlines = []
         z_element = 0
-        for idx, (element, param) in enumerate(self.build_optical_system_from_setup_list(mode="sagittal")):
+        for idx, (element, param) in enumerate(optical_system_sag):
             if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
                 z_element += param[0]
             else:
-                self.plotWidget.addLine(x=z_element, pen=pg.mkPen(color='#333333'))
+                vline = pg.InfiniteLine(pos=z_element, angle=90, pen=pg.mkPen(color='#333333'))
+                self.plotWidget.addItem(vline)
+                self.vlines.append(vline)
