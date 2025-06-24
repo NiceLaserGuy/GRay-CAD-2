@@ -96,13 +96,17 @@ class Beam():
             w_values[i] = beam_radius_numba(q, wavelength, n)
         return q, z_total, z_positions, w_values
 
-    def propagate_through_system(self, wavelength, q_initial, elements, n=1):
+    def propagate_through_system(self, wavelength, q_initial, elements, z_array, n=1):
         lambda_ = wavelength
         q = q_initial
         z_total = 0.0
         z_positions = [0.0]
         w_values = [self.beam_radius(q, lambda_, n)]
 
+        # Schrittweite aus z_array ableiten
+        dz = np.min(np.diff(np.sort(z_array)))
+
+        # Vorwärts durch das optische System propagieren
         for element, param in elements:
             if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
                 length = param[0]
@@ -114,15 +118,16 @@ class Beam():
                         continue
                 except Exception:
                     continue
-                dz = 1e-5  # Schrittweite
+
                 steps = int(np.ceil(length_val / dz))
-                q, z_inc, zs, ws = Beam.propagate_free_space(q, dz, steps, lambda_, n_val)
-                # Die neuen Werte an den bisherigen Array-Stand anhängen (ohne das erste Element doppelt zu nehmen)
-                z_positions = np.concatenate((np.array(z_positions), z_total + zs[1:]))
-                w_values = np.concatenate((np.array(w_values), ws[1:]))
+                try:
+                    q, z_inc, zs, ws = Beam.propagate_free_space(q, dz, steps, lambda_, n_val)
+                except Exception:
+                    continue
+                z_positions = np.concatenate((z_positions, z_total + zs[1:]))
+                w_values = np.concatenate((w_values, ws[1:]))
                 z_total += length_val
             else:
-                # Optisches Element: q ändern, aber z bleibt gleich!
                 if isinstance(param, tuple):
                     ABCD = element(*param)
                 else:
@@ -130,60 +135,32 @@ class Beam():
                 q = self.propagate_q(q, ABCD)
                 w_values = np.concatenate((w_values, [self.beam_radius(q, lambda_, n)]))
                 z_positions = np.concatenate((z_positions, [z_total]))
+
+        # Weiter nach dem letzten optischen Element
+        z_end = np.max(z_array)
+        if z_total < z_end:
+            length_val = z_end - z_total
+            steps = int(np.ceil(length_val / dz))
+            try:
+                q, z_inc, zs, ws = Beam.propagate_free_space(q, dz, steps, lambda_, n)
+                z_positions = np.concatenate((z_positions, z_total + zs[1:]))
+                w_values = np.concatenate((w_values, ws[1:]))
+                z_total += length_val
+            except Exception:
+                return
+            
+
+        # Rückwärts vor das erste optische Element
+        z_start = np.min(z_array)
+        if z_start < 0:
+            length_val = -z_start
+            steps = int(np.ceil(length_val / dz))
+            q_back = q_initial
+            try:
+                q_back, z_inc, zs, ws = Beam.propagate_free_space(q_back, -dz, steps, lambda_, n)
+                z_positions = np.concatenate((z_start + zs[:-1], z_positions))
+                w_values = np.concatenate((ws[:-1], w_values))
+            except Exception:
+                return
+
         return z_positions, w_values
-    
-    def propagate_to_z_array(self, wavelength, q_initial, elements, z_array, n=1):
-        lambda_ = wavelength
-        q = q_initial
-        z_total = 0.0
-        z_element_edges = [0.0]
-        q_list = [q_initial]
-
-        # 1. Finde die Grenzen der optischen Elemente und berechne q an jedem Element-Übergang
-        for element, param in elements:
-            if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
-                length = float(param[0])
-                n_medium = float(param[1])
-                z_total += length
-                z_element_edges.append(z_total)
-            else:
-                if isinstance(param, tuple):
-                    ABCD = element(*param)
-                else:
-                    ABCD = element(param)
-                q = self.propagate_q(q, ABCD)
-                q_list.append(q)
-
-        z_min_sys = z_element_edges[0]
-        z_max_sys = z_element_edges[-1]
-
-        w_values = np.zeros_like(z_array)
-        for i, z in enumerate(z_array):
-            # Bereich vor dem System: nutze Start-q
-            if z < z_min_sys:
-                idx = 0
-                z_local = z - z_element_edges[0]
-                q_local = q_list[0]
-                n_medium = 1.0
-            # Bereich nach dem System: nutze End-q
-            elif z > z_max_sys:
-                idx = len(q_list) - 1
-                z_local = z - z_element_edges[-1]
-                q_local = q_list[-1]
-                n_medium = 1.0
-            # Bereich im System
-            else:
-                idx = np.searchsorted(z_element_edges, z, side='right') - 1
-                z_local = z - z_element_edges[idx]
-                q_local = q_list[idx]
-                n_medium = 1.0
-                for j in range(idx, -1, -1):
-                    elem, param = elements[j]
-                    if hasattr(elem, "__func__") and elem.__func__ is self.matrices.free_space.__func__:
-                        n_medium = float(param[1])
-                        break
-            # Freiraum-Propagation
-            A, B, C, D = 1, z_local / n_medium, 0, 1
-            q_z = (A * q_local + B) / (C * q_local + D)
-            w_values[i] = self.beam_radius(q_z, wavelength, n_medium)
-        return w_values

@@ -84,6 +84,7 @@ class MainWindow(QMainWindow):
         self.beam = Beam()
         self.vc = ValueConverter()
         self.action = Action()
+
         
         self.vlines = []
         self.curves = []
@@ -200,7 +201,7 @@ class MainWindow(QMainWindow):
         # Connect signal to function
         self.plotWidget.scene().sigMouseMoved.connect(mouseMoved)
         self.plotWidget.getViewBox().sigXRangeChanged.connect(self.update_plot_for_visible_range)
-        
+
     def closeEvent(self, event):
         try:
             self.setupList.model().modelReset.disconnect()
@@ -680,8 +681,11 @@ class MainWindow(QMainWindow):
         z_min, z_max = self.plotWidget.getViewBox().viewRange()[0]
         if not np.isfinite(z_min) or not np.isfinite(z_max) or z_min == z_max:
             z_min = 0
-            z_max = sum([p[1][0] for p in self.optical_system_sag if hasattr(p[0], "__func__") and p[0].__func__ is self.matrices.free_space.__func__])
+            z_max = sum([p[1][0] for p in self.optical_system_sag
+                        if hasattr(p[0], "__func__") and p[0].__func__ is self.matrices.free_space.__func__])
+        
         n_points = 5000
+        self.z_visible = np.linspace(z_min, z_max, n_points)
 
         # Hole gespeicherte Parameter
         wavelength = self.wavelength
@@ -693,18 +697,13 @@ class MainWindow(QMainWindow):
         optical_system_sag = self.optical_system_sag
         optical_system_tan = self.optical_system_tan
 
-        self.z_visible = np.linspace(z_min, z_max, n_points)
+        # q-Werte berechnen und propagieren
         q_sag = self.beam.q_value(waist_pos_sag, waist_sag, wavelength, n)
         q_tan = self.beam.q_value(waist_pos_tan, waist_tan, wavelength, n)
-        self.w_sag_visible = self.beam.propagate_to_z_array(wavelength, q_sag, optical_system_sag, self.z_visible, n=n)
-        self.w_tan_visible = self.beam.propagate_to_z_array(wavelength, q_tan, optical_system_tan, self.z_visible, n=n)
+        self.z_data, self.w_sag_data = self.beam.propagate_through_system(wavelength, q_sag, optical_system_sag, self.z_visible, n=n)
+        self.z_data, self.w_tan_data = self.beam.propagate_through_system(wavelength, q_tan, optical_system_tan, self.z_visible, n=n)
 
-        # Arrays immer ersetzen!
-        self.z_data = self.z_visible
-        self.w_sag_data = self.w_sag_visible
-        self.w_tan_data = self.w_tan_visible
-
-        # Kurven nur einmal erzeugen, sonst setData
+        # Plot aktualisieren oder neu erstellen
         if not hasattr(self, "curve_sag") or self.curve_sag is None:
             self.plotWidget.clear()
             self.plotWidget.setBackground('w')
@@ -716,21 +715,27 @@ class MainWindow(QMainWindow):
             axis_pen = pg.mkPen(color='#333333')
             self.plotWidget.getAxis('left').setTextPen(axis_pen)
             self.plotWidget.getAxis('bottom').setTextPen(axis_pen)
-            
-            # Vor dem Erzeugen neuer Kurven:
-            for curve in getattr(self, "curves", []):
-                self.plotWidget.removeItem(curve)
-            self.curves = []
+            self.plotWidget.setDefaultPadding(0.05)  # 5% padding around the plot
+            self.plotWidget.getViewBox().setBorder(axis_pen)
 
             self.curve_sag = self.plotWidget.plot(self.z_data, self.w_sag_data, pen=pg.mkPen('r', width=1), name="Sagittal")
             self.curve_tan = self.plotWidget.plot(self.z_data, self.w_tan_data, pen=pg.mkPen('b', width=1), name="Tangential")
-            self.curves = [self.curve_sag, self.curve_tan]
-            self.plotWidget.getViewBox().setRange(xRange=(z_min, z_max), padding=0)
         else:
             self.curve_sag.setData(self.z_data, self.w_sag_data)
             self.curve_tan.setData(self.z_data, self.w_tan_data)
 
-        # Vertikale Linien verwalten
+        # → Immer X-Achse an sichtbaren Bereich anpassen
+        current_range = self.plotWidget.getViewBox().viewRange()[0]
+        if abs(current_range[0] - z_min) > 1e-9 or abs(current_range[1] - z_max) > 1e-9:
+            vb = self.plotWidget.getViewBox()
+            try:
+                vb.sigXRangeChanged.disconnect(self.update_plot_for_visible_range)
+            except TypeError:
+                pass
+            vb.setXRange(z_min, z_max, padding=0.01)
+            vb.sigXRangeChanged.connect(self.update_plot_for_visible_range)
+
+        # Vertikale Linien aktualisieren
         for vline in getattr(self, "vlines", []):
             self.plotWidget.removeItem(vline)
         self.vlines = []
@@ -739,6 +744,6 @@ class MainWindow(QMainWindow):
             if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
                 z_element += param[0]
             else:
-                vline = pg.InfiniteLine(pos=z_element, angle=90, pen=pg.mkPen(color='#333333'))
+                vline = pg.InfiniteLine(pos=z_element, angle=90, pen=pg.mkPen(color="#2B7500"))
                 self.plotWidget.addItem(vline)
                 self.vlines.append(vline)

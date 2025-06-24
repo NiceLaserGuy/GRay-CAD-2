@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>985</width>
-    <height>934</height>
+    <height>939</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -416,22 +416,6 @@
       </property>
      </spacer>
     </item>
-    <item row="5" column="1">
-     <spacer name="verticalSpacer_3">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-      <property name="sizeType">
-       <enum>QSizePolicy::Fixed</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>10</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
     <item row="7" column="1">
      <widget class="PlotWidget" name="plotWidget" native="true">
       <property name="sizePolicy">
@@ -451,6 +435,22 @@
       </property>
      </widget>
     </item>
+    <item row="5" column="1" rowspan="2">
+     <spacer name="verticalSpacer_3">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeType">
+       <enum>QSizePolicy::Fixed</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>10</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -459,7 +459,7 @@
      <x>0</x>
      <y>0</y>
      <width>985</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
    <property name="tabletTracking">
