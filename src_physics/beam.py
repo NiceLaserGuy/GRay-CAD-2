@@ -96,16 +96,18 @@ class Beam():
             w_values[i] = beam_radius_numba(q, wavelength, n)
         return q, z_total, z_positions, w_values
 
-    def propagate_through_system(self, wavelength, q_initial, elements, z_array, n=1):
+    def propagate_through_system(self, wavelength, q_initial, elements, z_array, res, n=1):
         lambda_ = wavelength
         q = q_initial
         z_total = 0.0
         z_positions = [0.0]
         w_values = [self.beam_radius(q, lambda_, n)]
+        steps = res
 
-        # Schrittweite aus z_array ableiten
-        dz = np.min(np.diff(np.sort(z_array)))
-
+        # Berechung der Länge des optischen Systems
+        z_total = 0.0
+                
+        
         # Vorwärts durch das optische System propagieren
         for element, param in elements:
             if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
@@ -118,8 +120,9 @@ class Beam():
                         continue
                 except Exception:
                     continue
-
-                steps = int(np.ceil(length_val / dz))
+                dz = np.min(np.diff(np.sort(np.linspace(np.min(z_array), np.max(z_array), res))))
+                length_plot = np.max(z_array) - np.min(z_array)
+                steps = int(np.ceil(length_val/dz)) -1
                 try:
                     q, z_inc, zs, ws = Beam.propagate_free_space(q, dz, steps, lambda_, n_val)
                 except Exception:
@@ -140,6 +143,7 @@ class Beam():
         z_end = np.max(z_array)
         if z_total < z_end:
             length_val = z_end - z_total
+            dz = np.min(np.diff(np.sort(np.linspace(z_total, z_end, res))))
             steps = int(np.ceil(length_val / dz))
             try:
                 q, z_inc, zs, ws = Beam.propagate_free_space(q, dz, steps, lambda_, n)
@@ -149,11 +153,11 @@ class Beam():
             except Exception:
                 return
             
-
         # Rückwärts vor das erste optische Element
         z_start = np.min(z_array)
         if z_start < 0:
             length_val = -z_start
+            dz = np.min(np.diff(np.sort(np.linspace(0, z_start, res))))
             steps = int(np.ceil(length_val / dz))
             q_back = q_initial
             try:

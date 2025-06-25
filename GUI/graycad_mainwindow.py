@@ -684,7 +684,7 @@ class MainWindow(QMainWindow):
             z_max = sum([p[1][0] for p in self.optical_system_sag
                         if hasattr(p[0], "__func__") and p[0].__func__ is self.matrices.free_space.__func__])
         
-        n_points = 5000
+        n_points = 100
         self.z_visible = np.linspace(z_min, z_max, n_points)
 
         # Hole gespeicherte Parameter
@@ -700,8 +700,14 @@ class MainWindow(QMainWindow):
         # q-Werte berechnen und propagieren
         q_sag = self.beam.q_value(waist_pos_sag, waist_sag, wavelength, n)
         q_tan = self.beam.q_value(waist_pos_tan, waist_tan, wavelength, n)
-        self.z_data, self.w_sag_data = self.beam.propagate_through_system(wavelength, q_sag, optical_system_sag, self.z_visible, n=n)
-        self.z_data, self.w_tan_data = self.beam.propagate_through_system(wavelength, q_tan, optical_system_tan, self.z_visible, n=n)
+        try:
+            self.z_data, self.w_sag_data = self.beam.propagate_through_system(wavelength, q_sag, optical_system_sag, self.z_visible, n_points, n=n)
+            self.z_data, self.w_tan_data = self.beam.propagate_through_system(wavelength, q_tan, optical_system_tan, self.z_visible, n_points, n=n)
+        except TypeError:
+            z=np.linspace(0, 1, n_points)
+            self.z_data, self.w_sag_data = self.beam.propagate_through_system(wavelength, q_sag, optical_system_sag, z, n_points, n=n)
+            self.z_data, self.w_tan_data = self.beam.propagate_through_system(wavelength, q_tan, optical_system_tan, z, n_points, n=n)
+            QtWidgets.QMessageBox.warning(self, "Fehler", f"You shall not pass!\n")
 
         # Plot aktualisieren oder neu erstellen
         if not hasattr(self, "curve_sag") or self.curve_sag is None:
@@ -715,7 +721,7 @@ class MainWindow(QMainWindow):
             axis_pen = pg.mkPen(color='#333333')
             self.plotWidget.getAxis('left').setTextPen(axis_pen)
             self.plotWidget.getAxis('bottom').setTextPen(axis_pen)
-            self.plotWidget.setDefaultPadding(0.05)  # 5% padding around the plot
+            self.plotWidget.setDefaultPadding(0.0)  # 2% padding around the plot
             self.plotWidget.getViewBox().setBorder(axis_pen)
 
             self.curve_sag = self.plotWidget.plot(self.z_data, self.w_sag_data, pen=pg.mkPen('r', width=1), name="Sagittal")
@@ -732,8 +738,8 @@ class MainWindow(QMainWindow):
                 vb.sigXRangeChanged.disconnect(self.update_plot_for_visible_range)
             except TypeError:
                 pass
-            vb.setXRange(z_min, z_max, padding=0.01)
             vb.sigXRangeChanged.connect(self.update_plot_for_visible_range)
+            vb.setXRange(z_min, z_max, padding=0.0)
 
         # Vertikale Linien aktualisieren
         for vline in getattr(self, "vlines", []):
