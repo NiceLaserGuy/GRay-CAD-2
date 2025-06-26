@@ -29,6 +29,7 @@ from src_physics.value_converter import ValueConverter
 from GUI.actions import Action
 from GUI.setupList import SetupList
 from GUI.componentList import ComponentList
+from GUI.errorHandler import CustomMessageBox
 
 class PlotWorker(QObject):
     finished = pyqtSignal(tuple)  # (z_data, w_data)
@@ -42,10 +43,10 @@ class PlotWorker(QObject):
         self.n = n
 
     def run(self):
-        z_data, w_data = self.beam.propagate_through_system(
+        z_data, w_data, z_setup = self.beam.propagate_through_system(
             self.wavelength, self.q_value, self.optical_system, n=self.n
         )
-        self.finished.emit((z_data, w_data))
+        self.finished.emit((z_data, w_data, z_setup))
 
 class MainWindow(QMainWindow):
     """
@@ -85,9 +86,9 @@ class MainWindow(QMainWindow):
         self.vc = ValueConverter()
         self.action = Action()
 
-        
         self.vlines = []
         self.curves = []
+        self.z_setup = 0
         
         self._plot_busy = False
 
@@ -154,6 +155,7 @@ class MainWindow(QMainWindow):
         self.ui.buttonMoveUp.clicked.connect(lambda: self.action.move_selected_setup_item_up(self))
         self.ui.buttonMoveDown.clicked.connect(lambda: self.action.move_selected_setup_item_down(self))
         self.ui.buttonAddComponent.clicked.connect(lambda: self.action.move_selected_component_to_setupList(self))
+        self.ui.buttonScaleToSetup.clicked.connect(lambda: self.scale_visible_setup())
         self.update_live_plot()
         
         # Live update for the optical system plot
@@ -201,6 +203,7 @@ class MainWindow(QMainWindow):
         # Connect signal to function
         self.plotWidget.scene().sigMouseMoved.connect(mouseMoved)
         self.plotWidget.getViewBox().sigXRangeChanged.connect(self.update_plot_for_visible_range)
+        self.plotWidget.hideButtons()
 
     def closeEvent(self, event):
         try:
@@ -684,7 +687,7 @@ class MainWindow(QMainWindow):
             z_max = sum([p[1][0] for p in self.optical_system_sag
                         if hasattr(p[0], "__func__") and p[0].__func__ is self.matrices.free_space.__func__])
         
-        n_points = 100
+        n_points = 500
         self.z_visible = np.linspace(z_min, z_max, n_points)
 
         # Hole gespeicherte Parameter
@@ -696,18 +699,18 @@ class MainWindow(QMainWindow):
         n = self.n
         optical_system_sag = self.optical_system_sag
         optical_system_tan = self.optical_system_tan
+        self.vb = self.plotWidget.getViewBox()
 
         # q-Werte berechnen und propagieren
         q_sag = self.beam.q_value(waist_pos_sag, waist_sag, wavelength, n)
         q_tan = self.beam.q_value(waist_pos_tan, waist_tan, wavelength, n)
         try:
-            self.z_data, self.w_sag_data = self.beam.propagate_through_system(wavelength, q_sag, optical_system_sag, self.z_visible, n_points, n=n)
-            self.z_data, self.w_tan_data = self.beam.propagate_through_system(wavelength, q_tan, optical_system_tan, self.z_visible, n_points, n=n)
-        except TypeError:
-            z=np.linspace(0, 1, n_points)
-            self.z_data, self.w_sag_data = self.beam.propagate_through_system(wavelength, q_sag, optical_system_sag, z, n_points, n=n)
-            self.z_data, self.w_tan_data = self.beam.propagate_through_system(wavelength, q_tan, optical_system_tan, z, n_points, n=n)
-            QtWidgets.QMessageBox.warning(self, "Fehler", f"You shall not pass!\n")
+            self.z_data, self.w_sag_data, z_setup = self.beam.propagate_through_system(wavelength, q_sag, optical_system_sag, self.z_visible, n_points, n=n)
+            self.z_data, self.w_tan_data, z_setup = self.beam.propagate_through_system(wavelength, q_tan, optical_system_tan, self.z_visible, n_points, n=n)
+            self.z_setup = z_setup
+        except Exception:
+            self.vb.setXRange(0, 1, padding=0.02)
+            self.show_error()
 
         # Plot aktualisieren oder neu erstellen
         if not hasattr(self, "curve_sag") or self.curve_sag is None:
@@ -721,8 +724,9 @@ class MainWindow(QMainWindow):
             axis_pen = pg.mkPen(color='#333333')
             self.plotWidget.getAxis('left').setTextPen(axis_pen)
             self.plotWidget.getAxis('bottom').setTextPen(axis_pen)
-            self.plotWidget.setDefaultPadding(0.0)  # 2% padding around the plot
-            self.plotWidget.getViewBox().setBorder(axis_pen)
+            self.plotWidget.setDefaultPadding(0.02)  # 2% padding around the plot
+            region = LinearRegionItem(values=[0, z_setup], orientation='vertical', brush=(100, 100, 255, 30), movable=False)
+            self.plotWidget.addItem(region)
 
             self.curve_sag = self.plotWidget.plot(self.z_data, self.w_sag_data, pen=pg.mkPen('r', width=1), name="Sagittal")
             self.curve_tan = self.plotWidget.plot(self.z_data, self.w_tan_data, pen=pg.mkPen('b', width=1), name="Tangential")
@@ -733,13 +737,12 @@ class MainWindow(QMainWindow):
         # → Immer X-Achse an sichtbaren Bereich anpassen
         current_range = self.plotWidget.getViewBox().viewRange()[0]
         if abs(current_range[0] - z_min) > 1e-9 or abs(current_range[1] - z_max) > 1e-9:
-            vb = self.plotWidget.getViewBox()
             try:
-                vb.sigXRangeChanged.disconnect(self.update_plot_for_visible_range)
+                self.vb.sigXRangeChanged.disconnect(self.update_plot_for_visible_range)
             except TypeError:
                 pass
-            vb.sigXRangeChanged.connect(self.update_plot_for_visible_range)
-            vb.setXRange(z_min, z_max, padding=0.0)
+            self.vb.sigXRangeChanged.connect(self.update_plot_for_visible_range)
+            self.vb.setXRange(0, z_setup, padding=0.02)
 
         # Vertikale Linien aktualisieren
         for vline in getattr(self, "vlines", []):
@@ -750,6 +753,23 @@ class MainWindow(QMainWindow):
             if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
                 z_element += param[0]
             else:
-                vline = pg.InfiniteLine(pos=z_element, angle=90, pen=pg.mkPen(color="#2B7500"))
+                vline = pg.InfiniteLine(pos=z_element, angle=90, pen=pg.mkPen(width=2, color="#FF0000"))
                 self.plotWidget.addItem(vline)
                 self.vlines.append(vline)
+                
+    def scale_visible_setup(self):
+        """
+        Skaliert die sichtbaren Setup-Elemente auf die aktuelle Ansicht.
+        """
+        self.vb = self.plotWidget.getViewBox()
+        self.vb.setXRange(0, self.z_setup, padding=0.02)
+        xRange = self.vb.viewRange()[0]
+        visible_mask = (self.z_data >= xRange[0]) & (self.z_data <= xRange[1])
+        visible_y = self.w_sag_data[visible_mask]
+        if len(visible_y) > 0:
+            ymin, ymax = visible_y.min(), visible_y.max()
+            self.vb.setYRange(ymin, ymax, padding=0.1)
+                
+    def show_error(self):
+        msg = CustomMessageBox(self, "Error", "You do not have permission to exceed this limit!", "..\\GRay-CAD-2\\assets\\error.gif")
+        msg.exec()

@@ -138,6 +138,7 @@ class Beam():
                 q = self.propagate_q(q, ABCD)
                 w_values = np.concatenate((w_values, [self.beam_radius(q, lambda_, n)]))
                 z_positions = np.concatenate((z_positions, [z_total]))
+        z_setup = z_total
 
         # Weiter nach dem letzten optischen Element
         z_end = np.max(z_array)
@@ -167,4 +168,4 @@ class Beam():
             except Exception:
                 return
 
-        return z_positions, w_values
+        return z_positions, w_values, z_setup
