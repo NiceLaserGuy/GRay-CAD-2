@@ -767,8 +767,8 @@ class MainWindow(QMainWindow):
         visible_mask = (self.z_data >= xRange[0]) & (self.z_data <= xRange[1])
         visible_y = self.w_sag_data[visible_mask]
         if len(visible_y) > 0:
-            ymin, ymax = visible_y.min(), visible_y.max()
-            self.vb.setYRange(ymin, ymax, padding=0.1)
+            ymax = visible_y.max()
+            self.vb.setYRange(0, ymax, padding=0.1)
                 
     def show_error(self):
         msg = CustomMessageBox(self, "Error", "You do not have permission to exceed this limit!", "..\\GRay-CAD-2\\assets\\error.gif")
