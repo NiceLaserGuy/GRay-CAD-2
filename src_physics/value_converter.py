@@ -14,9 +14,10 @@ class ValueConverter():
 
     def convert_to_float(self, value, parent=None):
         units = {
-            'am': 1e-18, 'fm': 1e-15, 'pm': 1e-12, 'nm': 1e-9,
+           'am': 1e-18, 'fm': 1e-15, 'pm': 1e-12, 'nm': 1e-9,
             'µm': 1e-6, 'um': 1e-6, 'mm': 1e-3, 'cm': 1e-2,
-            'm': 1, 'km': 1e3, 'Inf': 1e30, 'inf': 1e30
+            'm': 1, 'km': 1e3, 'x1e6 m':1e6, 'x1e9 m':1e9, 'x1e12 m':1e12,
+            'x1e15 m':1e15, 'x1e18 m':1e18, 'x1e21 m':1e21, 'x1e24 m':1e27, 'x1e18 m':1e27,'Inf': 1e30, 'inf': 1e30
         }
         match = re.match(r"(-?\d+\.?\d*)\s*([a-zA-Zµ]+)?", value)
         if match:
@@ -62,17 +63,10 @@ class ValueConverter():
             str: Value converted to the nearest unit
         """
         units = {
-            'am': 1e-18,
-            'fm': 1e-15,
-            'pm': 1e-12,
-            'nm': 1e-9,
-            'µm': 1e-6,
-            'um': 1e-6,
-            'mm': 1e-3,
-            'cm': 1e-2,
-            'm': 1,
-            'km': 1e3,
-            'Inf': 1e30
+           'am': 1e-18, 'fm': 1e-15, 'pm': 1e-12, 'nm': 1e-9,
+            'µm': 1e-6, 'um': 1e-6, 'mm': 1e-3, 'cm': 1e-2,
+            'm': 1, 'km': 1e3, 'x1e6 m':1e6, 'x1e9 m':1e9, 'x1e12 m':1e12,
+            'x1e15 m':1e15, 'x1e18 m':1e18, 'x1e21 m':1e21, 'x1e24 m':1e27, 'x1e18 m':1e27,'Inf': 1e30, 'inf': 1e30
         }
 
         for unit, factor in units.items():

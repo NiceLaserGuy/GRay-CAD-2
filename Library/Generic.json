@@ -1,7 +1,7 @@
 {
     "components": [
         {
-            "type": "GENERIC",
+            "type": "BEAM",
             "name": "Beam",
             "manufacturer": "",
             "properties": {
@@ -17,7 +17,7 @@
             }
           },
         {
-            "type": "GENERIC",
+            "type": "ABCD",
             "name": "ABCD",
             "manufacturer": "",
             "properties": {
@@ -33,7 +33,7 @@
             }
           },
         {
-            "type": "GENERIC",
+            "type": "PROPAGATION",
             "name": "Propagation",
             "manufacturer": "",
             "properties": {
@@ -42,7 +42,7 @@
             }
           },
         {
-            "type": "GENERIC",
+            "type": "LENS",
             "name": "Lens",
             "manufacturer": "",
             "properties": {
@@ -54,13 +54,14 @@
             }
           },
           {
-            "type": "GENERIC",
+            "type": "MIRROR",
             "name": "Mirror",
             "manufacturer": "",
             "properties": {
               "Radius of curvature tangential": 0.1,
               "Radius of curvature sagittal": 0.1,
-              "IS_ROUND": 1.0
+              "IS_ROUND": 1.0,
+              "Angle of incidence": 0.0
             }
           }
     ],

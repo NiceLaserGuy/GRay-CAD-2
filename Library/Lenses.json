@@ -7,10 +7,10 @@
             "name": "new lens",
             "manufacturer": "",
             "properties": {
-                "CURVATURE_IN_SAG": "",
-                "CURVATURE_OUT_SAG": "",
-                "CURVATURE_IN_TAN": "",
-                "CURVATURE_OUT_TAN": ""
+                "CURVATURE_IN_SAG": "0",
+                "CURVATURE_OUT_SAG": "0",
+                "CURVATURE_IN_TAN": "0",
+                "CURVATURE_OUT_TAN": "0"
             }
         }
     ]

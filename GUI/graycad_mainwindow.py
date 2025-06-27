@@ -279,12 +279,12 @@ class MainWindow(QMainWindow):
         is_beam = "Wavelength" in properties
 
         # Gemeinsame Properties (wie Wavelength)
-        common_props = ["Wavelength", "Refractive index", "Length", "Thickness"]
+        common_props = ["Wavelength", "Refractive index", "Length", "Thickness", "Angle of incidence"]
         for key in common_props:
             if key in properties:
                 label = QtWidgets.QLabel(key + ":")
                 value = properties[key]
-                if key == "Refractive index":
+                if key == "Refractive index" or key == "Angle of incidence":
                     value_str = str(value)  # Kein ValueConverter!
                 else:
                     value_str = self.vc.convert_to_nearest_string(value, self)
@@ -541,12 +541,12 @@ class MainWindow(QMainWindow):
                 self.componentList.addItem(list_item)
         except Exception as e:
             self.componentList.clear()
-            QtWidgets.QMessageBox.warning(self, "Fehler", f"Bibliothek konnte nicht geladen werden:\n{e}")
+            QtWidgets.QMessageBox.critical(self, "Error", f"Library could not be loaded:\n{e}")
 
     def build_optical_system_from_setup_list(self, mode="sagittal"):
         """
-        Baut das optische System aus den Komponenten in setupList.
-        Gibt eine Liste von (matrix_funktion, parameter) zurück.
+        Builds the optical system from the components in setupList.
+        Returns a list of (matrix_function, parameters).
         """
         optical_system = []
         for i in range(self.setupList.count()):
@@ -557,25 +557,28 @@ class MainWindow(QMainWindow):
             ctype = component.get("type", "").strip().upper()
             props = component.get("properties", {})
 
-            if ctype == "GENERIC" and component.get("name", "").strip().lower() == "beam":
+            if ctype == "BEAM" and component.get("name", "").strip().lower() == "beam":
                 continue
-            elif ctype == "GENERIC" and component.get("name", "").strip().lower() == "propagation":
+            elif ctype == "PROPAGATION" and component.get("name", "").strip().lower() == "propagation":
                 length = props.get("Length", 0.1)
                 n = props.get("Refractive index", 1)
                 optical_system.append((self.matrices.free_space, (length, n)))
-            elif ctype == "LENS" or ctype == "GENERIC" and component.get("name", "").strip().lower() == "lens":
+            elif ctype == "LENS":
                 if mode == "sagittal":
                     f = props.get("Focal length sagittal", 0.1)
                 else:
                     f = props.get("Focal length tangential", 0.1)
                 optical_system.append((self.matrices.lens, (f,)))
-            elif ctype == "MIRROR" or ctype == "GENERIC" and component.get("name", "").strip().lower() == "Mirror":
+            elif ctype == "MIRROR":
                 if mode == "sagittal":
-                    r = props.get("CURVATURE_SAGITTAL")
+                    r = props.get("Radius of curvature sagittal")
+                    theta = props.get("Angle of incidence")
+                    optical_system.append((self.matrices.curved_mirror_sagittal, (r, theta,)))
                 else:
-                    r = props.get("CURVATURE_TANGENTIAL")
-                optical_system.append(self.matrices.curved_mirror_sagittal, (r,))
-                
+                    r = props.get("Radius of curvature tangential")
+                    theta = props.get("Angle of incidence")
+                    optical_system.append((self.matrices.curved_mirror_tangential, (r, theta,)))
+
             # ... weitere Typen ...
         return optical_system
     
@@ -625,31 +628,56 @@ class MainWindow(QMainWindow):
         """Save current field values to the given component."""
         if not isinstance(component, dict) or "properties" not in component:
             return
-            
-        # Create a copy to modify
+
         updated = copy.deepcopy(component)
-        
+        error_msgs = []
+        # Merke alte Werte für Rücksetzen
+        old_values = {}
+
         for key, field in self._property_fields.items():
-            # Skip if property doesn't belong to this component
             if key not in updated["properties"]:
                 continue
-                
-            # Skip calculated fields
             if "Rayleigh range" in key:
                 continue
-                
+
             if isinstance(field, QtWidgets.QLineEdit):
+                old_value = updated["properties"][key]
                 try:
                     if key == "Refractive index":
                         value = float(field.text())
                     else:
                         value = self.vc.convert_to_float(field.text(), self)
-                except:
+                except Exception:
                     value = field.text()
+                # Fehlerprüfung für Beam
+                if key in ["Waist radius sagittal", "Waist radius tangential", "Wavelength"]:
+                    if isinstance(value, (int, float)) and value <= 0:
+                        error_msgs.append(f"{key} must be > 0!")
+                        old_values[key] = old_value
+                # Fehlerprüfung für Propagation
+                if key == "Length" and "propagation" in updated.get("name", "").lower():
+                    if isinstance(value, (int, float, str)) and value < 0:
+                        error_msgs.append("Length (Propagation) must be > 0!")
+                        old_values[key] = old_value
+                if key in ["Radius of curvature tangential", "Radius of curvature sagittal", "Focal length tangential", "Focal length sagittal"]:
+                    if isinstance(value, (int, float)) and value == 0:
+                        print(value)
+                        error_msgs.append(f"{key} must be not 0!")
+                        old_values[key] = old_value
                 updated["properties"][key] = value
             elif isinstance(field, QtWidgets.QCheckBox):
                 updated["properties"][key] = 1.0 if field.isChecked() else 0.0
-        
+
+        if error_msgs:
+            # Setze ungültige Felder auf alten Wert zurück
+            for key, old_value in old_values.items():
+                if key in self._property_fields:
+                    self._property_fields[key].blockSignals(True)
+                    self._property_fields[key].setText(self.vc.convert_to_nearest_string(old_value))
+                    self._property_fields[key].blockSignals(False)
+            QtWidgets.QMessageBox.critical(self, "Invalid Input", "\n".join(error_msgs))
+            return None
+
         return updated
         
     def plot_optical_system_from_resonator(self, optical_system):
@@ -710,7 +738,7 @@ class MainWindow(QMainWindow):
             self.z_setup = z_setup
         except Exception:
             self.vb.setXRange(0, 1, padding=0.02)
-            self.show_error()
+            #self.show_error()
 
         # Plot aktualisieren oder neu erstellen
         if not hasattr(self, "curve_sag") or self.curve_sag is None:
