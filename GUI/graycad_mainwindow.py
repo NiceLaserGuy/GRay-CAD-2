@@ -715,7 +715,7 @@ class MainWindow(QMainWindow):
             z_max = sum([p[1][0] for p in self.optical_system_sag
                         if hasattr(p[0], "__func__") and p[0].__func__ is self.matrices.free_space.__func__])
         
-        n_points = 500
+        n_points = 1000
         self.z_visible = np.linspace(z_min, z_max, n_points)
 
         # Hole gespeicherte Parameter
