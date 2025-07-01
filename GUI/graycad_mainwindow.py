@@ -142,12 +142,24 @@ class MainWindow(QMainWindow):
         old_component_list.deleteLater()
         old_setup_list.deleteLater()
 
+        self.setups = []
+        # Initiales Setup als "Setup 0" speichern
+        setup0 = []
+        for i in range(self.setupList.count()):
+            item = self.setupList.item(i)
+            comp = item.data(QtCore.Qt.UserRole)
+            setup0.append(copy.deepcopy(comp))
+        self.setups.append({"name": "Setup 0", "components": setup0})
+        self.ui.comboBoxSetup.clear()
+        self.ui.comboBoxSetup.addItem("Setup 0")
+
         self.load_library_list_from_folder("Library")
         self.componentList.itemClicked.connect(self.on_component_clicked)
         self.setupList.itemClicked.connect(self.on_component_clicked)
         self.libraryList.itemClicked.connect(self.on_library_selected)
 
-        #self.ui.pushButton_create_setup.clicked.connect(self.new_setup)
+        self.ui.pushButton_create_setup.clicked.connect(self.create_new_setup)
+        self.ui.comboBoxSetup.currentIndexChanged.connect(self.on_setup_selection_changed)
         #self.ui.pushButton_delete_setup.clicked.connect(self.delete_setup)
 
         # Connect buttons in the setupTree
@@ -204,6 +216,38 @@ class MainWindow(QMainWindow):
         self.plotWidget.scene().sigMouseMoved.connect(mouseMoved)
         self.plotWidget.getViewBox().sigXRangeChanged.connect(self.update_plot_for_visible_range)
         self.plotWidget.hideButtons()
+
+    def create_new_setup(self):
+        # Erstelle eine Kopie des aktuellen Setups
+        new_setup = []
+        for i in range(self.setupList.count()):
+            item = self.setupList.item(i)
+            comp = item.data(QtCore.Qt.UserRole)
+            new_setup.append(copy.deepcopy(comp))
+        self.setups.insert(0, {"name": "", "components": new_setup})  # Neu an den Anfang!
+        self.update_setup_names_and_combobox()
+        self.ui.comboBoxSetup.setCurrentIndex(0)
+
+    def update_setup_names_and_combobox(self):
+        self.ui.comboBoxSetup.blockSignals(True)
+        self.ui.comboBoxSetup.clear()
+        for idx, setup in enumerate(self.setups):
+            setup["name"] = f"Setup {idx}"
+            self.ui.comboBoxSetup.addItem(setup["name"])
+        self.ui.comboBoxSetup.blockSignals(False)
+
+    def on_setup_selection_changed(self, index):
+        if index < 0 or index >= len(self.setups):
+            return
+        self.setupList.clear()
+        setup = self.setups[index]["components"]
+        for comp in setup:
+            item = QtWidgets.QListWidgetItem(comp.get("name", "Unnamed"))
+            item.setData(QtCore.Qt.UserRole, copy.deepcopy(comp))
+            self.setupList.addItem(item)
+        self._last_component_item = None  # <--- Hier hinzufügen!
+        self.update_live_plot()
+        self.scale_visible_setup()
 
     def closeEvent(self, event):
         try:
@@ -715,7 +759,7 @@ class MainWindow(QMainWindow):
             z_max = sum([p[1][0] for p in self.optical_system_sag
                         if hasattr(p[0], "__func__") and p[0].__func__ is self.matrices.free_space.__func__])
         
-        n_points = 1000
+        n_points = 2000
         self.z_visible = np.linspace(z_min, z_max, n_points)
 
         # Hole gespeicherte Parameter
@@ -756,8 +800,8 @@ class MainWindow(QMainWindow):
             region = LinearRegionItem(values=[0, z_setup], orientation='vertical', brush=(100, 100, 255, 30), movable=False)
             self.plotWidget.addItem(region)
 
-            self.curve_sag = self.plotWidget.plot(self.z_data, self.w_sag_data, pen=pg.mkPen('r', width=1), name="Sagittal")
-            self.curve_tan = self.plotWidget.plot(self.z_data, self.w_tan_data, pen=pg.mkPen('b', width=1), name="Tangential")
+            self.curve_sag = self.plotWidget.plot(self.z_data, self.w_sag_data, pen=pg.mkPen('r', width=1.5), name="Sagittal")
+            self.curve_tan = self.plotWidget.plot(self.z_data, self.w_tan_data, pen=pg.mkPen('b', width=1.5), name="Tangential")
         else:
             self.curve_sag.setData(self.z_data, self.w_sag_data)
             self.curve_tan.setData(self.z_data, self.w_tan_data)

@@ -106,8 +106,11 @@ class Beam():
 
         # Berechung der Länge des optischen Systems
         z_total = 0.0
-                
-        
+        length_plot = 0.0
+        for element, param in elements:
+            if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
+                length_plot += param[0]
+
         # Vorwärts durch das optische System propagieren
         for element, param in elements:
             if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
@@ -150,11 +153,10 @@ class Beam():
                 q, z_inc, zs, ws = Beam.propagate_free_space(q, dz, steps, lambda_, n)
                 z_positions = np.concatenate((z_positions, z_total + zs[1:]))
                 w_values = np.concatenate((w_values, ws[1:]))
-                z_total += length_val
             except Exception:
                 return
             
-        # Rückwärts vor das erste optische Element
+        '''# Rückwärts vor das erste optische Element
         z_start = np.min(z_array)
         if z_start < 0:
             length_val = -z_start
@@ -166,6 +168,6 @@ class Beam():
                 z_positions = np.concatenate((z_start + zs[:-1], z_positions))
                 w_values = np.concatenate((ws[:-1], w_values))
             except Exception:
-                return
+                return'''
 
         return z_positions, w_values, z_setup

@@ -354,6 +354,7 @@ class Resonator(QObject):
         self.ui_resonator.progressBar_build_resonator.setValue(0)
 
         # Connect signals and start thread
+        self.ui_resonator.button_evaluate_resonator.setEnabled(False)
         self.optimization_thread.progress.connect(
             self.ui_resonator.progressBar_build_resonator.setValue
         )
@@ -450,6 +451,7 @@ class Resonator(QObject):
         self.ui_resonator.label_waist.setText(f"={self.vc.convert_to_nearest_string(self.waist_sag, self.resonator_window)} / {self.vc.convert_to_nearest_string(self.waist_tan, self.resonator_window)}")
         self.ui_resonator.label_fitness.setText(f"={best.fitness.values[0]:.3f}")
         self.ui_resonator.label_stability.setText(f"={m_sag:.3f} / {m_tan:.3f}")
+        self.ui_resonator.button_evaluate_resonator.setEnabled(True)
         return best
 
     def stop_optimization(self):
