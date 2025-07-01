@@ -409,7 +409,11 @@
        </spacer>
       </item>
       <item row="0" column="0">
-       <widget class="QComboBox" name="comboBoxSetup"/>
+       <widget class="QComboBox" name="comboBoxSetup">
+        <property name="editable">
+         <bool>true</bool>
+        </property>
+       </widget>
       </item>
      </layout>
     </item>

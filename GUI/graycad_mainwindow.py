@@ -158,9 +158,11 @@ class MainWindow(QMainWindow):
         self.setupList.itemClicked.connect(self.on_component_clicked)
         self.libraryList.itemClicked.connect(self.on_library_selected)
 
+        # Buttons and Dropdown for new setup
         self.ui.pushButton_create_setup.clicked.connect(self.create_new_setup)
         self.ui.comboBoxSetup.currentIndexChanged.connect(self.on_setup_selection_changed)
-        #self.ui.pushButton_delete_setup.clicked.connect(self.delete_setup)
+        self.ui.comboBoxSetup.editTextChanged.connect(self.on_setup_name_edited)
+        self.ui.pushButton_delete_setup.clicked.connect(self.delete_setup)
 
         # Connect buttons in the setupTree
         self.ui.buttonDeleteItem.clicked.connect(lambda: self.action.delete_selected_setup_item(self))
@@ -220,21 +222,28 @@ class MainWindow(QMainWindow):
     def create_new_setup(self):
         # Erstelle eine Kopie des aktuellen Setups
         new_setup = []
+        count = len(self.setups)
         for i in range(self.setupList.count()):
             item = self.setupList.item(i)
             comp = item.data(QtCore.Qt.UserRole)
             new_setup.append(copy.deepcopy(comp))
-        self.setups.insert(0, {"name": "", "components": new_setup})  # Neu an den Anfang!
+        self.setups.insert(0, {"name": f"new setup {count}", "components": new_setup})  # Neu an den Anfang!
         self.update_setup_names_and_combobox()
         self.ui.comboBoxSetup.setCurrentIndex(0)
 
     def update_setup_names_and_combobox(self):
         self.ui.comboBoxSetup.blockSignals(True)
         self.ui.comboBoxSetup.clear()
-        for idx, setup in enumerate(self.setups):
-            setup["name"] = f"Setup {idx}"
-            self.ui.comboBoxSetup.addItem(setup["name"])
+        for setup in self.setups:
+            self.ui.comboBoxSetup.addItem(setup.get("name", "Setup"))
         self.ui.comboBoxSetup.blockSignals(False)
+    
+    def on_setup_name_edited(self, new_name):
+        idx = self.ui.comboBoxSetup.currentIndex()
+        if 0 <= idx < len(self.setups):
+            self.setups[idx]["name"] = new_name
+            # Optional: ComboBox-Eintrag aktualisieren (falls nötig)
+            self.ui.comboBoxSetup.setItemText(idx, new_name)
 
     def on_setup_selection_changed(self, index):
         if index < 0 or index >= len(self.setups):
@@ -248,6 +257,22 @@ class MainWindow(QMainWindow):
         self._last_component_item = None  # <--- Hier hinzufügen!
         self.update_live_plot()
         self.scale_visible_setup()
+
+    def delete_setup(self):
+        idx = self.ui.comboBoxSetup.currentIndex()
+        if idx < 0 or idx >= len(self.setups):
+            return
+        # Optional: Das erste Setup darf nicht gelöscht werden
+        if len(self.setups) == 1:
+            QtWidgets.QMessageBox.warning(self, "Warnung", "At least one setup must be maintained.")
+            return
+        # Setup entfernen
+        del self.setups[idx]
+        self.update_setup_names_and_combobox()
+        # Index anpassen: vorheriges oder erstes Setup auswählen
+        if idx >= len(self.setups):
+            idx = len(self.setups) - 1
+        self.ui.comboBoxSetup.setCurrentIndex(idx)
 
     def closeEvent(self, event):
         try:

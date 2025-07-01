@@ -35,6 +35,7 @@ class SetupList(QtWidgets.QListWidget):
                     self.addItem(item)
         except Exception as e:
             print(f"Fehler beim Laden von Generic.json: {e}")
+            
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Delete:
