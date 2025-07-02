@@ -383,7 +383,8 @@ class MainWindow(QMainWindow):
             ("Waist position sagittal", "Waist position tangential", "Waist position"),
             ("Rayleigh range sagittal", "Rayleigh range tangential", "Rayleigh range"),
             ("Focal length sagittal", "Focal length tangential", "Focal length"),
-            ("Radius of curvature sagittal", "Radius of curvature tangential", "Radius of curvature"),
+            ("Input radius of curvature sagittal", "Input radius of curvature tangential", "Radius of curvature"),
+            ("Output radius of curvature sagittal", "Output radius of curvature tangential", "Radius of curvature"),
             ("A sagittal", "A tangential", "A"),
             ("B sagittal", "B tangential", "B"),
             ("C sagittal", "C tangential", "C"),
@@ -647,6 +648,48 @@ class MainWindow(QMainWindow):
                     r = props.get("Radius of curvature tangential")
                     theta = props.get("Angle of incidence")
                     optical_system.append((self.matrices.curved_mirror_tangential, (r, theta,)))
+            elif ctype == "ABCD":
+                if mode == "sagittal":
+                    A = props.get("A sagittal")
+                    B = props.get("B sagittal")
+                    C = props.get("C sagittal")
+                    D = props.get("D sagittal")
+                    optical_system.append((self.matrices.ABCD, (A, B, C, D, )))
+                else:
+                    A = props.get("A tangential")
+                    B = props.get("B tangential")
+                    C = props.get("C tangential")
+                    D = props.get("D tangential")
+                    optical_system.append((self.matrices.ABCD, (A, B, C, D, )))
+            elif ctype == "THICK LENS":
+                n_in = 1  # Default
+                if i > 0:
+                    for j in range(i - 1, -1, -1):
+                        prev_item = self.setupList.item(j)
+                        prev_component = prev_item.data(QtCore.Qt.UserRole)
+                        if prev_component.get("type", "").strip().upper() == "PROPAGATION":
+                            n_in = prev_component.get("properties", {}).get("Refractive index", 1)
+                            break
+
+                # ✳️ Suche n_out (nächste Propagation oder Medium)
+                n_out = 1  # Default
+                if i < self.setupList.count() - 1:
+                    for j in range(i + 1, self.setupList.count()):
+                        next_item = self.setupList.item(j)
+                        next_component = next_item.data(QtCore.Qt.UserRole)
+                        if next_component.get("type", "").strip().upper() == "PROPAGATION":
+                            n_out = next_component.get("properties", {}).get("Refractive index", 1)
+                            break
+                n_lens = props.get("Refractive index", 1)
+                thickness = props.get("Thickness", 0.01)
+                if mode == "sagittal":
+                    r_in_sag = props.get("Input radius of curvature sagittal", 0.1)
+                    r_out_sag = props.get("Output radius of curvature sagittal", 0.1)
+                    optical_system.append((self.matrices.thick_lens, (r_in_sag, r_out_sag, thickness, n_lens, n_in, n_out)))
+                else:
+                    r_in_tan = props.get("Input radius of curvature tangential", 0.1)
+                    r_out_tan = props.get("Output radius of curvature tangential", 0.1)
+                    optical_system.append((self.matrices.thick_lens, (r_in_tan, r_out_tan, thickness, n_lens, n_in, n_out)))
 
             # ... weitere Typen ...
         return optical_system

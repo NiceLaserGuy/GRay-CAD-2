@@ -54,6 +54,20 @@
             }
           },
           {
+            "type": "THICK LENS",
+            "name": "Thick Lens",
+            "manufacturer": "",
+            "properties": {
+              "Input radius of curvature tangential": 0.2,
+              "Input radius of curvature sagittal": 0.2,
+              "Output radius of curvature tangential":0.3,
+              "Output radius of curvature sagittal":0.3,
+              "Thickness":0.01,
+              "Refractive index":1.5,
+              "IS_ROUND": 1.0
+            }
+          },
+          {
             "type": "MIRROR",
             "name": "Mirror",
             "manufacturer": "",

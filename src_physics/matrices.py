@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Matrices:
     
     def __init__(self):
@@ -26,8 +27,17 @@ class Matrices:
         return np.array([[1, 0], [-1/focal_length, 1]])
     
     def thick_lens(self, *args):
-        #TODO: Implement thick lens matrix
-        return
+        """ABCD matrix for a thick lens"""
+        radius_of_curvature_in = args[0]
+        radius_of_curvature_out = args[1]
+        thickness = args[2]
+        refractive_index_lens = args[3]
+        refractive_index_before = args[4]
+        refractive_index_behind = args[5]
+        s1 = np.array([[1, 0],[(refractive_index_lens - refractive_index_before)/(refractive_index_lens * radius_of_curvature_in), refractive_index_before/refractive_index_lens]])
+        t = np.array([[1, thickness],[0, 1]])
+        s2 = np.array([[1, 0],[(refractive_index_behind - refractive_index_lens)/radius_of_curvature_out, refractive_index_lens/refractive_index_behind]])
+        return np.matmul(np.matmul(s2, t), s1)
     
     def ABCD(self, *args):
         """ABCD matrix for a system of optical elements"""
