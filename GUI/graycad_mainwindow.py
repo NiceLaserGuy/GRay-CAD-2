@@ -30,6 +30,7 @@ from GUI.actions import Action
 from GUI.setupList import SetupList
 from GUI.componentList import ComponentList
 from GUI.errorHandler import CustomMessageBox
+from src_physics.material import Material
 
 class PlotWorker(QObject):
     finished = pyqtSignal(tuple)  # (z_data, w_data)
@@ -85,6 +86,7 @@ class MainWindow(QMainWindow):
         self.beam = Beam()
         self.vc = ValueConverter()
         self.action = Action()
+        self.material = Material
 
         self.vlines = []
         self.curves = []
@@ -560,20 +562,30 @@ class MainWindow(QMainWindow):
 
             if ctype == "BEAM" and component.get("name", "").strip().lower() == "beam":
                 continue
+            
             elif ctype == "PROPAGATION" and component.get("name", "").strip().lower() == "propagation":
                 length = props.get("Length", 0.1)
                 n = props.get("Refractive index", 1)
                 optical_system.append((self.matrices.free_space, (length, n)))
+                
+            #TODO Lisenmachergleichung implementieren    
             elif ctype == "LENS":
+                material = props.get("Refractive Index", "NBK7")
+                lambda_design = props.get("Design wavelength", 514e-9)
+                n_design = self.material.get_n(material, lambda_design)
+                n = self.material.get_n(material, self.wavelength)
+                
                 if mode == "sagittal":
                     f = props.get("Focal length sagittal", 0.1)
-                    r_in_sag = props.get("Input radius of curvature sagittal", 0.2)
-                    r_out_sag = props.get("output radius of curvature sagittal", 0.2)
+                    r_in = props.get("Input radius of curvature sagittal", 0.2)
+                    r_out = props.get("output radius of curvature sagittal", 0.2)
                 else:
                     f = props.get("Focal length tangential", 0.1)
-                    r_in_tan = props.get("Input radius of curvature tangential", 0.2)
-                    r_out_tan = props.get("output radius of curvature tangential", 0.2)
+                    r_in = props.get("Input radius of curvature tangential", 0.2)
+                    r_out = props.get("output radius of curvature tangential", 0.2)
+                f= ((n_design-1)/(n-1))
                 optical_system.append((self.matrices.lens, (f,)))
+                
             elif ctype == "MIRROR":
                 if mode == "sagittal":
                     r = props.get("Radius of curvature sagittal")
@@ -583,6 +595,7 @@ class MainWindow(QMainWindow):
                     r = props.get("Radius of curvature tangential")
                     theta = props.get("Angle of incidence")
                     optical_system.append((self.matrices.curved_mirror_tangential, (r, theta,)))
+                    
             elif ctype == "ABCD":
                 if mode == "sagittal":
                     A = props.get("A sagittal")
@@ -596,6 +609,7 @@ class MainWindow(QMainWindow):
                     C = props.get("C tangential")
                     D = props.get("D tangential")
                     optical_system.append((self.matrices.ABCD, (A, B, C, D, )))
+                    
             elif ctype == "THICK LENS":
                 n_in = 1  # Default
                 if i > 0:
