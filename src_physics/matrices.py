@@ -35,9 +35,9 @@ class Matrices:
         refractive_index_before = args[4]
         refractive_index_behind = args[5]
         s1 = np.array([[1, 0],[(refractive_index_lens - refractive_index_before)/(refractive_index_lens * radius_of_curvature_in), refractive_index_before/refractive_index_lens]])
-        t = np.array([[1, thickness],[0, 1]])
+        t = self.free_space(thickness, 1)
         s2 = np.array([[1, 0],[(refractive_index_behind - refractive_index_lens)/radius_of_curvature_out, refractive_index_lens/refractive_index_behind]])
-        return np.matmul(np.matmul(s2, t), s1)
+        return s1, t, s2
     
     def ABCD(self, *args):
         """ABCD matrix for a system of optical elements"""

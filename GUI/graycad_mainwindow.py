@@ -316,13 +316,19 @@ class MainWindow(QMainWindow):
             value_str_sag = self.vc.convert_to_nearest_string(rayleigh_sag, self)
             value_str_tan = self.vc.convert_to_nearest_string(rayleigh_tan, self)
             self._property_fields["Rayleigh range sagittal"].setText(value_str_sag)
+            self._property_fields["Rayleigh range sagittal"].setReadOnly(True)
+            self._property_fields["Rayleigh range sagittal"].setStyleSheet("background-color: #eee; color: #888;")
             self._property_fields["Rayleigh range tangential"].setText(value_str_tan)
+            self._property_fields["Rayleigh range tangential"].setReadOnly(True)
+            self._property_fields["Rayleigh range tangential"].setStyleSheet("background-color: #eee; color: #888;")
+        except KeyError:
+            pass
         except Exception:
             self._property_fields["Rayleigh range sagittal"].setText("")
             self._property_fields["Rayleigh range tangential"].setText("")
 
         self._property_update_timer.timeout.connect(self.update_rayleigh)    
-    
+        
     def show_properties(self, properties: dict, component=None):
         layout: QtWidgets.QGridLayout = self.propertyLayout
         while layout.count():
@@ -331,214 +337,139 @@ class MainWindow(QMainWindow):
                 child.widget().deleteLater()
 
         self._property_fields = {}
+        row = 0
 
-        row = 1
-
-        # IS_ROUND Checkbox als erstes Feld (immer anzeigen)
-        is_round_value = float(properties.get("IS_ROUND", 0.0))
-        label = QtWidgets.QLabel("Spherical:")
-        layout.addWidget(label, row, 0)
-        checkbox = QtWidgets.QCheckBox()
-        checkbox.setChecked(is_round_value == 1.0)
-        layout.addWidget(checkbox, row, 1, 1, 2)
-        self._property_fields["IS_ROUND"] = checkbox
-        checkbox.stateChanged.connect(self.make_checkbox_slot("IS_ROUND", component))
-        row += 1
-
-        is_beam = "Wavelength" in properties
-
-        # Gemeinsame Properties (wie Wavelength)
-        common_props = ["Wavelength", "Refractive index", "Length", "Thickness", "Angle of incidence"]
-        for key in common_props:
-            if key in properties:
-                label = QtWidgets.QLabel(key + ":")
-                value = properties[key]
-                if key == "Refractive index" or key == "Angle of incidence":
-                    value_str = str(value)  # Kein ValueConverter!
-                else:
-                    value_str = self.vc.convert_to_nearest_string(value, self)
-                field = QtWidgets.QLineEdit(value_str)
-                layout.addWidget(label, row, 0)
-                layout.addWidget(field, row, 1, 1, 2)
-                self._property_fields[key] = field
-                field.textChanged.connect(self.make_field_slot(key, component))
-                if key == "Wavelength":
-                    field.textChanged.connect(self.update_rayleigh_delayed)
-                if not field.isReadOnly():
-                    field.textChanged.connect(self.update_live_plot_delayed)
-                row += 1
-
-        # Jetzt die Header-Zeile für sagittal/tangential
-        empty_label = QtWidgets.QLabel("")
-        sag_label = QtWidgets.QLabel("Sagittal")
-        tan_label = QtWidgets.QLabel("Tangential")
-        layout.addWidget(empty_label, row, 0)
-        layout.addWidget(sag_label, row, 1)
-        layout.addWidget(tan_label, row, 2)
-        row += 1
-
-        # Sagittal/Tangential Paare
+        # Definiere Paare (nur einmal zentral)
         paired_props = [
             ("Waist radius sagittal", "Waist radius tangential", "Waist radius"),
             ("Waist position sagittal", "Waist position tangential", "Waist position"),
             ("Rayleigh range sagittal", "Rayleigh range tangential", "Rayleigh range"),
             ("Focal length sagittal", "Focal length tangential", "Focal length"),
-            ("Input radius of curvature sagittal", "Input radius of curvature tangential", "Radius of curvature"),
-            ("Output radius of curvature sagittal", "Output radius of curvature tangential", "Radius of curvature"),
+            ("Radius of curvature sagittal", "Radius of curvature tangential", "Radius of curvature"),
+            ("Input radius of curvature sagittal", "Input radius of curvature tangential", "Input radius of curvature"),
+            ("Output radius of curvature sagittal", "Output radius of curvature tangential", "Output radius of curvature"),
             ("A sagittal", "A tangential", "A"),
             ("B sagittal", "B tangential", "B"),
             ("C sagittal", "C tangential", "C"),
             ("D sagittal", "D tangential", "D")
         ]
 
+        # Set zum schnellen Nachschlagen
+        paired_keys = set()
+        for sag, tan, _ in paired_props:
+            paired_keys.add(sag)
+            paired_keys.add(tan)
+
+        # Zeige Paare in einer Zeile
         for sag_key, tan_key, display_name in paired_props:
             if sag_key in properties or tan_key in properties:
                 label = QtWidgets.QLabel(display_name + ":")
                 layout.addWidget(label, row, 0)
-                # Sagittal Field
+                # Sagittal
                 if sag_key in properties:
-                    # ValueConverter für die Anzeige nutzen
-                    value_str = self.vc.convert_to_nearest_string(properties.get(sag_key, 0), self)
-                    field_sag = QtWidgets.QLineEdit(value_str)
-                    if "Rayleigh range" in sag_key:
-                        field_sag.setReadOnly(True)
-                        field_sag.setStyleSheet("background-color: #eee; color: #888;")
+                    value = properties.get(sag_key, "")
+                    field_sag = QtWidgets.QLineEdit(self.vc.convert_to_nearest_string(value))
                     layout.addWidget(field_sag, row, 1)
                     self._property_fields[sag_key] = field_sag
                     field_sag.textChanged.connect(self.make_field_slot(sag_key, component))
-                    if "Waist radius" in sag_key:
-                        field_sag.textChanged.connect(self.update_rayleigh_delayed)
-                    if not field_sag.isReadOnly():
-                        field_sag.textChanged.connect(self.update_live_plot_delayed)
-                # Tangential Field
+                else:
+                    layout.addWidget(QtWidgets.QLabel(""), row, 1)
+                # Tangential
                 if tan_key in properties:
-                    # ValueConverter für die Anzeige nutzen
-                    value_str = self.vc.convert_to_nearest_string(properties.get(tan_key, 0), self)
-                    field_tan = QtWidgets.QLineEdit(value_str)
-                    if "Rayleigh range" in tan_key:
-                        field_tan.setReadOnly(True)
-                        field_tan.setStyleSheet("background-color: #eee; color: #888;")
+                    value = properties.get(tan_key, "")
+                    field_tan = QtWidgets.QLineEdit(self.vc.convert_to_nearest_string(value))
                     layout.addWidget(field_tan, row, 2)
                     self._property_fields[tan_key] = field_tan
                     field_tan.textChanged.connect(self.make_field_slot(tan_key, component))
-                    if "Waist radius" in tan_key:
-                        field_tan.textChanged.connect(self.update_rayleigh_delayed)
-                    if not field_tan.isReadOnly():
-                        field_tan.textChanged.connect(self.update_live_plot_delayed)
-
+                else:
+                    layout.addWidget(QtWidgets.QLabel(""), row, 2)
                 row += 1
 
-        # Andere Properties (wie IS_ROUND)
+        # Zeige alle anderen Properties einzeln
         for key, value in properties.items():
-            if key not in [item for sublist in paired_props for item in sublist[:2]] and key not in common_props and key.upper() != "IS_ROUND":
+            if key in paired_keys:
+                continue  # Schon als Paar behandelt
+            # Spezielles Label für IS_ROUND
+            if key == "IS_ROUND":
+                label = QtWidgets.QLabel("Spherical:")
+            else:
                 label = QtWidgets.QLabel(key + ":")
-                layout.addWidget(label, row, 0)
-                str_value = self.vc.convert_to_nearest_string(value, self)
-                field = QtWidgets.QLineEdit(str_value)
-                layout.addWidget(field, row, 1, 1, 2)
+            layout.addWidget(label, row, 0)
+            # Checkbox für boolsche Werte
+            if isinstance(value, (int, float)) and (key.startswith("IS_") or key.lower() == "is_round"):
+                field = QtWidgets.QCheckBox()
+                field.setChecked(bool(value))
+                layout.addWidget(field, row, 1)
+                self._property_fields[key] = field
+                field.stateChanged.connect(self.make_checkbox_slot(key, component))
+            # Rayleigh range Felder immer readonly und grau
+            elif "Rayleigh range" in key:
+                field = QtWidgets.QLineEdit(self.vc.convert_to_nearest_string(value))
+                field.setReadOnly(True)
+                field.setStyleSheet("background-color: #eee; color: #888;")
+                layout.addWidget(field, row, 1)
+                self._property_fields[key] = field
+            # Refractive index: Zahl oder Dropdown
+            elif key == "Refractive index":
+                if isinstance(value, (int, float)):
+                    field = QtWidgets.QLineEdit(str(value))
+                    layout.addWidget(field, row, 1)
+                    self._property_fields[key] = field
+                    field.textChanged.connect(self.make_field_slot(key, component))
+                elif isinstance(value, str):
+                    field = QtWidgets.QComboBox()
+                    field.addItems(["NBK7", "Fused Silica"])
+                    if value in ["NBK7", "Fused Silica"]:
+                        field.setCurrentText(value)
+                    layout.addWidget(field, row, 1)
+                    self._property_fields[key] = field
+                    def on_index_changed():
+                        self.save_properties_to_component(component)
+                        self.update_live_plot_delayed()
+                    field.currentIndexChanged.connect(on_index_changed)
+            # Standard: QLineEdit
+            else:
+                field = QtWidgets.QLineEdit(self.vc.convert_to_nearest_string(value))
+                layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
                 field.textChanged.connect(self.make_field_slot(key, component))
-                if isinstance(field, QtWidgets.QLineEdit) and not field.isReadOnly():
-                    field.textChanged.connect(self.update_live_plot_delayed)
-                
-                row += 1
-
-        # Initial Rayleigh-Berechnung
-        if is_beam:
-            self.update_rayleigh()
-
+            row += 1
         # Spacer am Ende
         spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         layout.addItem(spacer, row, 0, 1, 3)
         
-        # ...nachdem alle Felder angelegt wurden...
-        
-        self._syncing_focal_curvature = False
-
-        def make_focal_to_curvature_slot(focal_key, curvature_key):
-            def slot():
-                if self._syncing_focal_curvature:
-                    return
-                try:
-                    self._syncing_focal_curvature = True
-                    focal_field = self._property_fields.get(focal_key)
-                    curvature_field = self._property_fields.get(curvature_key)
-                    if focal_field and curvature_field:
-                        focal_val = self.vc.convert_to_float(focal_field.text(), self)
-                        if focal_val is not None:
-                            curvature_val = 2 * focal_val
-                            curvature_field.setText(self.vc.convert_to_nearest_string(curvature_val, self))
-                finally:
-                    self._syncing_focal_curvature = False
-            return slot
-
-        def make_curvature_to_focal_slot(curvature_key, focal_key):
-            def slot():
-                if self._syncing_focal_curvature:
-                    return
-                try:
-                    self._syncing_focal_curvature = True
-                    curvature_field = self._property_fields.get(curvature_key)
-                    focal_field = self._property_fields.get(focal_key)
-                    if curvature_field and focal_field:
-                        curvature_val = self.vc.convert_to_float(curvature_field.text(), self)
-                        if curvature_val is not None:
-                            focal_val = curvature_val / 2
-                            focal_field.setText(self.vc.convert_to_nearest_string(focal_val, self))
-                finally:
-                    self._syncing_focal_curvature = False
-            return slot
-
-        # Verbinde die Felder
-        if "Focal length sagittal" in self._property_fields and "Radius of curvature sagittal" in self._property_fields:
-            self._property_fields["Focal length sagittal"].textChanged.connect(
-                make_focal_to_curvature_slot("Focal length sagittal", "Radius of curvature sagittal")
-            )
-            self._property_fields["Radius of curvature sagittal"].textChanged.connect(
-                make_curvature_to_focal_slot("Radius of curvature sagittal", "Focal length sagittal")
-            )
-
-        if "Focal length tangential" in self._property_fields and "Radius of curvature tangential" in self._property_fields:
-            self._property_fields["Focal length tangential"].textChanged.connect(
-                make_focal_to_curvature_slot("Focal length tangential", "Radius of curvature tangential")
-            )
-            self._property_fields["Radius of curvature tangential"].textChanged.connect(
-                make_curvature_to_focal_slot("Radius of curvature tangential", "Focal length tangential")
-            )
-
-        def update_spherical_state():
-            is_spherical = self._property_fields["IS_ROUND"].isChecked()
+        if "IS_ROUND" in self._property_fields:
+            is_round = self._property_fields["IS_ROUND"].isChecked()
+            def update_tangential_fields():
+                is_round = self._property_fields["IS_ROUND"].isChecked()
+                for sag_key, tan_key, _ in paired_props:
+                    if sag_key in self._property_fields and tan_key in self._property_fields:
+                        field_sag = self._property_fields[sag_key]
+                        field_tan = self._property_fields[tan_key]
+                        if is_round:
+                            # Wert übernehmen und sperren
+                            field_tan.setText(field_sag.text())
+                            field_tan.setReadOnly(True)
+                            field_tan.setStyleSheet("background-color: #eee; color: #888;")
+                        else:
+                            field_tan.setReadOnly(False)
+                            field_tan.setStyleSheet("")
+            # Initial anwenden
+            update_tangential_fields()
+            # Bei Änderung von IS_ROUND anwenden
+            self._property_fields["IS_ROUND"].stateChanged.connect(update_tangential_fields)
+            # Wenn sagittal geändert wird und IS_ROUND aktiv ist, auch tangential updaten
             for sag_key, tan_key, _ in paired_props:
-                if tan_key in self._property_fields and sag_key in self._property_fields:
-                    tan_field = self._property_fields[tan_key]
-                    sag_field = self._property_fields[sag_key]
-                    if is_spherical:
-                        # Synchronisieren und ausgrauen
-                        tan_field.setReadOnly(True)
-                        tan_field.setStyleSheet("background-color: #eee; color: #888;")
-                        tan_field.setText(sag_field.text())
-                    else:
-                        # Wieder bearbeitbar machen
-                        tan_field.setReadOnly(False)
-                        tan_field.setStyleSheet("")
-
-        # Beim Ändern der Checkbox ausführen
-        self._property_fields["IS_ROUND"].stateChanged.connect(update_spherical_state)
-
-        # Beim Ändern eines Sagittal-Feldes synchronisieren, falls Spherical aktiv
-        for sag_key, tan_key, _ in paired_props:
-            if sag_key in self._property_fields and tan_key in self._property_fields:
-                def make_sync_slot(sag_field, tan_field):
-                    def slot():
-                        if self._property_fields["IS_ROUND"].isChecked():
-                            tan_field.setText(sag_field.text())
-                    return slot
-                self._property_fields[sag_key].textChanged.connect(
-                    make_sync_slot(self._property_fields[sag_key], self._property_fields[tan_key])
-                )
-
-        # Initial synchronisieren, falls Spherical gesetzt ist
-        update_spherical_state()
+                if sag_key in self._property_fields and tan_key in self._property_fields:
+                    field_sag = self._property_fields[sag_key]
+                    field_tan = self._property_fields[tan_key]
+                    def make_sync_slot(field_sag=field_sag, field_tan=field_tan):
+                        def slot():
+                            if self._property_fields["IS_ROUND"].isChecked():
+                                field_tan.setText(field_sag.text())
+                        return slot
+                    field_sag.textChanged.connect(make_sync_slot())
+        self.update_rayleigh()
     
     def on_component_clicked(self, item):
         """Handle clicks on components in the setup list."""
@@ -636,8 +567,12 @@ class MainWindow(QMainWindow):
             elif ctype == "LENS":
                 if mode == "sagittal":
                     f = props.get("Focal length sagittal", 0.1)
+                    r_in_sag = props.get("Input radius of curvature sagittal", 0.2)
+                    r_out_sag = props.get("output radius of curvature sagittal", 0.2)
                 else:
                     f = props.get("Focal length tangential", 0.1)
+                    r_in_tan = props.get("Input radius of curvature tangential", 0.2)
+                    r_out_tan = props.get("output radius of curvature tangential", 0.2)
                 optical_system.append((self.matrices.lens, (f,)))
             elif ctype == "MIRROR":
                 if mode == "sagittal":
@@ -671,7 +606,7 @@ class MainWindow(QMainWindow):
                             n_in = prev_component.get("properties", {}).get("Refractive index", 1)
                             break
 
-                # ✳️ Suche n_out (nächste Propagation oder Medium)
+                # Suche n_out (nächste Propagation oder Medium)
                 n_out = 1  # Default
                 if i < self.setupList.count() - 1:
                     for j in range(i + 1, self.setupList.count()):
@@ -751,8 +686,9 @@ class MainWindow(QMainWindow):
                 continue
             if "Rayleigh range" in key:
                 continue
-
-            if isinstance(field, QtWidgets.QLineEdit):
+            if isinstance(field, QtWidgets.QComboBox):
+                value = field.currentText()
+            elif isinstance(field, QtWidgets.QLineEdit):
                 old_value = updated["properties"][key]
                 try:
                     if key == "Refractive index":
