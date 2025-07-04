@@ -8,7 +8,7 @@ class Material:
     def get_n(*args):
         material = args[0]
         lambda_ = args[1]*1e6
-        if material =="NBK7":
+        if material == "NBK7":
             n = np.sqrt(((1.03961212*lambda_**2)/(lambda_**2-0.00600069867))
             +((0.231792344*lambda_**2)/(lambda_**2-0.0200179144))
             +((1.01046945*lambda_**2)/(lambda_**2-103.560653))+1)

@@ -48,10 +48,10 @@
             "properties": {
               "Focal length tangential": 0.1,
               "Focal length sagittal": 0.1,
-              "Input radius of curvature tangential": 0.2,
-              "Input radius of curvature sagittal": 0.2,
-              "Output radius of curvature tangential":0.2,
-              "Output radius of curvature sagittal":0.2,
+              "Input radius of curvature tangential": 0.1,
+              "Input radius of curvature sagittal": 0.1,
+              "Output radius of curvature tangential":0.1,
+              "Output radius of curvature sagittal":0.1,
               "Refractive index":"NBK7",
               "Design wavelength":514e-9,
               "IS_ROUND": 1.0

@@ -181,6 +181,9 @@ class MainWindow(QMainWindow):
         self.setupList.model().modelReset.connect(lambda *_: self.update_live_plot_delayed())
         self.setupList.model().rowsMoved.connect(lambda *args: self.update_live_plot_delayed())
         
+        if "Design wavelength" in self._property_fields:
+            self._property_fields["Design wavelength"].currentIndexChanged.connect(self.update_design_focal_length_fields)
+        
         self.cursor_vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('k', width=1, style=Qt.DashLine))
         self.plotWidget.addItem(self.cursor_vline, ignoreBounds=True)
         self.cursor_vline.setZValue(100)  # Damit sie immer oben liegt
@@ -331,6 +334,22 @@ class MainWindow(QMainWindow):
 
         self._property_update_timer.timeout.connect(self.update_rayleigh)    
         
+    def update_focal_length_fields(self):
+        # Suche das Feld für Design wavelength
+        selected_mode = self._property_fields.get("Design wavelength")
+        if not isinstance(selected_mode, QtWidgets.QComboBox):
+            return
+        # Sperre beide Focal Length Felder, wenn nötig
+        for key in ["Focal length sagittal", "Focal length tangential"]:
+            field = self._property_fields.get(key)
+            if field:
+                if selected_mode.currentText() == "Edit both curvatures":
+                    field.setReadOnly(True)
+                    field.setStyleSheet("background-color: #eee; color: #888;")
+                else:
+                    field.setReadOnly(False)
+                    field.setStyleSheet("")
+                    
     def show_properties(self, properties: dict, component=None):
         layout: QtWidgets.QGridLayout = self.propertyLayout
         while layout.count():
@@ -404,6 +423,7 @@ class MainWindow(QMainWindow):
                 layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
                 field.stateChanged.connect(self.make_checkbox_slot(key, component))
+                
             # Rayleigh range Felder immer readonly und grau
             elif "Rayleigh range" in key:
                 field = QtWidgets.QLineEdit(self.vc.convert_to_nearest_string(value))
@@ -411,6 +431,7 @@ class MainWindow(QMainWindow):
                 field.setStyleSheet("background-color: #eee; color: #888;")
                 layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
+                
             # Refractive index: Zahl oder Dropdown
             elif key == "Refractive index":
                 if isinstance(value, (int, float)):
@@ -429,6 +450,23 @@ class MainWindow(QMainWindow):
                         self.save_properties_to_component(component)
                         self.update_live_plot_delayed()
                     field.currentIndexChanged.connect(on_index_changed)
+             
+            # Ausgrauen der nicht benötigten Felder       
+            elif key == "Design wavelength":
+                field = QtWidgets.QComboBox()
+                field.addItems(["Edit both curvatures", "Edit input curvature", "Edit output Curvature", "Edit focal length"])
+                if value in ["Edit both curvatures", "Edit input curvature", "Edit output Curvature", "Edit focal length"]:
+                    field.setCurrentText(value)
+                layout.addWidget(field, row, 1)
+                self._property_fields[key] = field
+                field.currentIndexChanged.connect(self.update_focal_length_fields)
+                # Initial anwenden
+                self.update_focal_length_fields()
+                def on_index_changed():
+                    self.save_properties_to_component(component)
+                    self.update_live_plot_delayed()
+                field.currentIndexChanged.connect(on_index_changed)
+                
             # Standard: QLineEdit
             else:
                 field = QtWidgets.QLineEdit(self.vc.convert_to_nearest_string(value))
@@ -561,6 +599,7 @@ class MainWindow(QMainWindow):
             props = component.get("properties", {})
 
             if ctype == "BEAM" and component.get("name", "").strip().lower() == "beam":
+                self.wavelength = props.get("Wavelength", 514e-9)
                 continue
             
             elif ctype == "PROPAGATION" and component.get("name", "").strip().lower() == "propagation":
@@ -568,23 +607,25 @@ class MainWindow(QMainWindow):
                 n = props.get("Refractive index", 1)
                 optical_system.append((self.matrices.free_space, (length, n)))
                 
-            #TODO Lisenmachergleichung implementieren    
             elif ctype == "LENS":
-                material = props.get("Refractive Index", "NBK7")
+                material = props.get("Refractive index")
                 lambda_design = props.get("Design wavelength", 514e-9)
                 n_design = self.material.get_n(material, lambda_design)
                 n = self.material.get_n(material, self.wavelength)
                 
                 if mode == "sagittal":
                     f = props.get("Focal length sagittal", 0.1)
-                    r_in = props.get("Input radius of curvature sagittal", 0.2)
-                    r_out = props.get("output radius of curvature sagittal", 0.2)
+                    r_in = props.get("Input radius of curvature sagittal", 0.1)
+                    r_out = - props.get("output radius of curvature sagittal", 0.1)
                 else:
                     f = props.get("Focal length tangential", 0.1)
-                    r_in = props.get("Input radius of curvature tangential", 0.2)
-                    r_out = props.get("output radius of curvature tangential", 0.2)
-                f= ((n_design-1)/(n-1))
-                optical_system.append((self.matrices.lens, (f,)))
+                    r_in = props.get("Input radius of curvature tangential", 0.1)
+                    r_out = - props.get("output radius of curvature tangential", 0.1)
+                    
+                f_design = ((n_design-1) * ((1/r_in) - (1/r_out)))
+                f_inv= ((n_design-1)/(n-1)) * f_design
+                f = f_inv
+                optical_system.append((self.matrices.lens, (1/f,)))
                 
             elif ctype == "MIRROR":
                 if mode == "sagittal":
@@ -700,15 +741,26 @@ class MainWindow(QMainWindow):
                 continue
             if "Rayleigh range" in key:
                 continue
+            # NEU: Refractive index kann QComboBox oder QLineEdit sein
+            if key == "Refractive index":
+                if isinstance(field, QtWidgets.QComboBox):
+                    value = field.currentText()
+                elif isinstance(field, QtWidgets.QLineEdit):
+                    try:
+                        value = float(field.text())
+                    except Exception:
+                        value = field.text()
+                else:
+                    value = updated["properties"][key]
+                updated["properties"][key] = value
+                continue  # Restliche Prüfungen für dieses Feld überspringen
+            # Standardbehandlung
             if isinstance(field, QtWidgets.QComboBox):
                 value = field.currentText()
             elif isinstance(field, QtWidgets.QLineEdit):
                 old_value = updated["properties"][key]
                 try:
-                    if key == "Refractive index":
-                        value = float(field.text())
-                    else:
-                        value = self.vc.convert_to_float(field.text(), self)
+                    value = self.vc.convert_to_float(field.text(), self)
                 except Exception:
                     value = field.text()
                 # Fehlerprüfung für Beam
@@ -723,7 +775,6 @@ class MainWindow(QMainWindow):
                         old_values[key] = old_value
                 if key in ["Radius of curvature tangential", "Radius of curvature sagittal", "Focal length tangential", "Focal length sagittal"]:
                     if isinstance(value, (int, float)) and value == 0:
-                        print(value)
                         error_msgs.append(f"{key} must be not 0!")
                         old_values[key] = old_value
                 updated["properties"][key] = value
