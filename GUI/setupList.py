@@ -88,6 +88,13 @@ class SetupList(QtWidgets.QListWidget):
             elif ctype == "PROPAGATION":
                 if "Refractive index" not in props:
                     props["Refractive index"] = 1.0
+
+            # Für dicke Linsen
+            elif ctype == "THICK LENS":
+                if "Material" not in props:
+                    props["Lens material"] = "NBK7"
+                if "Thickness" not in props:
+                    props["Thickness"] = 0.01
             
             # Aktualisierte Properties zurückschreiben
             fresh_component["properties"] = props
