@@ -52,7 +52,8 @@
               "Input radius of curvature sagittal": 0.1,
               "Output radius of curvature tangential":0.1,
               "Output radius of curvature sagittal":0.1,
-              "Refractive index":"NBK7",
+              "Lens material":"NBK7",
+              "Plan lens": 1.0,
               "Design wavelength":514e-9,
               "IS_ROUND": 1.0
             }
@@ -66,9 +67,8 @@
               "Input radius of curvature sagittal": 0.2,
               "Output radius of curvature tangential":0.3,
               "Output radius of curvature sagittal":0.3,
-              "Design wavelength": 514e-9,
               "Thickness":0.01,
-              "Refractive index":"NBK7",
+              "Lens material":"NBK7",
               "IS_ROUND": 1.0
             }
           },

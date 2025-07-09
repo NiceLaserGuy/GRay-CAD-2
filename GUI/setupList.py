@@ -1,4 +1,5 @@
 from PyQt5 import QtWidgets, QtCore
+from PyQt5.QtWidgets import QMessageBox
 import json
 import copy
 
@@ -34,7 +35,7 @@ class SetupList(QtWidgets.QListWidget):
                     item.setData(QtCore.Qt.UserRole, copy.deepcopy(comp))
                     self.addItem(item)
         except Exception as e:
-            print(f"Fehler beim Laden von Generic.json: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to load components: {str(e)}")
             
 
     def keyPressEvent(self, event):
@@ -64,9 +65,37 @@ class SetupList(QtWidgets.QListWidget):
         # Externes Drag & Drop (z.B. von componentList)
         if event.source() != self and event.mimeData().hasFormat("application/x-component"):
             component = json.loads(bytes(event.mimeData().data("application/x-component")).decode())
+            
+            # Erstelle eine frische Kopie ohne zwischengespeicherte Änderungen
+            fresh_component = copy.deepcopy(component)
+            
+            # Initialisiere wichtige Eigenschaften basierend auf Komponentenart
+            ctype = fresh_component.get("type", "").strip().upper()
+            props = fresh_component.get("properties", {})
+            
+            # Für Linsen - NUR setzen wenn nicht vorhanden
+            if ctype == "LENS":
+                if "Lens material" not in props:
+                    props["Lens material"] = "NBK7"
+            
+            if ctype == "LENS":
+                if "Variable parameter" not in props:
+                    props["Variable parameter"] = "Edit focal length"
+                if "Plan lens" not in props:
+                    props["Plan lens"] = True
+                
+            # Für Propagation  
+            elif ctype == "PROPAGATION":
+                if "Refractive index" not in props:
+                    props["Refractive index"] = 1.0
+            
+            # Aktualisierte Properties zurückschreiben
+            fresh_component["properties"] = props
+            
+            # Verwende fresh_component statt component
             is_beam = (
-                component.get("name", "").strip().lower() == "beam"
-                or component.get("type", "").strip().lower() == "beam"
+                fresh_component.get("name", "").strip().lower() == "beam"
+                or fresh_component.get("type", "").strip().lower() == "beam"
             )
             # Prüfe, ob schon ein Beam existiert
             for i in range(self.count()):
@@ -80,17 +109,19 @@ class SetupList(QtWidgets.QListWidget):
                         return
             # Füge Beam immer an Position 0 ein, andere Komponenten ans Ende
             if is_beam:
-                item = QtWidgets.QListWidgetItem(component.get("name", "Unnamed"))
-                item.setData(QtCore.Qt.UserRole, component)
+                item = QtWidgets.QListWidgetItem(fresh_component.get("name", "Unnamed"))  # fresh_component!
+                item.setData(QtCore.Qt.UserRole, fresh_component)  # fresh_component!
                 self.insertItem(0, item)
-                self.setCurrentItem(item)
                 event.acceptProposedAction()
             else:
-                item = QtWidgets.QListWidgetItem(component.get("name", "Unnamed"))
-                item.setData(QtCore.Qt.UserRole, component)
+                item = QtWidgets.QListWidgetItem(fresh_component.get("name", "Unnamed"))  # fresh_component!
+                item.setData(QtCore.Qt.UserRole, fresh_component)  # fresh_component!
                 self.addItem(item)
-                self.setCurrentItem(item)
                 event.acceptProposedAction()
+            QtCore.QTimer.singleShot(10, lambda: self.setCurrentItem(item))
+            event.acceptProposedAction()
+
+            
         else:
             # Internes Verschieben innerhalb der Liste
             super().dropEvent(event)

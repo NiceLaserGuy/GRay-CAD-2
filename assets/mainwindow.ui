@@ -408,13 +408,6 @@
         </property>
        </spacer>
       </item>
-      <item row="0" column="0">
-       <widget class="QComboBox" name="comboBoxSetup">
-        <property name="editable">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
      </layout>
     </item>
     <item row="1" column="1">
@@ -432,7 +425,7 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="3">
+      <item row="0" column="4">
        <spacer name="horizontalSpacer">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -452,6 +445,13 @@
         </property>
         <property name="text">
          <string>+ Create Setup</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QComboBox" name="comboBoxSetup">
+        <property name="editable">
+         <bool>true</bool>
         </property>
        </widget>
       </item>
