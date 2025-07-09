@@ -733,15 +733,15 @@ class MainWindow(QMainWindow):
                 if mode == "sagittal":
                     r_in_sag = props.get("Input radius of curvature sagittal", 0.1)
                     r_out_sag = props.get("Output radius of curvature sagittal", 0.1)
-                    optical_system.append((self.matrices.refraction_curved_interface(r_in_sag, n_in, n_lens)))
-                    optical_system.append((self.matrices.free_space(thickness, n_lens)))
-                    optical_system.append((self.matrices.refraction_curved_interface(r_out_sag, n_lens, n_out)))
+                    optical_system.append((self.matrices.refraction_curved_interface, (r_in_sag, n_in, n_lens)))
+                    optical_system.append((self.matrices.free_space, (thickness, n_lens)))
+                    optical_system.append((self.matrices.refraction_curved_interface, (r_out_sag, n_lens, n_out)))
                 else:
                     r_in_tan = props.get("Input radius of curvature tangential", 0.1)
                     r_out_tan = props.get("Output radius of curvature tangential", 0.1)
-                    optical_system.append((self.matrices.refraction_curved_interface(r_in_tan, n_in, n_lens)))
-                    optical_system.append((self.matrices.free_space(thickness, n_lens)))
-                    optical_system.append((self.matrices.refraction_curved_interface(r_out_tan, n_lens, n_out)))
+                    optical_system.append((self.matrices.refraction_curved_interface, (r_in_tan, n_in, n_lens)))
+                    optical_system.append((self.matrices.free_space, (thickness, n_lens)))
+                    optical_system.append((self.matrices.refraction_curved_interface, (r_out_tan, n_lens, n_out)))
 
             # ... weitere Typen ...
         return optical_system
