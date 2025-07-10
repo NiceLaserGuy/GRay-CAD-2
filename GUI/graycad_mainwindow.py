@@ -12,7 +12,7 @@ from pyqtgraph import *
 from os import path
 from PyQt5.QtCore import QThread, QObject, pyqtSignal, Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QMainWindow
+from PyQt5.QtWidgets import QMainWindow, QMessageBox
 import json
 import pyqtgraph as pg
 import numpy as np
@@ -289,9 +289,12 @@ class MainWindow(QMainWindow):
             pass
         super().closeEvent(event)
         
-    def make_field_slot(self, key, comp):
+    def make_field_slot(self, key, component):
         def slot():
-            self.save_properties_to_component(comp)
+            # Alle Properties speichern und zurück in setupList schreiben
+            updated_component = self.save_properties_to_component(component)
+            if updated_component and hasattr(self, "_last_component_item") and self._last_component_item:
+                self._last_component_item.setData(QtCore.Qt.UserRole, updated_component)
             self.update_live_plot_delayed()
         return slot
     
@@ -435,10 +438,12 @@ class MainWindow(QMainWindow):
                     field.setCurrentText(value)
                 layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
-                def on_index_changed():
+                
+                def on_lens_material_changed():
                     self.save_properties_to_component(component)
                     self.update_live_plot_delayed()
-                field.currentIndexChanged.connect(on_index_changed)
+                    
+                field.currentIndexChanged.connect(on_lens_material_changed)
              
             # Ausgrauen der nicht benötigten Felder       
             elif key == "Variable parameter":
@@ -459,11 +464,15 @@ class MainWindow(QMainWindow):
                 layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
                 field.textChanged.connect(self.make_field_slot(key, component))
+                # NEU: Live-Update hinzufügen
+                if not field.isReadOnly():
+                    field.textChanged.connect(self.update_live_plot_delayed)
             row += 1
         # Spacer am Ende
         spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         layout.addItem(spacer, row, 0, 1, 3)
-        
+
+        # IS_ROUND und Variable parameter Signale verbinden
         if "IS_ROUND" in self._property_fields:
             try:
                 self._property_fields["IS_ROUND"].stateChanged.disconnect()
@@ -477,6 +486,35 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
             self._property_fields["Variable parameter"].currentIndexChanged.connect(self.update_field_states)
+
+        # --- NEU: Live-Synchronisierung für IS_ROUND ---
+        # Verbinde sagittale Felder mit Synchronisierung
+        paired_props = [
+            ("Waist radius sagittal", "Waist radius tangential"),
+            ("Waist position sagittal", "Waist position tangential"),
+            ("Focal length sagittal", "Focal length tangential"),
+            ("Input radius of curvature sagittal", "Input radius of curvature tangential"),
+            ("Output radius of curvature sagittal", "Output radius of curvature tangential"),
+        ]
+
+        for sag_key, tan_key in paired_props:
+            if sag_key in self._property_fields and tan_key in self._property_fields:
+                field_sag = self._property_fields[sag_key]
+                field_tan = self._property_fields[tan_key]
+                
+                def make_sync_function(field_sag, field_tan):
+                    def sync_sagittal_to_tangential():
+                        # Nur synchronisieren, wenn IS_ROUND aktiv ist
+                        if "IS_ROUND" in self._property_fields:
+                            is_round_field = self._property_fields["IS_ROUND"]
+                            if isinstance(is_round_field, QtWidgets.QCheckBox) and is_round_field.isChecked():
+                                field_tan.blockSignals(True)
+                                field_tan.setText(field_sag.text())
+                                field_tan.blockSignals(False)
+                    return sync_sagittal_to_tangential
+                
+                # Verbinde das sagittale Feld mit der Sync-Funktion
+                field_sag.textChanged.connect(make_sync_function(field_sag, field_tan))
 
         # Initiale Anwendung
         self.update_field_states()
@@ -496,6 +534,14 @@ class MainWindow(QMainWindow):
         if isinstance(var_param_field, QtWidgets.QComboBox):
             edit_focal_length = var_param_field.currentText() == "Edit focal length"
         
+        # Prüfe, ob es sich um eine THICK LENS handelt
+        is_thick_lens = False
+        if hasattr(self, "_last_component_item") and self._last_component_item is not None:
+            component = self._last_component_item.data(QtCore.Qt.UserRole)
+            if isinstance(component, dict):
+                ctype = component.get("type", "").strip().upper()
+                is_thick_lens = (ctype == "THICK LENS")
+        
         # Die zu prüfenden Feldgruppen
         focal_length_fields = ["Focal length sagittal", "Focal length tangential"]
         curvature_fields = [
@@ -503,24 +549,32 @@ class MainWindow(QMainWindow):
             "Output radius of curvature sagittal", "Output radius of curvature tangential"
         ]
         
-        # 1. Zuerst Felder nach Variable parameter setzen
-        for key in focal_length_fields:
-            field = self._property_fields.get(key)
-            if field:
-                if edit_focal_length:
-                    field.setReadOnly(False)
-                    field.setStyleSheet("")
-                else:
-                    field.setReadOnly(True)
-                    field.setStyleSheet("background-color: #eee; color: #888;")
-        
-        for key in curvature_fields:
-            field = self._property_fields.get(key)
-            if field:
-                if edit_focal_length:
-                    field.setReadOnly(True)
-                    field.setStyleSheet("background-color: #eee; color: #888;")
-                else:
+        # 1. Zuerst Felder nach Variable parameter setzen (aber nicht für THICK LENS)
+        if not is_thick_lens:
+            for key in focal_length_fields:
+                field = self._property_fields.get(key)
+                if field:
+                    if edit_focal_length:
+                        field.setReadOnly(False)
+                        field.setStyleSheet("")
+                    else:
+                        field.setReadOnly(True)
+                        field.setStyleSheet("background-color: #eee; color: #888;")
+            
+            for key in curvature_fields:
+                field = self._property_fields.get(key)
+                if field:
+                    if edit_focal_length:
+                        field.setReadOnly(True)
+                        field.setStyleSheet("background-color: #eee; color: #888;")
+                    else:
+                        field.setReadOnly(False)
+                        field.setStyleSheet("")
+        else:
+            # Für THICK LENS: Krümmungsradius-Felder immer frei
+            for key in curvature_fields:
+                field = self._property_fields.get(key)
+                if field:
                     field.setReadOnly(False)
                     field.setStyleSheet("")
         
@@ -663,26 +717,24 @@ class MainWindow(QMainWindow):
                 is_plane = props.get("Plan lens", False)
                 
                 if mode == "sagittal":
-                    f = props.get("Focal length sagittal", 0.1)
-                    r_in = props.get("Input radius of curvature sagittal", 0.1)
-                    r_out = - props.get("Output radius of curvature sagittal", 0.1)
+                    f_design = props.get("Focal length sagittal")
+                    r_in = props.get("Input radius of curvature sagittal")
+                    r_out = - props.get("Output radius of curvature sagittal")
 
                 else:
-                    f = props.get("Focal length tangential", 0.1)
-                    r_in = props.get("Input radius of curvature tangential", 0.1)
-                    r_out = - props.get("Output radius of curvature tangential", 0.1)
+                    f_design = props.get("Focal length tangential")
+                    r_in = props.get("Input radius of curvature tangential")
+                    r_out = - props.get("Output radius of curvature tangential")
                 
                 if is_plane:
-                    r_in = 1e30 
-                
+                    r_in = 1e30
+                #TODO change Lib for plan/bi lens and remove roc
                 if props.get("Variable parameter") == "Edit focal length":
-                    f_inv= ((n_design-1)/(n-1)) * f_design
+                    f = ((n_design-1)/(n-1)) * f_design
                 else:
-                    f_design = ((n_design-1) * ((1/r_in) - (1/r_out)))
-                    f_inv= ((n_design-1)/(n-1)) * f_design
-                    f_inv= ((n_design-1)/(n-1)) * f_design
-                f = f_inv
-                optical_system.append((self.matrices.lens, (1/f,)))
+                    f = ((n_design-1) * ((1/r_in) - (1/r_out)))**(-1)
+                    f = ((n_design-1)/(n-1)) * f
+                optical_system.append((self.matrices.lens, (f,)))
                 
             elif ctype == "MIRROR":
                 if mode == "sagittal":
@@ -727,7 +779,7 @@ class MainWindow(QMainWindow):
                         if next_component.get("type", "").strip().upper() == "PROPAGATION":
                             n_out = next_component.get("properties", {}).get("Refractive index", 1)
                             break
-                material = props.get("Refractive index")
+                material = props.get("Lens material")
                 n_lens = self.material.get_n(material, self.wavelength)
                 thickness = props.get("Thickness", 0.01)
                 if mode == "sagittal":
@@ -735,13 +787,13 @@ class MainWindow(QMainWindow):
                     r_out_sag = props.get("Output radius of curvature sagittal", 0.1)
                     optical_system.append((self.matrices.refraction_curved_interface, (r_in_sag, n_in, n_lens)))
                     optical_system.append((self.matrices.free_space, (thickness, n_lens)))
-                    optical_system.append((self.matrices.refraction_curved_interface, (r_out_sag, n_lens, n_out)))
+                    optical_system.append((self.matrices.refraction_curved_interface, (-r_out_sag, n_lens, n_out)))
                 else:
                     r_in_tan = props.get("Input radius of curvature tangential", 0.1)
                     r_out_tan = props.get("Output radius of curvature tangential", 0.1)
                     optical_system.append((self.matrices.refraction_curved_interface, (r_in_tan, n_in, n_lens)))
                     optical_system.append((self.matrices.free_space, (thickness, n_lens)))
-                    optical_system.append((self.matrices.refraction_curved_interface, (r_out_tan, n_lens, n_out)))
+                    optical_system.append((self.matrices.refraction_curved_interface, (-r_out_tan, n_lens, n_out)))
 
             # ... weitere Typen ...
         return optical_system
@@ -819,6 +871,7 @@ class MainWindow(QMainWindow):
             # Standardbehandlung
             if isinstance(field, QtWidgets.QComboBox):
                 value = field.currentText()
+                updated["properties"][key] = value
             elif isinstance(field, QtWidgets.QLineEdit):
                 old_value = updated["properties"][key]
                 try:

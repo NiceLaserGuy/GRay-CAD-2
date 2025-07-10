@@ -9,7 +9,6 @@ class Material:
     def get_n(*args):
         material = args[0]  # args[0] ist die Instanz (self)
         lambda_ = args[1]*1e6
-        
         # Initialisiere n mit Standardwert
         n = 1.0  # Fallback: Luft
         

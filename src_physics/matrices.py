@@ -29,7 +29,8 @@ class Matrices:
     def refraction_curved_interface(self, *args):
         """ABCD matrix for refraction at a curved interface"""
         radius_of_curvature, refractive_index_inital, refractive_index_final = args
-        return np.array([[1, 0],[(refractive_index_inital - refractive_index_final)/(refractive_index_final * radius_of_curvature), refractive_index_inital/refractive_index_final]])
+        return np.array([[1, 0],[((refractive_index_inital - refractive_index_final)/(refractive_index_final * radius_of_curvature)), 1]])
+    
     
     def ABCD(self, *args):
         """ABCD matrix for a system of optical elements"""
