@@ -114,6 +114,9 @@ class MainWindow(QMainWindow):
         self.ui.action_Exit.triggered.connect(lambda: self.action.action_exit(self))
         self.ui.action_Tips_and_tricks.triggered.connect(lambda: self.action.action_tips_and_tricks(self))
         self.ui.action_About.triggered.connect(lambda: self.action.action_about(self))
+        self.ui.action_Save.setShortcut(QtGui.QKeySequence.Save)
+        self.ui.action_Save_as.setShortcut(QtGui.QKeySequence.SaveAs)
+        self.ui.action_Open.setShortcut(QtGui.QKeySequence.Open)
 
         # Connect library menu item to the library window
         self.ui.action_Library.triggered.connect(self.lib.open_library_window)
@@ -224,6 +227,27 @@ class MainWindow(QMainWindow):
         self.plotWidget.getViewBox().sigXRangeChanged.connect(self.update_plot_for_visible_range)
         self.plotWidget.hideButtons()
 
+        # Action-Instanz erstellen
+        self.action_handler = Action()
+    
+        # Default-Setup-Datei erstellen falls nicht vorhanden
+        self.action_handler.create_default_setup_file()
+    
+        # Projects-Ordner in Fenstertitel anzeigen
+        self.setWindowTitle(f"GRay-CAD 2 - Projects: {self.action_handler.projects_dir}")
+
+    def mark_as_modified(self):
+        self.has_unsaved_changes = True
+        title = self.windowTitle()
+        if not title.endswith("*"):
+            self.setWindowTitle(title + "*")
+            
+    def mark_as_saved(self):
+        self.has_unsaved_changes = False
+        title = self.windowTitle()
+        if title.endswith("*"):
+            self.setWindowTitle(title[:-1])
+
     def create_new_setup(self):
         # Erstelle eine Kopie des aktuellen Setups
         new_setup = []
@@ -253,13 +277,33 @@ class MainWindow(QMainWindow):
     def on_setup_selection_changed(self, index):
         if index < 0 or index >= len(self.setups):
             return
+        
+        # Speichere aktuelle Properties bevor Setup gewechselt wird
+        if hasattr(self, "_last_component_item") and self._last_component_item is not None:
+            try:
+                last_component = self._last_component_item.data(QtCore.Qt.UserRole)
+                if isinstance(last_component, dict):
+                    updated_last = self.save_properties_to_component(last_component)
+                    if updated_last:
+                        self._last_component_item.setData(QtCore.Qt.UserRole, updated_last)
+            except (RuntimeError, AttributeError):
+                pass
+    
+        # Setup laden
         self.setupList.clear()
         setup = self.setups[index]["components"]
         for comp in setup:
             item = QtWidgets.QListWidgetItem(comp.get("name", "Unnamed"))
             item.setData(QtCore.Qt.UserRole, copy.deepcopy(comp))
             self.setupList.addItem(item)
-        self._last_component_item = None  # <--- Hier hinzufügen!
+        
+        # Wichtig: Letztes Item zurücksetzen
+        self._last_component_item = None
+        
+        # Properties-Panel leeren
+        if hasattr(self, '_property_fields'):
+            self._property_fields.clear()
+        
         self.update_live_plot()
         self.scale_visible_setup()
 
@@ -397,7 +441,7 @@ class MainWindow(QMainWindow):
         for key, value in properties.items():
             if key in paired_keys:
                 continue  # Schon als Paar behandelt
-            if key == "Refractive index" and "Material" in properties:
+            if key == "Refractive index" and "Lens material" in properties:
                 continue
             if key == "IS_ROUND":
                 label = QtWidgets.QLabel("Spherical:")
@@ -455,12 +499,16 @@ class MainWindow(QMainWindow):
                 self._property_fields[key] = field
                 def on_index_changed():
                     self.save_properties_to_component(component)
+                    self.update_field_states()
                     self.update_live_plot_delayed()
                 field.currentIndexChanged.connect(on_index_changed)
                 
             # Standard: QLineEdit
             else:
-                field = QtWidgets.QLineEdit(self.vc.convert_to_nearest_string(value))
+                try:
+                    field = QtWidgets.QLineEdit(self.vc.convert_to_nearest_string(value))
+                except ValueError:
+                    print(f"Warning: Could not convert value for {key}: {value}")
                 layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
                 field.textChanged.connect(self.make_field_slot(key, component))
@@ -604,60 +652,58 @@ class MainWindow(QMainWindow):
                         field_tan.blockSignals(True)
                         field_tan.setText(field_sag.text())
                         field_tan.blockSignals(False)
+
+        self.update_live_plot_delayed()
     
     def on_component_clicked(self, item):
         """Handle clicks on components in the setup list."""
-        # 1. Create deep copy of new component
-        clicked_component = copy.deepcopy(item.data(QtCore.Qt.UserRole))
+        # 1. Speichere Properties der aktuell angezeigten Komponente (falls vorhanden)
+        clicked_component = item.data(QtCore.Qt.UserRole)
+        
+        # Verhindere mehrfache Verarbeitung desselben Items
+        if hasattr(self, "_last_component_item") and self._last_component_item == item:
+            return
+        
+        # Speichere Properties der vorherigen Komponente nur einmal
+        if hasattr(self, "_last_component_item") and self._last_component_item is not None:
+            try:
+                last_component = self._last_component_item.data(QtCore.Qt.UserRole)
+                if isinstance(last_component, dict):
+                    # Speichere nur einmal
+                    updated_last = self.save_properties_to_component(last_component)
+                    if updated_last:
+                        self._last_component_item.setData(QtCore.Qt.UserRole, updated_last)
+            except (RuntimeError, AttributeError):
+                pass
+        
+        # Setze das neue Item
+        self._last_component_item = item
+    
+        # 2. Lade die neue Komponente
+        clicked_component = item.data(QtCore.Qt.UserRole)
         if not isinstance(clicked_component, dict):
             return
         
-        # 2. Save current field values if we have a last component
-        if hasattr(self, "_last_component_item") and self._last_component_item is not None:
-            last_component = self._last_component_item.data(QtCore.Qt.UserRole)
-            if isinstance(last_component, dict):
-                # Create a deep copy of the last component
-                updated_last = copy.deepcopy(last_component)
-                
-                # Update with current field values
-                if hasattr(self, '_property_fields'):
-                    for key, field in self._property_fields.items():
-                        if key not in updated_last["properties"]:
-                            continue
-                            
-                        if isinstance(field, QtWidgets.QLineEdit):
-                            try:
-                                if key == "Refractive index":
-                                    value = float(field.text())
-                                else:
-                                    value = self.vc.convert_to_float(field.text(), self)
-                            except:
-                                value = field.text()
-                            updated_last["properties"][key] = value
-                        elif isinstance(field, QtWidgets.QCheckBox):
-                            updated_last["properties"][key] = 1.0 if field.isChecked() else 0.0
-                
-                # Update the last item with its modified copy
-                self._last_component_item.setData(QtCore.Qt.UserRole, updated_last)
-        
-        # 3. Show new component
+        # 3. Zeige die neue Komponente an
         self.labelType.setText(clicked_component.get("type", ""))
         self.labelName.setText(clicked_component.get("name", ""))
         self.labelManufacturer.setText(clicked_component.get("manufacturer", ""))
         
-        # 4. Update properties display
+        # 4. Lade Properties der neuen Komponente
         props = clicked_component.get("properties", {})
     
-        # Dynamisch "Variable parameter" hinzufügen, falls es sich um eine Linse handelt
+        # Dynamisch Properties hinzufügen für Linsen
         ctype = clicked_component.get("type", "").strip().upper()
         if ctype in ["LENS"]:
             if "Variable parameter" not in props:
-                props["Variable parameter"] = "Edit focal length"  # Standardwert
+                props["Variable parameter"] = "Edit focal length"
             if "Plan lens" not in props:
-                props["Plan lens"] = True  # Standardwert
+                props["Plan lens"] = False  # Korrigiert: False statt True
+    
+        # 5. Zeige Properties an
         self.show_properties(props, clicked_component)
         
-        # 5. Store current item as last item and update its data
+        # 6. Setze das neue Item als letztes Item
         self._last_component_item = item
         
     def load_library_list_from_folder(self, folder_path):
@@ -719,21 +765,20 @@ class MainWindow(QMainWindow):
                 if mode == "sagittal":
                     f_design = props.get("Focal length sagittal")
                     r_in = props.get("Input radius of curvature sagittal")
-                    r_out = - props.get("Output radius of curvature sagittal")
+                    r_out = props.get("Output radius of curvature sagittal")
 
                 else:
                     f_design = props.get("Focal length tangential")
                     r_in = props.get("Input radius of curvature tangential")
-                    r_out = - props.get("Output radius of curvature tangential")
+                    r_out = props.get("Output radius of curvature tangential")
                 
                 if is_plane:
                     r_in = 1e30
                 #TODO change Lib for plan/bi lens and remove roc
-                if props.get("Variable parameter") == "Edit focal length":
-                    f = ((n_design-1)/(n-1)) * f_design
+                if props.get("Variable parameter") == "Edit both curvatures":
+                    f = ((n_design-1)/(n-1)) * ((n_design-1) * ((1/r_in) + (1/r_out)))**(-1)
                 else:
-                    f = ((n_design-1) * ((1/r_in) - (1/r_out)))**(-1)
-                    f = ((n_design-1)/(n-1)) * f
+                    f = ((n_design-1)/(n-1)) * f_design
                 optical_system.append((self.matrices.lens, (f,)))
                 
             elif ctype == "MIRROR":
@@ -842,71 +887,81 @@ class MainWindow(QMainWindow):
     
     def save_properties_to_component(self, component):
         """Save current field values to the given component."""
-        if not isinstance(component, dict) or "properties" not in component:
-            return
+        # Verhindere rekursive Aufrufe
+        if hasattr(self, '_saving_properties') and self._saving_properties:
+            return component
+        
+        self._saving_properties = True
+        
+        try:
+            if not isinstance(component, dict) or "properties" not in component:
+                return None
+            
+            updated = copy.deepcopy(component)
+            error_msgs = []
+            # Merke alte Werte für Rücksetzen
+            old_values = {}
 
-        updated = copy.deepcopy(component)
-        error_msgs = []
-        # Merke alte Werte für Rücksetzen
-        old_values = {}
-
-        for key, field in self._property_fields.items():
-            if key not in updated["properties"]:
-                continue
-            if "Rayleigh range" in key:
-                continue
-            # NEU: Refractive index kann QComboBox oder QLineEdit sein
-            if key == "Refractive index":
+            for key, field in self._property_fields.items():
+                if key not in updated["properties"]:
+                    continue
+                if "Rayleigh range" in key:
+                    continue
+                # NEU: Refractive index kann QComboBox oder QLineEdit sein
+                if key == "Refractive index":
+                    if isinstance(field, QtWidgets.QComboBox):
+                        value = field.currentText()
+                    elif isinstance(field, QtWidgets.QLineEdit):
+                        try:
+                            value = float(field.text())
+                        except Exception:
+                            value = field.text()
+                    else:
+                        value = updated["properties"][key]
+                    updated["properties"][key] = value
+                    continue  # Restliche Prüfungen für dieses Feld überspringen
+                # Standardbehandlung
                 if isinstance(field, QtWidgets.QComboBox):
                     value = field.currentText()
+                    updated["properties"][key] = value
                 elif isinstance(field, QtWidgets.QLineEdit):
+                    old_value = updated["properties"][key]
                     try:
-                        value = float(field.text())
+                        value = self.vc.convert_to_float(field.text(), self)
                     except Exception:
                         value = field.text()
-                else:
-                    value = updated["properties"][key]
-                updated["properties"][key] = value
-                continue  # Restliche Prüfungen für dieses Feld überspringen
-            # Standardbehandlung
-            if isinstance(field, QtWidgets.QComboBox):
-                value = field.currentText()
-                updated["properties"][key] = value
-            elif isinstance(field, QtWidgets.QLineEdit):
-                old_value = updated["properties"][key]
-                try:
-                    value = self.vc.convert_to_float(field.text(), self)
-                except Exception:
-                    value = field.text()
-                # Fehlerprüfung für Beam
-                if key in ["Waist radius sagittal", "Waist radius tangential", "Wavelength"]:
-                    if isinstance(value, (int, float)) and value <= 0:
-                        error_msgs.append(f"{key} must be > 0!")
-                        old_values[key] = old_value
-                # Fehlerprüfung für Propagation
-                if key == "Length" and "propagation" in updated.get("name", "").lower():
-                    if isinstance(value, (int, float, str)) and value < 0:
-                        error_msgs.append("Length (Propagation) must be > 0!")
-                        old_values[key] = old_value
-                if key in ["Radius of curvature tangential", "Radius of curvature sagittal", "Focal length tangential", "Focal length sagittal"]:
-                    if isinstance(value, (int, float)) and value == 0:
-                        error_msgs.append(f"{key} must be not 0!")
-                        old_values[key] = old_value
-                updated["properties"][key] = value
-            elif isinstance(field, QtWidgets.QCheckBox):
-                updated["properties"][key] = 1.0 if field.isChecked() else 0.0
+                    # Fehlerprüfung für Beam
+                    if key in ["Waist radius sagittal", "Waist radius tangential", "Wavelength"]:
+                        if isinstance(value, (int, float)) and value <= 0:
+                            error_msgs.append(f"{key} must be > 0!")
+                            old_values[key] = old_value
+                    # Fehlerprüfung für Propagation
+                    if key == "Length" and "propagation" in updated.get("name", "").lower():
+                        if isinstance(value, (int, float, str)) and value < 0:
+                            error_msgs.append("Length (Propagation) must be > 0!")
+                            old_values[key] = old_value
+                    if key in ["Radius of curvature tangential", "Radius of curvature sagittal", "Focal length tangential", "Focal length sagittal"]:
+                        if isinstance(value, (int, float)) and value == 0:
+                            error_msgs.append(f"{key} must be not 0!")
+                            old_values[key] = old_value
+                    updated["properties"][key] = value
+                elif isinstance(field, QtWidgets.QCheckBox):
+                    updated["properties"][key] = 1.0 if field.isChecked() else 0.0
 
-        if error_msgs:
-            # Setze ungültige Felder auf alten Wert zurück
-            for key, old_value in old_values.items():
-                if key in self._property_fields:
-                    self._property_fields[key].blockSignals(True)
-                    self._property_fields[key].setText(self.vc.convert_to_nearest_string(old_value))
-                    self._property_fields[key].blockSignals(False)
-            QtWidgets.QMessageBox.critical(self, "Invalid Input", "\n".join(error_msgs))
-            return None
+            if error_msgs:
+                # Setze ungültige Felder auf alten Wert zurück
+                for key, old_value in old_values.items():
+                    if key in self._property_fields:
+                        self._property_fields[key].blockSignals(True)
+                        self._property_fields[key].setText(self.vc.convert_to_nearest_string(old_value))
+                        self._property_fields[key].blockSignals(False)
+                QtWidgets.QMessageBox.critical(self, "Invalid Input", "\n".join(error_msgs))
+                return None
 
-        return updated
+            return updated
+            
+        finally:
+            self._saving_properties = False
         
     def plot_optical_system_from_resonator(self, optical_system):
         self.plot_optical_system(optical_system=optical_system)

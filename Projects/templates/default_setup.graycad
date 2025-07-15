@@ -1,0 +1,56 @@
+{
+  "name": "Default Setup",
+  "created": "2025-07-15T13:33:35.234825",
+  "version": "2.0",
+  "type": "GRAYCAD_SETUP",
+  "components": [
+    {
+      "type": "BEAM",
+      "name": "Beam",
+      "manufacturer": "",
+      "properties": {
+        "Wavelength": 6.328e-07,
+        "Waist radius sagittal": 0.001,
+        "Waist radius tangential": 0.001,
+        "Waist position sagittal": 0,
+        "Waist position tangential": 0,
+        "IS_ROUND": true
+      }
+    },
+    {
+      "type": "PROPAGATION",
+      "name": "Propagation",
+      "manufacturer": "",
+      "properties": {
+        "Length": 0.1,
+        "Refractive index": 1.0
+      }
+    },
+    {
+      "type": "LENS",
+      "name": "Lens",
+      "manufacturer": "",
+      "properties": {
+        "Focal length tangential": 0.1,
+        "Focal length sagittal": 0.1,
+        "Input radius of curvature tangential": 0.1,
+        "Input radius of curvature sagittal": 0.1,
+        "Output radius of curvature tangential":0.1,
+        "Output radius of curvature sagittal":0.1,
+        "Lens material":"NBK7",
+        "Plan lens": 0.0,
+        "Design wavelength":514e-9,
+        "IS_ROUND": 1.0
+      }
+    },
+    {
+      "type": "PROPAGATION",
+      "name": "Propagation",
+      "manufacturer": "",
+      "properties": {
+        "Length": 0.1,
+        "Refractive index": 1.0
+      }
+    }
+  ]
+}

@@ -2,6 +2,7 @@ from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import QMessageBox
 import json
 import copy
+import os
 
 class SetupList(QtWidgets.QListWidget):
     def __init__(self, parent=None):
@@ -10,33 +11,110 @@ class SetupList(QtWidgets.QListWidget):
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
         self.setDefaultDropAction(QtCore.Qt.MoveAction)
+        
+        # Lade Default-Setup
+        self.load_default_setup()
 
-        # Lade Komponenten aus Generic.json
+    def get_default_components(self):
+        """Definiere Standard-Komponenten als Fallback."""
+        return [
+            {
+                "type": "BEAM",
+                "name": "Beam",
+                "manufacturer": "",
+                "properties": {
+                    "Wavelength": 632.8e-9,
+                    "Waist radius sagittal": 1e-3,
+                    "Waist radius tangential": 1e-3,
+                    "Waist position sagittal": 0,
+                    "Waist position tangential": 0,
+                    "IS_ROUND": True
+                }
+            },
+            {
+                "type": "PROPAGATION",
+                "name": "Propagation",
+                "manufacturer": "",
+                "properties": {
+                    "Length": 0.1,
+                    "Refractive index": 1.0
+                }
+            },
+            {
+                "type": "LENS",
+                "name": "Lens",
+                "manufacturer": "",
+                "properties": {
+                    "Focal length tangential": 0.1,
+                    "Focal length sagittal": 0.1,
+                    "Input radius of curvature tangential": 0.1,
+                    "Input radius of curvature sagittal": 0.1,
+                    "Output radius of curvature tangential":0.1,
+                    "Output radius of curvature sagittal":0.1,
+                    "Lens material":"NBK7",
+                    "Plan lens": 0.0,
+                    "Design wavelength":514e-9,
+                    "IS_ROUND": 1.0
+                }
+            },
+            {
+                "type": "PROPAGATION",
+                "name": "Propagation",
+                "manufacturer": "",
+                "properties": {
+                    "Length": 0.2,
+                    "Refractive index": 1.0
+                }
+            }
+        ]
+
+    def load_default_setup(self):
+        """Lade Default-Setup mit Fallback-Mechanismus."""
+        components = None
+        
+        # Versuche zuerst aus Default-Setup-Datei zu laden
         try:
-            with open("Library/Generic.json", "r", encoding="utf-8") as f:
-                generic_data = json.load(f)
-            components = generic_data.get("components", [])
-
-            # Finde die gewünschten Komponenten anhand von type oder name
-            def find_component(key, value):
-                for comp in components:
-                    if comp.get(key, "").strip().lower() == value:
-                        return comp
-                return None
-
-            beam = find_component("name", "beam")
-            propagation = find_component("name", "propagation")
-            lens = find_component("name", "lens")
-
-            # Füge sie in der gewünschten Reihenfolge hinzu
-            for comp in [beam, propagation, lens, propagation]:
-                if comp is not None:
-                    item = QtWidgets.QListWidgetItem(comp.get("name", "Unnamed"))
-                    item.setData(QtCore.Qt.UserRole, copy.deepcopy(comp))
-                    self.addItem(item)
+            default_setup_path = "Projects/templates/default_setup.graycad"
+            if os.path.exists(default_setup_path):
+                with open(default_setup_path, "r", encoding="utf-8") as f:
+                    setup_data = json.load(f)
+                components = setup_data.get("components", [])
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to load components: {str(e)}")
-            
+            QMessageBox.warning(self, "Error", f"Could not load default setup file: {e}")
+        
+        # Fallback: Versuche aus Generic.json zu laden
+        if not components:
+            try:
+                with open("Library/Generic.json", "r", encoding="utf-8") as f:
+                    generic_data = json.load(f)
+                library_components = generic_data.get("components", [])
+                
+                # Finde die gewünschten Komponenten
+                def find_component(key, value):
+                    for comp in library_components:
+                        if comp.get(key, "").strip().lower() == value:
+                            return comp
+                    return None
+
+                beam = find_component("name", "beam")
+                propagation = find_component("name", "propagation")
+                lens = find_component("name", "lens")
+                
+                components = [beam, propagation, lens, propagation]
+                components = [comp for comp in components if comp is not None]
+            except Exception as e:
+                pass
+        # Letzter Fallback: Code-basierte Komponenten
+        if not components:
+            components = self.get_default_components()
+
+        
+        # Füge Komponenten zur Liste hinzu
+        for comp in components:
+            if comp is not None:
+                item = QtWidgets.QListWidgetItem(comp.get("name", "Unnamed"))
+                item.setData(QtCore.Qt.UserRole, copy.deepcopy(comp))
+                self.addItem(item)
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Delete:
@@ -91,7 +169,7 @@ class SetupList(QtWidgets.QListWidget):
 
             # Für dicke Linsen
             elif ctype == "THICK LENS":
-                if "Material" not in props:
+                if "Lens material" not in props:
                     props["Lens material"] = "NBK7"
                 if "Thickness" not in props:
                     props["Thickness"] = 0.01
@@ -125,9 +203,6 @@ class SetupList(QtWidgets.QListWidget):
                 item.setData(QtCore.Qt.UserRole, fresh_component)  # fresh_component!
                 self.addItem(item)
                 event.acceptProposedAction()
-            QtCore.QTimer.singleShot(10, lambda: self.setCurrentItem(item))
-            event.acceptProposedAction()
-
             
         else:
             # Internes Verschieben innerhalb der Liste

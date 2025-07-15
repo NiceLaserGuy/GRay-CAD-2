@@ -2,41 +2,199 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from PyQt5.QtCore import *
 from PyQt5 import QtCore, QtWidgets
 import copy
+import json
+import os
+from datetime import datetime
 
 class Action:
+    def __init__(self):
+        self.current_file_path = None
+        # Definiere Projects-Ordner als Standard-Verzeichnis
+        self.projects_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Projects")
+        self._ensure_projects_dir()
 
-    #TODO
-    def action_open(self, parent):
-        """
-        Handles the 'Open' menu action.
-        Opens a file dialog for selecting and loading files.
-        """
-        file_name, _ = QFileDialog.getOpenFileName(
-            parent, 
-            "Open File", 
-            "", 
-            "All Files (*);;Python Files (*.py)"
-        )
-        if file_name:
-            with open(file_name, 'r') as file:
-                content = file.read()
-                print(content)  # Placeholder
+    def _ensure_projects_dir(self):
+        """Stelle sicher, dass der Projects-Ordner existiert."""
+        if not os.path.exists(self.projects_dir):
+            try:
+                os.makedirs(self.projects_dir)
+            except OSError as e:
+                # Fallback auf aktuelles Verzeichnis
+                self.projects_dir = os.getcwd()
 
-    #TODO
+    def _get_default_directory(self):
+        """Gibt das Standard-Verzeichnis für Datei-Dialoge zurück."""
+        return self.projects_dir
+
     def action_save(self, parent):
-        print("Save action triggered")  # Placeholder
-    
-    #TODO: Implement save functionality
+        """Speichert das aktuelle Setup. Verwendet Save As wenn noch kein Dateipfad vorhanden."""
+        if self.current_file_path:
+            return self._save_to_file(parent, self.current_file_path)
+        else:
+            return self.action_save_as(parent)
+
     def action_save_as(self, parent):
+        """Öffnet Dialog zum Speichern des aktuellen Setups unter neuem Namen."""
+        # Aktuellen Setup-Namen als Standardnamen verwenden
+        current_setup_name = parent.ui.comboBoxSetup.currentText()
+        default_name = current_setup_name.replace(" ", "_") + ".graycad"
+        
+        # Vollständiger Pfad mit Projects-Ordner
+        default_path = os.path.join(self._get_default_directory(), default_name)
+        
         file_name, _ = QFileDialog.getSaveFileName(
             parent, 
-            "Save File As", 
-            "", 
-            "All Files (*);;Python Files (*.py)"
+            "Save Setup As", 
+            default_path,  # Verwende vollständigen Pfad
+            "GRay-CAD Files (*.graycad);;JSON Files (*.json);;All Files (*)"
         )
+        
         if file_name:
-            with open(file_name, 'w') as file:
-                file.write("test")  # Placeholder
+            success = self._save_to_file(parent, file_name)
+            if success:
+                self.current_file_path = file_name
+                # Fenstertitel aktualisieren
+                parent.setWindowTitle(f"GRay-CAD 2 - {os.path.basename(file_name)}")
+            return success
+        return False
+
+    def action_open(self, parent):
+        """Öffnet ein gespeichertes Setup."""
+        file_name, _ = QFileDialog.getOpenFileName(
+            parent, 
+            "Open Setup", 
+            self._get_default_directory(),  # Starte im Projects-Ordner
+            "GRay-CAD Files (*.graycad);;JSON Files (*.json);;All Files (*)"
+        )
+        
+        if file_name:
+            return self._load_from_file(parent, file_name)
+        return False
+
+    def _save_to_file(self, parent, file_path):
+        """Speichert das aktuelle Setup in die angegebene Datei."""
+        try:
+            # Sammle alle Komponenten aus der setupList
+            components = []
+            for i in range(parent.setupList.count()):
+                item = parent.setupList.item(i)
+                component = item.data(QtCore.Qt.UserRole)
+                if isinstance(component, dict):
+                    components.append(copy.deepcopy(component))
+
+            # Erstelle Setup-Datenstruktur
+            setup_data = {
+                "name": parent.ui.comboBoxSetup.currentText(),
+                "created": datetime.now().isoformat(),
+                "version": "2.0",
+                "type": "GRAYCAD_SETUP",
+                "components": components,
+                "metadata": {
+                    "component_count": len(components),
+                    "has_beam": any(comp.get("name", "").strip().lower() == "beam" for comp in components),
+                    "saved_from": "GRay-CAD 2"
+                }
+            }
+
+            # Speichere in JSON-Format
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(setup_data, f, indent=2, ensure_ascii=False)
+
+            QMessageBox.information(
+                parent, 
+                "Success", 
+                f"Setup saved successfully to:\n{file_path}"
+            )
+            return True
+
+        except Exception as e:
+            QMessageBox.critical(
+                parent, 
+                "Error", 
+                f"Failed to save setup:\n{str(e)}"
+            )
+            return False
+
+    def _load_from_file(self, parent, file_path):
+        """Lädt ein Setup aus der angegebenen Datei."""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                setup_data = json.load(f)
+
+            # Validiere Datenstruktur
+            if not isinstance(setup_data, dict) or "components" not in setup_data:
+                raise ValueError("Invalid setup file format")
+
+            components = setup_data.get("components", [])
+            setup_name = setup_data.get("name", os.path.basename(file_path))
+
+            # Prüfe ob Beam vorhanden ist
+            has_beam = any(comp.get("name", "").strip().lower() == "beam" for comp in components)
+            if not has_beam:
+                reply = QMessageBox.question(
+                    parent,
+                    "No Beam Found",
+                    "The loaded setup contains no beam component. Continue anyway?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+                )
+                if reply != QMessageBox.Yes:
+                    return False
+
+            # Lade Komponenten in setupList
+            parent.setupList.clear()
+            parent._last_component_item = None
+            if hasattr(parent, '_property_fields'):
+                parent._property_fields.clear()
+            for comp in components:
+                item = QtWidgets.QListWidgetItem(comp.get("name", "Unnamed"))
+                item.setData(QtCore.Qt.UserRole, copy.deepcopy(comp))
+                parent.setupList.addItem(item)
+
+            # Aktualisiere Setup-Name
+            parent.ui.comboBoxSetup.setCurrentText(setup_name)
+
+            # Setze aktuellen Dateipfad
+            self.current_file_path = file_path
+            parent.setWindowTitle(f"GRay-CAD 2 - {os.path.basename(file_path)}")
+
+            # Aktualisiere Plot
+            parent.update_live_plot()
+
+            QMessageBox.information(
+                parent, 
+                "Success", 
+                f"Setup loaded successfully from:\n{file_path}"
+            )
+            return True
+
+        except Exception as e:
+            QMessageBox.critical(
+                parent, 
+                "Error", 
+                f"Failed to load setup:\n{str(e)}"
+            )
+            return False
+
+    def action_new(self, parent):
+        """Erstellt ein neues Setup."""
+        if parent.setupList.count() > 0:
+            reply = QMessageBox.question(
+                parent,
+                "New Setup",
+                "Create new setup? Unsaved changes will be lost.",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            if reply != QMessageBox.Yes:
+                return False
+
+        # Lade Standard-Komponenten
+        parent.setupList.clear()
+        parent.create_new_setup()
+        self.current_file_path = None
+        parent.setWindowTitle("GRay-CAD 2 - New Setup")
+        return True
 
     def action_about(self, parent):
         QMessageBox.information(
@@ -166,3 +324,158 @@ class Action:
         else:
             parent.setupList.addItem(new_item)
         parent.setupList.setCurrentItem(new_item)
+
+    def get_recent_files(self, max_files=5):
+        """Hole die letzten verwendeten Dateien aus dem Projects-Ordner."""
+        try:
+            files = []
+            for file in os.listdir(self.projects_dir):
+                if file.endswith('.graycad'):
+                    full_path = os.path.join(self.projects_dir, file)
+                    files.append((full_path, os.path.getmtime(full_path)))
+            
+            # Sortiere nach Änderungsdatum (neueste zuerst)
+            files.sort(key=lambda x: x[1], reverse=True)
+            return [f[0] for f in files[:max_files]]
+        except:
+            return []
+        
+    def create_auto_backup(self, parent):
+        """Erstelle automatisches Backup im Projects-Ordner."""
+        backup_dir = os.path.join(self.projects_dir, "backups")
+        if not os.path.exists(backup_dir):
+            os.makedirs(backup_dir)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_name = f"auto_backup_{timestamp}.graycad"
+        backup_path = os.path.join(backup_dir, backup_name)
+        
+        return self._save_to_file(parent, backup_path)
+    
+    def create_project_templates(self):
+        """Erstelle Standard-Projekt-Vorlagen im Projects-Ordner."""
+        templates_dir = os.path.join(self.projects_dir, "templates")
+        if not os.path.exists(templates_dir):
+            os.makedirs(templates_dir)
+        
+        # Standard-Vorlagen definieren
+        templates = {
+            "Basic_Beam.graycad": {
+                "name": "Basic Beam Setup",
+                "components": [
+                    {
+                        "type": "BEAM",
+                        "name": "Beam",
+                        "properties": {
+                            "Wavelength": 632.8e-9,
+                            "Waist radius sagittal": 1e-3,
+                            "Waist radius tangential": 1e-3
+                        }
+                    }
+                ]
+            },
+            "Simple_Lens_System.graycad": {
+                "name": "Simple Lens System",
+                "components": [
+                    # Beam + Propagation + Lens + Propagation
+                ]
+            }
+        }
+        
+        for filename, template in templates.items():
+            template_path = os.path.join(templates_dir, filename)
+            if not os.path.exists(template_path):
+                with open(template_path, 'w') as f:
+                    json.dump(template, f, indent=2)
+
+    def get_projects_info(self):
+        """Hole Informationen über alle Projekte im Projects-Ordner."""
+        projects = []
+        try:
+            for file in os.listdir(self.projects_dir):
+                if file.endswith('.graycad'):
+                    full_path = os.path.join(self.projects_dir, file)
+                    try:
+                        with open(full_path, 'r') as f:
+                            data = json.load(f)
+                        projects.append({
+                            "filename": file,
+                            "name": data.get("name", file),
+                            "created": data.get("created", "Unknown"),
+                            "component_count": data.get("metadata", {}).get("component_count", 0),
+                            "has_beam": data.get("metadata", {}).get("has_beam", False)
+                        })
+                    except:
+                        # Fehlerhaft Datei überspringen
+                        continue
+        except:
+            pass
+        return projects
+
+    def create_default_setup_file(self):
+        """Erstelle Default-Setup-Datei falls sie nicht existiert."""
+        default_setup_path = os.path.join(self.projects_dir, "templates", "default_setup.graycad")
+        
+        if not os.path.exists(default_setup_path):
+            # Erstelle Templates-Verzeichnis
+            os.makedirs(os.path.dirname(default_setup_path), exist_ok=True)
+            
+            # Standard-Setup definieren
+            default_setup = {
+                "name": "Default Setup",
+                "created": datetime.now().isoformat(),
+                "version": "2.0",
+                "type": "GRAYCAD_SETUP",
+                "components": [
+                    {
+                        "type": "BEAM",
+                        "name": "Beam",
+                        "manufacturer": "",
+                        "properties": {
+                            "Wavelength": 632.8e-9,
+                            "Waist radius sagittal": 1e-3,
+                            "Waist radius tangential": 1e-3,
+                            "Waist position sagittal": 0,
+                            "Waist position tangential": 0,
+                            "IS_ROUND": True
+                        }
+                    },
+                    {
+                        "type": "PROPAGATION",
+                        "name": "Propagation",
+                        "manufacturer": "",
+                        "properties": {
+                            "Length": 0.1,
+                            "Refractive index": 1.0
+                        }
+                    },
+                    {
+                        "type": "LENS",
+                        "name": "Lens",
+                        "manufacturer": "",
+                        "properties": {
+                            "Lens material": "NBK7",
+                            "Focal length sagittal": 0.1,
+                            "Focal length tangential": 0.1,
+                            "Variable parameter": "Edit focal length",
+                            "Plan lens": False
+                        }
+                    },
+                    {
+                        "type": "PROPAGATION",
+                        "name": "Propagation",
+                        "manufacturer": "",
+                        "properties": {
+                            "Length": 0.1,
+                            "Refractive index": 1.0
+                        }
+                    }
+                ]
+            }
+            
+            try:
+                with open(default_setup_path, 'w', encoding='utf-8') as f:
+                    json.dump(default_setup, f, indent=2, ensure_ascii=False)
+                print(f"Created default setup file: {default_setup_path}")
+            except Exception as e:
+                print(f"Could not create default setup file: {e}")
