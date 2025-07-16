@@ -141,13 +141,13 @@ class Resonator(QObject):
                 properties = component.get("properties", {})
                 curvature_tangential = properties.get("Radius of curvature tangential", 0.0)
                 curvature_sagittal = properties.get("Radius of curvature sagittal", 0.0)
-                is_round = properties.get("IS_ROUND", 0.0)
+                is_round = properties.get("IS_ROUND", False)
                 
                 # Normale Variante speichern
                 self.mirror_curvatures.append((curvature_sagittal, curvature_tangential, is_round))
                 
                 # Für nicht-runde Spiegel zusätzlich die getauschte Variante speichern
-                if is_round == 0.0:
+                if not is_round:
                     self.mirror_curvatures.append((curvature_tangential, curvature_sagittal, is_round))
                     
         # Debugging-Ausgabe

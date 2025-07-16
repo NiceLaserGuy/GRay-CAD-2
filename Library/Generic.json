@@ -12,7 +12,7 @@
               "Waist position tangential": 0.0,
               "Rayleigh range sagittal": 0.0,
               "Rayleigh range tangential": 0.0,
-              "IS_ROUND": 1.0
+              "IS_ROUND": true
               
             }
           },
@@ -29,7 +29,7 @@
               "C sagittal": 0.0,
               "D tangential": 1.0,
               "D sagittal": 1.0,
-              "IS_ROUND": 1.0
+              "IS_ROUND": true
             }
           },
         {
@@ -48,14 +48,12 @@
             "properties": {
               "Focal length tangential": 0.1,
               "Focal length sagittal": 0.1,
-              "Input radius of curvature tangential": 0.1,
-              "Input radius of curvature sagittal": 0.1,
-              "Output radius of curvature tangential":0.1,
-              "Output radius of curvature sagittal":0.1,
+              "Radius of curvature tangential": 0.1,
+              "Radius of curvature sagittal": 0.1,
               "Lens material":"NBK7",
-              "Plan lens": 1.0,
+              "Plan lens": false,
               "Design wavelength":514e-9,
-              "IS_ROUND": 1.0
+              "IS_ROUND": true
             }
           },
           {
@@ -69,7 +67,7 @@
               "Output radius of curvature sagittal":0.3,
               "Thickness":0.01,
               "Lens material":"NBK7",
-              "IS_ROUND": 1.0
+              "IS_ROUND": true
             }
           },
           {
@@ -79,7 +77,7 @@
             "properties": {
               "Radius of curvature tangential": 0.1,
               "Radius of curvature sagittal": 0.1,
-              "IS_ROUND": 1.0,
+              "IS_ROUND": true,
               "Angle of incidence": 0.0
             }
           }

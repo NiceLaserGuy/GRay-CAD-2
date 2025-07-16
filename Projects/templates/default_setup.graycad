@@ -1,6 +1,6 @@
 {
   "name": "Default Setup",
-  "created": "2025-07-15T13:33:35.234825",
+  "created": "2025-07-16T13:58:28.391169",
   "version": "2.0",
   "type": "GRAYCAD_SETUP",
   "components": [
@@ -33,14 +33,12 @@
       "properties": {
         "Focal length tangential": 0.1,
         "Focal length sagittal": 0.1,
-        "Input radius of curvature tangential": 0.1,
-        "Input radius of curvature sagittal": 0.1,
-        "Output radius of curvature tangential":0.1,
-        "Output radius of curvature sagittal":0.1,
-        "Lens material":"NBK7",
-        "Plan lens": 0.0,
-        "Design wavelength":514e-9,
-        "IS_ROUND": 1.0
+        "Radius of curvature tangential": 0.1,
+        "Radius of curvature sagittal": 0.1,
+        "Lens material": "NBK7",
+        "Plan lens": false,
+        "Design wavelength": 5.14e-07,
+        "IS_ROUND": true
       }
     },
     {
@@ -48,7 +46,7 @@
       "name": "Propagation",
       "manufacturer": "",
       "properties": {
-        "Length": 0.1,
+        "Length": 0.2,
         "Refractive index": 1.0
       }
     }

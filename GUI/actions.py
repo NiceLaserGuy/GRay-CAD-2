@@ -420,62 +420,21 @@ class Action:
             # Erstelle Templates-Verzeichnis
             os.makedirs(os.path.dirname(default_setup_path), exist_ok=True)
             
+            # VERWENDE die statische Methode
+            from GUI.setupList import SetupList
+            components = SetupList.get_default_components()
+            
             # Standard-Setup definieren
             default_setup = {
                 "name": "Default Setup",
                 "created": datetime.now().isoformat(),
                 "version": "2.0",
                 "type": "GRAYCAD_SETUP",
-                "components": [
-                    {
-                        "type": "BEAM",
-                        "name": "Beam",
-                        "manufacturer": "",
-                        "properties": {
-                            "Wavelength": 632.8e-9,
-                            "Waist radius sagittal": 1e-3,
-                            "Waist radius tangential": 1e-3,
-                            "Waist position sagittal": 0,
-                            "Waist position tangential": 0,
-                            "IS_ROUND": True
-                        }
-                    },
-                    {
-                        "type": "PROPAGATION",
-                        "name": "Propagation",
-                        "manufacturer": "",
-                        "properties": {
-                            "Length": 0.1,
-                            "Refractive index": 1.0
-                        }
-                    },
-                    {
-                        "type": "LENS",
-                        "name": "Lens",
-                        "manufacturer": "",
-                        "properties": {
-                            "Lens material": "NBK7",
-                            "Focal length sagittal": 0.1,
-                            "Focal length tangential": 0.1,
-                            "Variable parameter": "Edit focal length",
-                            "Plan lens": False
-                        }
-                    },
-                    {
-                        "type": "PROPAGATION",
-                        "name": "Propagation",
-                        "manufacturer": "",
-                        "properties": {
-                            "Length": 0.1,
-                            "Refractive index": 1.0
-                        }
-                    }
-                ]
+                "components": components
             }
             
             try:
                 with open(default_setup_path, 'w', encoding='utf-8') as f:
                     json.dump(default_setup, f, indent=2, ensure_ascii=False)
-                print(f"Created default setup file: {default_setup_path}")
             except Exception as e:
-                print(f"Could not create default setup file: {e}")
+                QMessageBox.warning(self, "Error", f"Could not create default setup file: {e}")

@@ -393,18 +393,18 @@ class MainWindow(QMainWindow):
 
         # Definiere Paare (nur einmal zentral)
         paired_props = [
-            ("Waist radius sagittal", "Waist radius tangential", "Waist radius"),
-            ("Waist position sagittal", "Waist position tangential", "Waist position"),
-            ("Rayleigh range sagittal", "Rayleigh range tangential", "Rayleigh range"),
-            ("Focal length sagittal", "Focal length tangential", "Focal length"),
-            ("Radius of curvature sagittal", "Radius of curvature tangential", "Radius of curvature"),
-            ("Input radius of curvature sagittal", "Input radius of curvature tangential", "Input radius of curvature"),
-            ("Output radius of curvature sagittal", "Output radius of curvature tangential", "Output radius of curvature"),
-            ("A sagittal", "A tangential", "A"),
-            ("B sagittal", "B tangential", "B"),
-            ("C sagittal", "C tangential", "C"),
-            ("D sagittal", "D tangential", "D")
-        ]
+        ("Waist radius sagittal", "Waist radius tangential", "Waist radius"),
+        ("Waist position sagittal", "Waist position tangential", "Waist position"),
+        ("Rayleigh range sagittal", "Rayleigh range tangential", "Rayleigh range"),
+        ("Focal length sagittal", "Focal length tangential", "Focal length"),
+        ("Radius of curvature sagittal", "Radius of curvature tangential", "Radius of curvature"),
+        ("Input radius of curvature sagittal", "Input radius of curvature tangential", "Input radius of curvature"),  # Für THICK LENS
+        ("Output radius of curvature sagittal", "Output radius of curvature tangential", "Output radius of curvature"),  # Für THICK LENS
+        ("A sagittal", "A tangential", "A"),
+        ("B sagittal", "B tangential", "B"),
+        ("C sagittal", "C tangential", "C"),
+        ("D sagittal", "D tangential", "D")
+    ]
 
         # Set zum schnellen Nachschlagen
         paired_keys = set()
@@ -538,11 +538,12 @@ class MainWindow(QMainWindow):
         # --- NEU: Live-Synchronisierung für IS_ROUND ---
         # Verbinde sagittale Felder mit Synchronisierung
         paired_props = [
-            ("Waist radius sagittal", "Waist radius tangential"),
-            ("Waist position sagittal", "Waist position tangential"),
-            ("Focal length sagittal", "Focal length tangential"),
-            ("Input radius of curvature sagittal", "Input radius of curvature tangential"),
-            ("Output radius of curvature sagittal", "Output radius of curvature tangential"),
+        ("Waist radius sagittal", "Waist radius tangential"),
+        ("Waist position sagittal", "Waist position tangential"),
+        ("Focal length sagittal", "Focal length tangential"),
+        ("Radius of curvature sagittal", "Radius of curvature tangential"),
+        ("Input radius of curvature sagittal", "Input radius of curvature tangential"),
+        ("Output radius of curvature sagittal", "Output radius of curvature tangential"),
         ]
 
         for sag_key, tan_key in paired_props:
@@ -593,6 +594,7 @@ class MainWindow(QMainWindow):
         # Die zu prüfenden Feldgruppen
         focal_length_fields = ["Focal length sagittal", "Focal length tangential"]
         curvature_fields = [
+            "Radius of curvature sagittal", "Radius of curvature tangential",
             "Input radius of curvature sagittal", "Input radius of curvature tangential",
             "Output radius of curvature sagittal", "Output radius of curvature tangential"
         ]
@@ -626,24 +628,24 @@ class MainWindow(QMainWindow):
                     field.setReadOnly(False)
                     field.setStyleSheet("")
         
-        # 2. Dann IS_ROUND-Logik anwenden (hat Vorrang für tangentiale Felder)
-        if is_round:
-            paired_props = [
-                ("Waist radius sagittal", "Waist radius tangential"),
-                ("Waist position sagittal", "Waist position tangential"),
-                ("Rayleigh range sagittal", "Rayleigh range tangential"),
-                ("Focal length sagittal", "Focal length tangential"),
-                ("Input radius of curvature sagittal", "Input radius of curvature tangential"),
-                ("Output radius of curvature sagittal", "Output radius of curvature tangential"),
-                # weitere Paare nach Bedarf
-            ]
-            
-            for sag_key, tan_key in paired_props:
-                if sag_key in self._property_fields and tan_key in self._property_fields:
-                    field_sag = self._property_fields[sag_key]
-                    field_tan = self._property_fields[tan_key]
-                    
-                    # Tangential-Feld immer sperren bei IS_ROUND=True
+        # 2. IS_ROUND-Logik anwenden (KORRIGIERT)
+        paired_props = [
+            ("Waist radius sagittal", "Waist radius tangential"),
+            ("Waist position sagittal", "Waist position tangential"),
+            ("Rayleigh range sagittal", "Rayleigh range tangential"),
+            ("Focal length sagittal", "Focal length tangential"),
+            ("Radius of curvature sagittal", "Radius of curvature tangential"),
+            ("Input radius of curvature sagittal", "Input radius of curvature tangential"),
+            ("Output radius of curvature sagittal", "Output radius of curvature tangential"),
+        ]
+        
+        for sag_key, tan_key in paired_props:
+            if sag_key in self._property_fields and tan_key in self._property_fields:
+                field_sag = self._property_fields[sag_key]
+                field_tan = self._property_fields[tan_key]
+                
+                if is_round:
+                    # IS_ROUND = True: Tangential-Feld sperren und synchronisieren
                     field_tan.setReadOnly(True)
                     field_tan.setStyleSheet("background-color: #eee; color: #888;")
                     
@@ -652,6 +654,23 @@ class MainWindow(QMainWindow):
                         field_tan.blockSignals(True)
                         field_tan.setText(field_sag.text())
                         field_tan.blockSignals(False)
+                else:
+                    # IS_ROUND = False: Tangential-Feld entsperren (aber nur wenn nicht durch Variable parameter gesperrt)
+                    if not is_thick_lens:
+                        # Für normale LENS: Prüfe Variable parameter
+                        if (tan_key in focal_length_fields and not edit_focal_length) or \
+                           (tan_key in curvature_fields and edit_focal_length):
+                            # Bleibt gesperrt durch Variable parameter
+                            field_tan.setReadOnly(True)
+                            field_tan.setStyleSheet("background-color: #eee; color: #888;")
+                        else:
+                            # Entsperren
+                            field_tan.setReadOnly(False)
+                            field_tan.setStyleSheet("")
+                    else:
+                        # Für THICK LENS: Immer entsperren
+                        field_tan.setReadOnly(False)
+                        field_tan.setStyleSheet("")
 
         self.update_live_plot_delayed()
     
@@ -760,23 +779,24 @@ class MainWindow(QMainWindow):
                 lambda_design = props.get("Design wavelength", 514e-9)
                 n_design = self.material.get_n(material, lambda_design)
                 n = self.material.get_n(material, self.wavelength)
-                is_plane = props.get("Plan lens", False)
+                is_plane = self._to_bool(props.get("Plan lens", False))
                 
                 if mode == "sagittal":
                     f_design = props.get("Focal length sagittal")
-                    r_in = props.get("Input radius of curvature sagittal")
-                    r_out = props.get("Output radius of curvature sagittal")
+                    r_in = props.get("Radius of curvature sagittal")
 
                 else:
                     f_design = props.get("Focal length tangential")
-                    r_in = props.get("Input radius of curvature tangential")
-                    r_out = props.get("Output radius of curvature tangential")
+                    r_in = props.get("Radius of curvature tangential")
                 
                 if is_plane:
-                    r_in = 1e30
-                #TODO change Lib for plan/bi lens and remove roc
+                    print(is_plane)
+                    r_out = 1e100
+                else:
+                    r_out = - r_in
+
                 if props.get("Variable parameter") == "Edit both curvatures":
-                    f = ((n_design-1)/(n-1)) * ((n_design-1) * ((1/r_in) + (1/r_out)))**(-1)
+                    f = ((n_design-1)/(n-1)) * ((n_design-1) * ((1/r_in) - (1/r_out)))**(-1)
                 else:
                     f = ((n_design-1)/(n-1)) * f_design
                 optical_system.append((self.matrices.lens, (f,)))
@@ -946,7 +966,8 @@ class MainWindow(QMainWindow):
                             old_values[key] = old_value
                     updated["properties"][key] = value
                 elif isinstance(field, QtWidgets.QCheckBox):
-                    updated["properties"][key] = 1.0 if field.isChecked() else 0.0
+                    # KONSISTENTE Boolean-Speicherung
+                    updated["properties"][key] = field.isChecked()  # Echte Python Booleans
 
             if error_msgs:
                 # Setze ungültige Felder auf alten Wert zurück
@@ -1092,18 +1113,17 @@ class MainWindow(QMainWindow):
         if isinstance(plane_field, QtWidgets.QCheckBox):
             is_plane = plane_field.isChecked()
         
-        # Aktualisiere die Felder entsprechend
-        for side in ["Input", "Output"]:
-            for direction in ["sagittal", "tangential"]:
-                key = f"{side} radius of curvature {direction}"
-                field = self._property_fields.get(key)
-                if field and is_plane and side == "Input":  # Bei plan nur die Eingangsfläche auf unendlich setzen
-                    field.setReadOnly(True)
-                    field.setStyleSheet("background-color: #eee; color: #888;")
-                    field.setText("inf")  # Unendlich
-                elif field:
-                    field.setReadOnly(False)
-                    field.setStyleSheet("")
+        # Aktualisiere die Felder entsprechend (vereinfacht für normale LENS)
+        for direction in ["sagittal", "tangential"]:
+            key = f"Radius of curvature {direction}"
+            field = self._property_fields.get(key)
+            if field and is_plane:
+                field.setReadOnly(True)
+                field.setStyleSheet("background-color: #eee; color: #888;")
+                field.setText("inf")  # Unendlich für Plan lens
+            elif field:
+                field.setReadOnly(False)
+                field.setStyleSheet("")
         
         # Force update of optical system plot
         self.update_live_plot()
@@ -1115,8 +1135,9 @@ class MainWindow(QMainWindow):
         # Zeige Hinweistext bei planparallelen Eingangsflächen
         info_text = ""
         if is_plane:
-            info_text = "Note: Input surface is plane, curvature radius is infinite."
-        self.label_info.setText(info_text)
+            info_text = "Note: Lens is plane, curvature radius is infinite."
+        if hasattr(self, 'label_info'):
+            self.label_info.setText(info_text)
         
         # Bei Änderung der Checkbox auch die Sichtbarkeit der Felder steuern
         def on_state_changed():
@@ -1142,3 +1163,17 @@ class MainWindow(QMainWindow):
             self._property_fields["Plan lens"].stateChanged.connect(self.update_plane_lens_fields)
             # Initial anwenden
             self.update_plane_lens_fields()
+
+    def _to_bool(self, value):
+        """Konvertiert verschiedene Werte zu Boolean."""
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        if isinstance(value, str):
+            return value.lower() in ('true', '1', 'yes', 'on')
+        return False
+
+    def _from_bool(self, value):
+        """Konvertiert Boolean zu einheitlichem Format."""
+        return bool(value)  # Python Boolean

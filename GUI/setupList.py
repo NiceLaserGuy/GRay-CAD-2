@@ -15,8 +15,19 @@ class SetupList(QtWidgets.QListWidget):
         # Lade Default-Setup
         self.load_default_setup()
 
-    def get_default_components(self):
-        """Definiere Standard-Komponenten als Fallback."""
+    def _to_bool(self, value):
+        """Konvertiert verschiedene Werte zu Boolean."""
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        if isinstance(value, str):
+            return value.lower() in ('true', '1', 'yes', 'on')
+        return False
+
+    @staticmethod
+    def get_default_components():
+        """Definiere Standard-Komponenten als Fallback (als statische Methode)."""
         return [
             {
                 "type": "BEAM",
@@ -47,14 +58,12 @@ class SetupList(QtWidgets.QListWidget):
                 "properties": {
                     "Focal length tangential": 0.1,
                     "Focal length sagittal": 0.1,
-                    "Input radius of curvature tangential": 0.1,
-                    "Input radius of curvature sagittal": 0.1,
-                    "Output radius of curvature tangential":0.1,
-                    "Output radius of curvature sagittal":0.1,
+                    "Radius of curvature tangential": 0.1,
+                    "Radius of curvature sagittal": 0.1,
                     "Lens material":"NBK7",
-                    "Plan lens": 0.0,
+                    "Plan lens": False,
                     "Design wavelength":514e-9,
-                    "IS_ROUND": 1.0
+                    "IS_ROUND": True
                 }
             },
             {
@@ -112,6 +121,12 @@ class SetupList(QtWidgets.QListWidget):
         # Füge Komponenten zur Liste hinzu
         for comp in components:
             if comp is not None:
+                # Sichere Boolean-Konvertierung für alle Properties
+                if "properties" in comp:
+                    for key, value in comp["properties"].items():
+                        if key in ["IS_ROUND", "Plan lens"]:
+                            comp["properties"][key] = self._to_bool(value)
+                
                 item = QtWidgets.QListWidgetItem(comp.get("name", "Unnamed"))
                 item.setData(QtCore.Qt.UserRole, copy.deepcopy(comp))
                 self.addItem(item)
@@ -153,14 +168,12 @@ class SetupList(QtWidgets.QListWidget):
             
             # Für Linsen - NUR setzen wenn nicht vorhanden
             if ctype == "LENS":
-                if "Lens material" not in props:
-                    props["Lens material"] = "NBK7"
-            
-            if ctype == "LENS":
                 if "Variable parameter" not in props:
                     props["Variable parameter"] = "Edit focal length"
                 if "Plan lens" not in props:
                     props["Plan lens"] = True
+                if "Lens material" not in props:
+                    props["Lens material"] = "NBK7"
                 
             # Für Propagation  
             elif ctype == "PROPAGATION":
