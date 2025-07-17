@@ -249,6 +249,29 @@ class MainWindow(QMainWindow):
             self.setWindowTitle(title[:-1])
 
     def create_new_setup(self):
+        # Finde die höchste existierende Setup-Nummer
+        existing_numbers = []
+        for i in range(self.setupList.count()):
+            item = self.setupList.item(i)
+            name = item.text()
+            if name.startswith("Setup "):
+                try:
+                    num = int(name.split("Setup ")[1])
+                    existing_numbers.append(num)
+                except (ValueError, IndexError):
+                    pass
+    
+        # Bestimme die nächste verfügbare Nummer
+        if existing_numbers:
+            next_number = max(existing_numbers) + 1
+        else:
+            next_number = 1
+    
+        # Erstelle neues Setup mit der höchsten Nummer
+        new_setup_name = f"Setup {next_number}"
+    
+        # Füge das neue Setup hinzu ohne das aktuelle umzubenennen
+        # ... Rest der Implementierung
         # Erstelle eine Kopie des aktuellen Setups
         new_setup = []
         count = len(self.setups)
@@ -396,7 +419,7 @@ class MainWindow(QMainWindow):
         ("Waist radius sagittal", "Waist radius tangential", "Waist radius"),
         ("Waist position sagittal", "Waist position tangential", "Waist position"),
         ("Rayleigh range sagittal", "Rayleigh range tangential", "Rayleigh range"),
-        ("Focal length sagittal", "Focal length tangential", "Focal length"),
+        ("Focal length sagittal", "Focal length tangential", "Design focal length"),
         ("Radius of curvature sagittal", "Radius of curvature tangential", "Radius of curvature"),
         ("Input radius of curvature sagittal", "Input radius of curvature tangential", "Input radius of curvature"),  # Für THICK LENS
         ("Output radius of curvature sagittal", "Output radius of curvature tangential", "Output radius of curvature"),  # Für THICK LENS
@@ -508,7 +531,7 @@ class MainWindow(QMainWindow):
                 try:
                     field = QtWidgets.QLineEdit(self.vc.convert_to_nearest_string(value))
                 except ValueError:
-                    print(f"Warning: Could not convert value for {key}: {value}")
+                    field = QtWidgets.QLineEdit(str(value))  # Fallback für nicht konvertierbare Werte
                 layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
                 field.textChanged.connect(self.make_field_slot(key, component))
@@ -676,50 +699,54 @@ class MainWindow(QMainWindow):
     
     def on_component_clicked(self, item):
         """Handle clicks on components in the setup list."""
-        # 1. Speichere Properties der aktuell angezeigten Komponente (falls vorhanden)
         clicked_component = item.data(QtCore.Qt.UserRole)
         
         # Verhindere mehrfache Verarbeitung desselben Items
         if hasattr(self, "_last_component_item") and self._last_component_item == item:
             return
         
-        # Speichere Properties der vorherigen Komponente nur einmal
+        # Speichere Properties der vorherigen Komponente
         if hasattr(self, "_last_component_item") and self._last_component_item is not None:
             try:
                 last_component = self._last_component_item.data(QtCore.Qt.UserRole)
                 if isinstance(last_component, dict):
-                    # Speichere nur einmal
                     updated_last = self.save_properties_to_component(last_component)
                     if updated_last:
                         self._last_component_item.setData(QtCore.Qt.UserRole, updated_last)
             except (RuntimeError, AttributeError):
                 pass
-        
+    
         # Setze das neue Item
         self._last_component_item = item
-    
-        # 2. Lade die neue Komponente
-        clicked_component = item.data(QtCore.Qt.UserRole)
+
+        # Lade die neue Komponente
         if not isinstance(clicked_component, dict):
             return
         
-        # 3. Zeige die neue Komponente an
+        # Zeige die neue Komponente an
         self.labelType.setText(clicked_component.get("type", ""))
         self.labelName.setText(clicked_component.get("name", ""))
         self.labelManufacturer.setText(clicked_component.get("manufacturer", ""))
         
-        # 4. Lade Properties der neuen Komponente
+        # Lade Properties der neuen Komponente
         props = clicked_component.get("properties", {})
-    
+
         # Dynamisch Properties hinzufügen für Linsen
         ctype = clicked_component.get("type", "").strip().upper()
         if ctype in ["LENS"]:
+            # WICHTIG: Prüfe und setze "Variable parameter" falls es fehlt
             if "Variable parameter" not in props:
                 props["Variable parameter"] = "Edit focal length"
             if "Plan lens" not in props:
-                props["Plan lens"] = False  # Korrigiert: False statt True
-    
-        # 5. Zeige Properties an
+                props["Plan lens"] = False
+            if "Lens material" not in props:
+                props["Lens material"] = "NBK7"
+            
+            # Aktualisiere die Komponente mit den neuen Properties
+            clicked_component["properties"] = props
+            item.setData(QtCore.Qt.UserRole, clicked_component)
+
+        # Zeige Properties an
         self.show_properties(props, clicked_component)
         
         # 6. Setze das neue Item als letztes Item
@@ -780,26 +807,91 @@ class MainWindow(QMainWindow):
                 n_design = self.material.get_n(material, lambda_design)
                 n = self.material.get_n(material, self.wavelength)
                 is_plane = self._to_bool(props.get("Plan lens", False))
+                is_round = props.get("IS_ROUND", False)
                 
                 if mode == "sagittal":
                     f_design = props.get("Focal length sagittal")
                     r_in = props.get("Radius of curvature sagittal")
-
                 else:
                     f_design = props.get("Focal length tangential")
                     r_in = props.get("Radius of curvature tangential")
                 
                 if is_plane:
-                    print(is_plane)
                     r_out = 1e100
                 else:
                     r_out = - r_in
 
                 if props.get("Variable parameter") == "Edit both curvatures":
-                    f = ((n_design-1)/(n-1)) * ((n_design-1) * ((1/r_in) - (1/r_out)))**(-1)
+                    f_actual = ((n_design-1)/(n-1)) * ((n_design-1) * ((1/r_in) - (1/r_out)))**(-1)
+                    f_design_calculated = ((n_design-1) * ((1/r_in) - (1/r_out)))**(-1)
+                    
+                    if mode == "sagittal":
+                        props["Focal length sagittal"] = f_design_calculated
+                        if is_round:  # Nur bei sphärischer Linse beide Werte aktualisieren
+                            props["Focal length tangential"] = f_design_calculated
+                    else:  # mode == "tangential"
+                        props["Focal length tangential"] = f_design_calculated
+                        if is_round:  # Nur bei sphärischer Linse beide Werte aktualisieren
+                            props["Focal length sagittal"] = f_design_calculated
+                    
+                    # Aktualisiere die Komponente in der Liste
+                    component["properties"] = props
+                    item.setData(QtCore.Qt.UserRole, component)
+                    
+                    # Aktualisiere die UI-Felder falls diese Linse gerade angezeigt wird
+                    if hasattr(self, "_last_component_item") and self._last_component_item == item:
+                        if "Focal length sagittal" in self._property_fields and (mode == "sagittal" or is_round):
+                            self._property_fields["Focal length sagittal"].blockSignals(True)
+                            self._property_fields["Focal length sagittal"].setText(
+                                self.vc.convert_to_nearest_string(f_design_calculated)
+                            )
+                            self._property_fields["Focal length sagittal"].blockSignals(False)
+                        
+                        if "Focal length tangential" in self._property_fields and (mode == "tangential" or is_round):
+                            self._property_fields["Focal length tangential"].blockSignals(True)
+                            self._property_fields["Focal length tangential"].setText(
+                                self.vc.convert_to_nearest_string(f_design_calculated)
+                            )
+                            self._property_fields["Focal length tangential"].blockSignals(False)
+                    
                 else:
-                    f = ((n_design-1)/(n-1)) * f_design
-                optical_system.append((self.matrices.lens, (f,)))
+                    f_actual = ((n_design-1)/(n-1)) * f_design
+                    if is_plane:
+                        r_in_calculated = ((n_design - 1)**2)/(n - 1) * f_actual
+                    else:
+                        r_in_calculated = 2*((n_design - 1)**2)/(n - 1) * f_actual
+                    
+                    # Aktualisiere nur entsprechend is_round und mode
+                    if mode == "sagittal":
+                        props["Radius of curvature sagittal"] = r_in_calculated
+                        if is_round:  # Nur bei sphärischer Linse beide Werte aktualisieren
+                            props["Radius of curvature tangential"] = r_in_calculated
+                    else:  # mode == "tangential"
+                        props["Radius of curvature tangential"] = r_in_calculated
+                        if is_round:  # Nur bei sphärischer Linse beide Werte aktualisieren
+                            props["Radius of curvature sagittal"] = r_in_calculated
+                    
+                    # Aktualisiere die Komponente in der Liste
+                    component["properties"] = props
+                    item.setData(QtCore.Qt.UserRole, component)
+                    
+                    # Aktualisiere die UI-Felder falls diese Linse gerade angezeigt wird
+                    if hasattr(self, "_last_component_item") and self._last_component_item == item:
+                        if "Radius of curvature sagittal" in self._property_fields and (mode == "sagittal" or is_round):
+                            self._property_fields["Radius of curvature sagittal"].blockSignals(True)
+                            self._property_fields["Radius of curvature sagittal"].setText(
+                                self.vc.convert_to_nearest_string(r_in_calculated)
+                            )
+                            self._property_fields["Radius of curvature sagittal"].blockSignals(False)
+                        
+                        if "Radius of curvature tangential" in self._property_fields and (mode == "tangential" or is_round):
+                            self._property_fields["Radius of curvature tangential"].blockSignals(True)
+                            self._property_fields["Radius of curvature tangential"].setText(
+                                self.vc.convert_to_nearest_string(r_in_calculated)
+                            )
+                            self._property_fields["Radius of curvature tangential"].blockSignals(False)
+                    
+                optical_system.append((self.matrices.lens, (f_actual,)))
                 
             elif ctype == "MIRROR":
                 if mode == "sagittal":

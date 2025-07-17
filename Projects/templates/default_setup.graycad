@@ -1,6 +1,6 @@
 {
   "name": "Default Setup",
-  "created": "2025-07-16T13:58:28.391169",
+  "created": "2025-07-17T09:27:55.129437",
   "version": "2.0",
   "type": "GRAYCAD_SETUP",
   "components": [
@@ -9,7 +9,7 @@
       "name": "Beam",
       "manufacturer": "",
       "properties": {
-        "Wavelength": 6.328e-07,
+        "Wavelength": 5.14e-07,
         "Waist radius sagittal": 0.001,
         "Waist radius tangential": 0.001,
         "Waist position sagittal": 0,
@@ -31,8 +31,8 @@
       "name": "Lens",
       "manufacturer": "",
       "properties": {
-        "Focal length tangential": 0.1,
-        "Focal length sagittal": 0.1,
+        "Focal length tangential": 0.09606,
+        "Focal length sagittal": 0.09606,
         "Radius of curvature tangential": 0.1,
         "Radius of curvature sagittal": 0.1,
         "Lens material": "NBK7",

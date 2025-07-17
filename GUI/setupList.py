@@ -34,7 +34,7 @@ class SetupList(QtWidgets.QListWidget):
                 "name": "Beam",
                 "manufacturer": "",
                 "properties": {
-                    "Wavelength": 632.8e-9,
+                    "Wavelength": 514e-9,
                     "Waist radius sagittal": 1e-3,
                     "Waist radius tangential": 1e-3,
                     "Waist position sagittal": 0,
@@ -56,8 +56,8 @@ class SetupList(QtWidgets.QListWidget):
                 "name": "Lens",
                 "manufacturer": "",
                 "properties": {
-                    "Focal length tangential": 0.1,
-                    "Focal length sagittal": 0.1,
+                    "Focal length tangential": 0.09606,
+                    "Focal length sagittal": 0.09606,
                     "Radius of curvature tangential": 0.1,
                     "Radius of curvature sagittal": 0.1,
                     "Lens material":"NBK7",
