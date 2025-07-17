@@ -270,9 +270,6 @@ class MainWindow(QMainWindow):
         # Erstelle neues Setup mit der höchsten Nummer
         new_setup_name = f"Setup {next_number}"
     
-        # Füge das neue Setup hinzu ohne das aktuelle umzubenennen
-        # ... Rest der Implementierung
-        # Erstelle eine Kopie des aktuellen Setups
         new_setup = []
         count = len(self.setups)
         for i in range(self.setupList.count()):
@@ -357,6 +354,14 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
         
     def make_field_slot(self, key, component):
+        def slot():
+            # Alle Properties speichern und zurück in setupList schreiben
+            updated_component = self.save_properties_to_component(component)
+            if updated_component and hasattr(self, "_last_component_item") and self._last_component_item:
+                self._last_component_item.setData(QtCore.Qt.UserRole, updated_component)
+        return slot
+    
+    def make_enter_slot(self, key, component):
         def slot():
             # Alle Properties speichern und zurück in setupList schreiben
             updated_component = self.save_properties_to_component(component)
@@ -447,6 +452,7 @@ class MainWindow(QMainWindow):
                     layout.addWidget(field_sag, row, 1)
                     self._property_fields[sag_key] = field_sag
                     field_sag.textChanged.connect(self.make_field_slot(sag_key, component))
+                    field_sag.returnPressed.connect(self.make_enter_slot(sag_key, component))
                 else:
                     layout.addWidget(QtWidgets.QLabel(""), row, 1)
                 # Tangential
@@ -456,6 +462,7 @@ class MainWindow(QMainWindow):
                     layout.addWidget(field_tan, row, 2)
                     self._property_fields[tan_key] = field_tan
                     field_tan.textChanged.connect(self.make_field_slot(tan_key, component))
+                    field_tan.returnPressed.connect(self.make_enter_slot(tan_key, component))
                 else:
                     layout.addWidget(QtWidgets.QLabel(""), row, 2)
                 row += 1
@@ -535,9 +542,8 @@ class MainWindow(QMainWindow):
                 layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
                 field.textChanged.connect(self.make_field_slot(key, component))
-                # NEU: Live-Update hinzufügen
-                if not field.isReadOnly():
-                    field.textChanged.connect(self.update_live_plot_delayed)
+                # NEU: Plot-Update nur bei Enter
+                field.returnPressed.connect(self.make_enter_slot(key, component))
             row += 1
         # Spacer am Ende
         spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
