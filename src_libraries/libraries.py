@@ -1,6 +1,7 @@
 from PyQt5.QtCore import QObject, QDir, QModelIndex
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListView, QInputDialog, QMessageBox
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
+from PyQt5 import QtWidgets
 from os import path, listdir
 from PyQt5 import uic
 import json
@@ -63,27 +64,6 @@ class Libraries(QObject):
 
         # Connect the delete_component button to the method
         self.ui_library.button_delete_component.clicked.connect(self.delete_component)
-
-        # Connect the is_round checkbox to the method
-        self.ui_library.checkBox_is_spherical.toggled.connect(self.toggle_curvature_tangential)
-    
-    def toggle_curvature_tangential(self, checked):
-        """
-        Toggles the enabled state of the edit_curvature_tangential field
-        based on the state of the radioButton_is_spherical.
-        
-        Args:
-            checked (bool): True if the radio button is checked, False otherwise.
-        """
-        self.ui_library.edit_curvature_tangential.setEnabled(not checked)
-        self.ui_library.label_6.setEnabled(not checked)
-        if checked:
-            # Set the value of edit_curvature_tangential to match edit_curvature_sagittal
-            curvature_sagittal = self.ui_library.edit_curvature_sagittal.text().strip()
-            self.ui_library.edit_curvature_tangential.setText(curvature_sagittal)
-            self.ui_library.edit_curvature_tangential.setEnabled(False)  # Disable the field
-        else:
-            self.ui_library.edit_curvature_tangential.setEnabled(True)  # Enable the field
 
     def close_library_window(self):
         """
@@ -191,66 +171,6 @@ class Libraries(QObject):
 
         # Connect the listView_lib_components to a click event
         self.ui_library.listView_lib_components.clicked.connect(self.display_component_details)
-
-    def display_component_details(self, index: QModelIndex):
-        """
-        Displays the details of the selected component in the UI fields.
-        """
-        # Get the selected component index
-        selected_index = index.row()
-
-        # Retrieve the corresponding component data
-        if 0 <= selected_index < len(self.components_data):
-            component = self.components_data[selected_index]
-
-            # Extract CURVATURE_TANGENTIAL and CURVATURE_SAGITTAL
-            curvature_tangential = component.get("properties", {}).get("Radius of curvature tangential", "N/A")
-            curvature_sagittal = component.get("properties", {}).get("Radius of curvature sagittal", "N/A")
-
-            # Formatierung mit ValueConverter
-            if isinstance(curvature_tangential, (int, float)):
-                curvature_tangential = self.value_converter.convert_to_nearest_string(curvature_tangential)
-            if isinstance(curvature_sagittal, (int, float)):
-                curvature_sagittal = self.value_converter.convert_to_nearest_string(curvature_sagittal)
-
-            if component.get("properties", {}).get("IS_ROUND", 0.0) == 1.0:
-                self.toggle_curvature_tangential(True)
-                self.ui_library.checkBox_is_spherical.setChecked(True)
-            else:
-                self.toggle_curvature_tangential(False)
-                self.ui_library.checkBox_is_spherical.setChecked(False)
-
-            # Replace 1e30 with "Infinity"
-            if curvature_tangential == 1e30:
-                curvature_tangential = "Infinity"
-            if curvature_sagittal == 1e30:
-                curvature_sagittal = "Infinity"
-
-            # Set the values in the UI fields
-            self.ui_library.edit_curvature_tangential.setText(str(curvature_tangential))
-            self.ui_library.edit_curvature_sagittal.setText(str(curvature_sagittal))
-
-            # Extract and set the type in comboBox_type
-            component_type = component.get("type", "N/A")
-            index_in_combobox = self.ui_library.comboBox_type.findText(component_type)
-            if index_in_combobox != -1:
-                self.ui_library.comboBox_type.setCurrentIndex(index_in_combobox)
-            else:
-                QMessageBox.warning(
-                    self.library_window,
-                    "Unknown Component Type",
-                    f"Unknown component type: {component_type}"
-                )
-
-            # Set the name and manufacturer in the UI fields
-            self.ui_library.edit_name.setText(component.get("name", ""))
-            self.ui_library.edit_manufacturer.setText(component.get("manufacturer", ""))
-        else:
-            QMessageBox.warning(
-                self.library_window,
-                "Invalid Component Index",
-                f"Invalid component index: {selected_index}"
-            )
     
     def add_new_library(self):
         """
@@ -381,123 +301,6 @@ class Libraries(QObject):
                     f"An error occurred while deleting the file: {e}"
                 )
 
-    def accept_changes(self):
-        """
-        Saves the changes made in the UI fields to the selected component in the library file.
-        """
-        # Get the currently selected library file
-        selected_file_index = self.ui_library.listView_libraries.currentIndex().row()
-        model = self.ui_library.listView_libraries.model()
-
-        if selected_file_index < 0:
-            QMessageBox.warning(
-                self.library_window,
-                "No Library Selected",
-                "Please select a library to save changes to a component."
-            )
-            return
-
-        selected_file_name = model.item(selected_file_index).text()
-
-        # Path to the Library folder
-        library_path = path.abspath(path.join(path.dirname(path.dirname(__file__)),  "Library"))
-        selected_file_path = path.join(library_path, selected_file_name)
-
-        # Read the current library file
-        try:
-            with open(selected_file_path, 'r') as file:
-                library_data = json.load(file)
-        except Exception as e:
-            QMessageBox.critical(
-                self.library_window,
-                "Error",
-                f"An error occurred while reading the library file: {e}"
-            )
-            return
-
-        # Get the currently selected component
-        selected_component_index = self.ui_library.listView_lib_components.currentIndex().row()
-
-        if selected_component_index < 0 or "components" not in library_data or selected_component_index >= len(library_data["components"]):
-            QMessageBox.warning(
-                self.library_window,
-                "No Component Selected",
-                "Please select a component to save changes."
-            )
-            return
-
-        component = library_data["components"][selected_component_index]
-
-        # Update component data from the UI fields
-        component["name"] = self.ui_library.edit_name.text().strip()
-        component["manufacturer"] = self.ui_library.edit_manufacturer.text().strip()
-        component["type"] = self.ui_library.comboBox_type.currentText()
-
-        # Handle properties based on the type
-        if component["type"] == "LENS":
-            try:
-                component["properties"]["Radius of curvature tangential"] = self.value_converter.convert_to_float(
-                    self.ui_library.edit_curvature_tangential.text().strip(), self.library_window)
-                component["properties"]["Radius of curvature sagittal"] = self.value_converter.convert_to_float(
-                    self.ui_library.edit_curvature_sagittal.text().strip(), self.library_window)
-                component["properties"]["Focal length tangential"] = self.value_converter.convert_to_float(
-                    self.ui_library.edit_focal_length_tangential.text().strip(), self.library_window)
-                component["properties"]["Focal length sagittal"] = self.value_converter.convert_to_float(
-                    self.ui_library.edit_focal_length_sagittal.text().strip(), self.library_window)
-                
-                # Determine if the component is round
-                if self.ui_library.checkBox_is_spherical.isChecked():
-                    component["properties"]["IS_ROUND"] = 1.0 # True
-                else:
-                    component["properties"]["IS_ROUND"] = 0.0 # False
-            except Exception:
-                QMessageBox.warning(
-                    self.library_window,
-                    "Invalid Input",
-                    "Please enter valid numeric values for lens curvatures."
-                )
-                return
-        else:  # Default to MIRROR
-            try:
-                curvature_tangential = self.value_converter.convert_to_float(
-                    self.ui_library.edit_curvature_tangential.text().strip(), self.library_window)
-                curvature_sagittal = self.value_converter.convert_to_float(
-                    self.ui_library.edit_curvature_sagittal.text().strip(), self.library_window)
-
-                component["properties"]["Radius of curvature tangential"] = curvature_tangential
-                component["properties"]["Radius of curvature sagittal"] = curvature_sagittal
-
-                # Determine if the component is round
-                if self.ui_library.checkBox_is_spherical.isChecked():
-                    component["properties"]["IS_ROUND"] = 1.0 # True
-                else:
-                    component["properties"]["IS_ROUND"] = 0.0 # False
-            except Exception:
-                QMessageBox.warning(
-                    self.library_window,
-                    "Invalid Input",
-                    "Please enter valid numeric values for mirror curvatures."
-                )
-                return
-
-        # Save the updated library file
-        try:
-            with open(selected_file_path, 'w') as file:
-                json.dump(library_data, file, indent=4)
-            QMessageBox.information(
-                self.library_window,
-                "Success",
-                f"Changes to the component '{component['name']}' have been saved."
-            )
-            # Update the listView_lib_components to reflect the changes
-            self.display_file_contents(self.ui_library.listView_libraries.currentIndex())
-        except Exception as e:
-            QMessageBox.critical(
-                self.library_window,
-                "Error",
-                f"An error occurred while saving the library file: {e}"
-            )
-
     def add_new_component(self):
         """
         Adds a new component to the currently selected library.
@@ -536,30 +339,68 @@ class Libraries(QObject):
         selected_type = self.ui_library.comboBox_type.currentText()
 
         # Initialize the new component based on the type
-        if selected_type == "LENS":
+        if selected_type == "Lens":
             new_component = {
                 "type": "LENS",
-                "name": "new lens",
-                "manufacturer": "",
-                "properties": {
-                    "Focal length tangential": "",
-                    "Focal length sagittal": "",
-                    "Radius of curvature tangential": "",
-                    "Radius of curvature sagittal": "",
-
+                    "name": "Lens",
+                    "manufacturer": "",
+                    "properties": {
+                    "Focal length tangential": 0.09606,
+                    "Focal length sagittal": 0.09606,
+                    "Radius of curvature tangential": 0.1,
+                    "Radius of curvature sagittal": 0.1,
+                    "Lens material":"NBK7",
+                    "Plan lens": False,
+                    "Design wavelength":514e-9,
+                    "IS_ROUND": True
                 }
             }
-        else:  # Default to MIRROR
+        if selected_type == "Mirror":
             new_component = {
-                "type": "MIRROR",
-                "name": "new mirror",
+                 "type": "MIRROR",
+                "name": "Mirror",
                 "manufacturer": "",
                 "properties": {
-                    "Radius of curvature tangential": "",
-                    "Radius of curvature sagittal": "",
-                    "IS_ROUND": ""
+                "Radius of curvature tangential": 0.1,
+                "Radius of curvature sagittal": 0.1,
+                "IS_ROUND": True,
+                "Angle of incidence": 0.0
                 }
             }
+            
+        if selected_type == "Thick Lens":
+            new_component = {
+            "type": "THICK LENS",
+            "name": "Thick Lens",
+            "manufacturer": "",
+            "properties": {
+              "Input radius of curvature tangential": 0.2,
+              "Input radius of curvature sagittal": 0.2,
+              "Output radius of curvature tangential":0.3,
+              "Output radius of curvature sagittal":0.3,
+              "Thickness":0.01,
+              "Lens material":"NBK7",
+              "IS_ROUND": True
+            }
+          }
+            
+        if selected_type == "ABCD":
+            new_component = {
+            "type": "ABCD",
+            "name": "ABCD",
+            "manufacturer": "",
+            "properties": {
+              "A tangential": 1.0,
+              "A sagittal": 1.0,
+              "B tangential": 0.0,
+              "B sagittal": 0.0,
+              "C tangential": 0.0,
+              "C sagittal": 0.0,
+              "D tangential": 1.0,
+              "D sagittal": 1.0,
+              "IS_ROUND": True
+            }
+          }
 
         # Add the new component to the library
         if "components" not in library_data:
@@ -660,3 +501,364 @@ class Libraries(QObject):
                     "Error",
                     f"An error occurred while deleting the component: {e}"
                 )
+
+    def show_component_properties(self, component_data=None):
+        """
+        Zeigt die Properties der ausgewählten Komponente im propertyLayout (GridLayout) an.
+        """
+        # PropertyLayout aus dem UI holen
+        layout = self.ui_library.propertyLayout
+        
+        # Layout leeren
+        while layout.count():
+            child = layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+        # Property-Felder Dictionary für Zugriff
+        if not hasattr(self, '_property_fields'):
+            self._property_fields = {}
+        self._property_fields.clear()
+        
+        if not component_data:
+            return
+            
+        properties = component_data.get("properties", {})
+        component_type = component_data.get("type", "").upper()
+        row = 0
+
+        # NEU: Dynamisch Properties hinzufügen für Linsen (wie in graycad_mainwindow.py)
+        if component_type == "LENS":
+            if "Variable parameter" not in properties:
+                properties["Variable parameter"] = "Edit focal length"
+            if "Plan lens" not in properties:
+                properties["Plan lens"] = False
+            if "Lens material" not in properties:
+                properties["Lens material"] = "NBK7"
+            
+            # Aktualisiere die Komponente mit den neuen Properties
+            component_data["properties"] = properties
+
+        # Definiere Paare für sagittal/tangential Properties
+        paired_props = [
+            ("Waist radius sagittal", "Waist radius tangential", "Waist radius"),
+            ("Waist position sagittal", "Waist position tangential", "Waist position"),
+            ("Rayleigh range sagittal", "Rayleigh range tangential", "Rayleigh range"),
+            ("Focal length sagittal", "Focal length tangential", "Focal length"),
+            ("Radius of curvature sagittal", "Radius of curvature tangential", "Radius of curvature"),
+            ("Input radius of curvature sagittal", "Input radius of curvature tangential", "Input radius of curvature"),
+            ("Output radius of curvature sagittal", "Output radius of curvature tangential", "Output radius of curvature"),
+            ("A sagittal", "A tangential", "A"),
+            ("B sagittal", "B tangential", "B"),
+            ("C sagittal", "C tangential", "C"),
+            ("D sagittal", "D tangential", "D")
+        ]
+
+        # Set zum schnellen Nachschlagen
+        paired_keys = set()
+        for sag, tan, _ in paired_props:
+            paired_keys.add(sag)
+            paired_keys.add(tan)
+
+        # Zeige Paare in einer Zeile
+        for sag_key, tan_key, display_name in paired_props:
+            if sag_key in properties or tan_key in properties:
+                label = QtWidgets.QLabel(display_name + ":")
+                layout.addWidget(label, row, 0)
+                
+                # Sagittal
+                if sag_key in properties:
+                    value = properties.get(sag_key, "")
+                    field_sag = QtWidgets.QLineEdit(self.value_converter.convert_to_nearest_string(value) if isinstance(value, (int, float)) else str(value))
+                    layout.addWidget(field_sag, row, 1)
+                    self._property_fields[sag_key] = field_sag
+                    field_sag.textChanged.connect(self.on_property_changed)
+                else:
+                    layout.addWidget(QtWidgets.QLabel(""), row, 1)
+                    
+                # Tangential
+                if tan_key in properties:
+                    value = properties.get(tan_key, "")
+                    field_tan = QtWidgets.QLineEdit(self.value_converter.convert_to_nearest_string(value) if isinstance(value, (int, float)) else str(value))
+                    layout.addWidget(field_tan, row, 2)
+                    self._property_fields[tan_key] = field_tan
+                    field_tan.textChanged.connect(self.on_property_changed)
+                else:
+                    layout.addWidget(QtWidgets.QLabel(""), row, 2)
+                    
+                row += 1
+
+        # Zeige alle anderen Properties einzeln
+        for key, value in properties.items():
+            if key in paired_keys:
+                continue  # Schon als Paar behandelt
+                
+            # Spezielles Label für IS_ROUND
+            if key == "IS_ROUND":
+                label = QtWidgets.QLabel("Spherical:")
+            else:
+                label = QtWidgets.QLabel(key + ":")
+            layout.addWidget(label, row, 0)
+            
+            # Checkbox für boolsche Werte und IS_ROUND
+            if key == "IS_ROUND" or key == "Plan lens":
+                field = QtWidgets.QCheckBox()
+                field.setChecked(bool(value))
+                layout.addWidget(field, row, 1)
+                self._property_fields[key] = field
+                field.stateChanged.connect(self.on_property_changed)
+                
+            # Dropdown für spezielle Felder
+            elif key == "Lens material":
+                field = QtWidgets.QComboBox()
+                field.addItems(["NBK7", "Fused Silica"])
+                if value in ["NBK7", "Fused Silica"]:
+                    field.setCurrentText(value)
+                layout.addWidget(field, row, 1)
+                self._property_fields[key] = field
+                field.currentIndexChanged.connect(self.on_property_changed)
+                
+            # NEU: Variable parameter Dropdown (wie in graycad_mainwindow.py)
+            elif key == "Variable parameter":
+                field = QtWidgets.QComboBox()
+                field.addItems(["Edit both curvatures", "Edit focal length"])
+                if value in ["Edit both curvatures", "Edit focal length"]:
+                    field.setCurrentText(value)
+                layout.addWidget(field, row, 1)
+                self._property_fields[key] = field
+                
+                def on_variable_param_changed():
+                    self.update_field_states()
+                    
+                field.currentIndexChanged.connect(on_variable_param_changed)
+                
+            # Standard: QLineEdit
+            else:
+                try:
+                    field_value = self.value_converter.convert_to_nearest_string(value) if isinstance(value, (int, float)) else str(value)
+                except:
+                    field_value = str(value)
+                field = QtWidgets.QLineEdit(field_value)
+                layout.addWidget(field, row, 1)
+                self._property_fields[key] = field
+                field.textChanged.connect(self.on_property_changed)
+                
+            row += 1
+
+        # Spacer am Ende
+        spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        layout.addItem(spacer, row, 0, 1, 3)
+
+        # IS_ROUND Synchronisierung einrichten
+        if "IS_ROUND" in self._property_fields:
+            self._property_fields["IS_ROUND"].stateChanged.connect(self.update_field_states)
+            
+        # NEU: Variable parameter Synchronisierung einrichten
+        if "Variable parameter" in self._property_fields:
+            self._property_fields["Variable parameter"].currentIndexChanged.connect(self.update_field_states)
+            
+        # Live-Synchronisierung für sagittal/tangential Paare
+        for sag_key, tan_key, _ in paired_props:
+            if sag_key in self._property_fields and tan_key in self._property_fields:
+                field_sag = self._property_fields[sag_key]
+                field_tan = self._property_fields[tan_key]
+                
+                def make_sync_function(field_sag, field_tan):
+                    def sync_sagittal_to_tangential():
+                        if "IS_ROUND" in self._property_fields:
+                            is_round_field = self._property_fields["IS_ROUND"]
+                            if isinstance(is_round_field, QtWidgets.QCheckBox) and is_round_field.isChecked():
+                                field_tan.blockSignals(True)
+                                field_tan.setText(field_sag.text())
+                                field_tan.blockSignals(False)
+                    return sync_sagittal_to_tangential
+                
+                field_sag.textChanged.connect(make_sync_function(field_sag, field_tan))
+        
+        # Initiale Feldstatus-Aktualisierung
+        self.update_field_states()
+
+    def update_field_states(self):
+        """Aktualisiert Feldstatus basierend auf IS_ROUND und Variable parameter (wie in graycad_mainwindow.py)"""
+        if not hasattr(self, '_property_fields'):
+            return
+            
+        # Zustände ermitteln
+        is_round = False
+        edit_focal_length = True  # Default
+        
+        is_round_field = self._property_fields.get("IS_ROUND")
+        if isinstance(is_round_field, QtWidgets.QCheckBox):
+            is_round = is_round_field.isChecked()
+            
+        var_param_field = self._property_fields.get("Variable parameter")
+        if isinstance(var_param_field, QtWidgets.QComboBox):
+            edit_focal_length = var_param_field.currentText() == "Edit focal length"
+        
+        # Die zu prüfenden Feldgruppen
+        focal_length_fields = ["Focal length sagittal", "Focal length tangential"]
+        curvature_fields = [
+            "Radius of curvature sagittal", "Radius of curvature tangential",
+            "Input radius of curvature sagittal", "Input radius of curvature tangential",
+            "Output radius of curvature sagittal", "Output radius of curvature tangential"
+        ]
+        
+        # 1. Zuerst Felder nach Variable parameter setzen
+        for key in focal_length_fields:
+            field = self._property_fields.get(key)
+            if field:
+                if edit_focal_length:
+                    field.setReadOnly(False)
+                    field.setStyleSheet("")
+                else:
+                    field.setReadOnly(True)
+                    field.setStyleSheet("background-color: #eee; color: #888;")
+        
+        for key in curvature_fields:
+            field = self._property_fields.get(key)
+            if field:
+                if edit_focal_length:
+                    field.setReadOnly(True)
+                    field.setStyleSheet("background-color: #eee; color: #888;")
+                else:
+                    field.setReadOnly(False)
+                    field.setStyleSheet("")
+        
+        # 2. Dann IS_ROUND-Logik anwenden (hat Vorrang für tangentiale Felder)
+        if is_round:
+            paired_props = [
+                ("Waist radius sagittal", "Waist radius tangential"),
+                ("Waist position sagittal", "Waist position tangential"),
+                ("Rayleigh range sagittal", "Rayleigh range tangential"),
+                ("Focal length sagittal", "Focal length tangential"),
+                ("Radius of curvature sagittal", "Radius of curvature tangential"),
+                ("Input radius of curvature sagittal", "Input radius of curvature tangential"),
+                ("Output radius of curvature sagittal", "Output radius of curvature tangential"),
+            ]
+            
+            for sag_key, tan_key in paired_props:
+                if sag_key in self._property_fields and tan_key in self._property_fields:
+                    field_sag = self._property_fields[sag_key]
+                    field_tan = self._property_fields[tan_key]
+                    
+                    # Tangential-Feld immer sperren bei IS_ROUND=True
+                    field_tan.setReadOnly(True)
+                    field_tan.setStyleSheet("background-color: #eee; color: #888;")
+                    
+                    # Wert synchronisieren
+                    if field_tan.text() != field_sag.text():
+                        field_tan.blockSignals(True)
+                        field_tan.setText(field_sag.text())
+                        field_tan.blockSignals(False)
+
+    def on_property_changed(self):
+        """Callback für Property-Änderungen"""
+        self.update_field_states()
+
+    def display_component_details(self, index: QModelIndex):
+        """
+        Displays the details of the selected component in the propertyLayout.
+        """
+        # Get the selected component index
+        selected_index = index.row()
+
+        # Retrieve the corresponding component data
+        if 0 <= selected_index < len(self.components_data):
+            component = self.components_data[selected_index]
+            
+            # Zeige Properties im Grid-Layout an
+            self.show_component_properties(component)
+            
+        else:
+            QMessageBox.warning(
+                self.library_window,
+                "Invalid Component Index",
+                f"Invalid component index: {selected_index}"
+            )
+
+    def accept_changes(self):
+        """
+        Speichert die Änderungen der Properties zurück in die JSON-Datei
+        """
+        if not hasattr(self, '_property_fields') or not self._property_fields:
+            return
+            
+        # Get the currently selected library file
+        selected_file_index = self.ui_library.listView_libraries.currentIndex().row()
+        model = self.ui_library.listView_libraries.model()
+
+        if selected_file_index < 0:
+            QMessageBox.warning(
+                self.library_window,
+                "No Library Selected",
+                "Please select a library."
+            )
+            return
+
+        selected_file_name = model.item(selected_file_index).text()
+
+        # Get selected component
+        selected_component_index = self.ui_library.listView_lib_components.currentIndex().row()
+        
+        if selected_component_index < 0:
+            QMessageBox.warning(
+                self.library_window,
+                "No Component Selected",
+                "Please select a component."
+            )
+            return
+
+        # Path to the Library folder
+        library_path = path.abspath(path.join(path.dirname(path.dirname(__file__)),  "Library"))
+        selected_file_path = path.join(library_path, selected_file_name)
+
+        # Read the current library file
+        try:
+            with open(selected_file_path, 'r') as file:
+                library_data = json.load(file)
+        except Exception as e:
+            QMessageBox.critical(
+                self.library_window,
+                "Error",
+                f"An error occurred while reading the library file: {e}"
+            )
+            return
+
+        # Update component properties from UI fields
+        component = library_data["components"][selected_component_index]
+        
+        for key, field in self._property_fields.items():
+            if isinstance(field, QtWidgets.QCheckBox):
+                component["properties"][key] = field.isChecked()
+            elif isinstance(field, QtWidgets.QComboBox):
+                component["properties"][key] = field.currentText()
+            elif isinstance(field, QtWidgets.QLineEdit):
+                try:
+                    # Versuche als float zu konvertieren
+                    value = self.value_converter.convert_to_float(field.text())
+                    component["properties"][key] = value
+                except:
+                    # Falls das fehlschlägt, als String speichern
+                    component["properties"][key] = field.text()
+
+        # Save the updated library file
+        try:
+            with open(selected_file_path, 'w') as file:
+                json.dump(library_data, file, indent=4)
+                
+            QMessageBox.information(
+                self.library_window,
+                "Success",
+                "Changes saved successfully."
+            )
+            
+            # Reload the components to reflect changes
+            self.display_file_contents(self.ui_library.listView_libraries.currentIndex())
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self.library_window,
+                "Error",
+                f"An error occurred while saving the library file: {e}"
+            )
+
