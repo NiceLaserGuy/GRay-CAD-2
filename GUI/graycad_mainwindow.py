@@ -31,6 +31,7 @@ from GUI.setupList import SetupList
 from GUI.componentList import ComponentList
 from GUI.errorHandler import CustomMessageBox
 from src_physics.material import Material
+from GUI.optical_plotter import OpticalSystemPlotter
 
 class PlotWorker(QObject):
     finished = pyqtSignal(tuple)  # (z_data, w_data)
@@ -107,6 +108,9 @@ class MainWindow(QMainWindow):
         # Load the main UI from .ui file
         self.ui = uic.loadUi(path.abspath(path.join(path.dirname(__file__), "../assets/mainwindow.ui")), self)
 
+        # NEU: Jetzt erst OpticalSystemPlotter initialisieren (nach UI-Laden)
+        self.optical_plotter = OpticalSystemPlotter(self.plotWidget, self.beam, self.matrices, self.vc)
+
         # Connect menu items to their respective handlers
         self.ui.action_Open.triggered.connect(lambda: self.action.action_open(self))
         self.ui.action_Save.triggered.connect(lambda: self.action.action_save(self))
@@ -174,7 +178,7 @@ class MainWindow(QMainWindow):
         self.ui.buttonMoveUp.clicked.connect(lambda: self.action.move_selected_setup_item_up(self))
         self.ui.buttonMoveDown.clicked.connect(lambda: self.action.move_selected_setup_item_down(self))
         self.ui.buttonAddComponent.clicked.connect(lambda: self.action.move_selected_component_to_setupList(self))
-        self.ui.buttonScaleToSetup.clicked.connect(lambda: self.scale_visible_setup())
+        self.ui.buttonScaleToSetup.clicked.connect(lambda: self.optical_plotter.scale_visible_setup())
         self.update_live_plot()
         
         # Live update for the optical system plot
@@ -197,20 +201,20 @@ class MainWindow(QMainWindow):
                 mousePoint = self.plotWidget.getViewBox().mapSceneToView(pos)
                 z = mousePoint.x()
                 self.cursor_vline.setPos(z)
-                idx = np.searchsorted(self.z_data, z)
+                idx = np.searchsorted(self.optical_plotter.z_data, z)
                 if idx == 0:
-                    z_val = self.z_data[0]
-                    w_sag_val = self.w_sag_data[0]
-                    w_tan_val = self.w_tan_data[0]
-                elif idx == len(self.z_data):
-                    z_val = self.z_data[-1]
-                    w_sag_val = self.w_sag_data[-1]
-                    w_tan_val = self.w_tan_data[-1]
+                    z_val = self.optical_plotter.z_data[0]
+                    w_sag_val = self.optical_plotter.w_sag_data[0]
+                    w_tan_val = self.optical_plotter.w_tan_data[0]
+                elif idx == len(self.optical_plotter.z_data):
+                    z_val = self.optical_plotter.z_data[-1]
+                    w_sag_val = self.optical_plotter.w_sag_data[-1]
+                    w_tan_val = self.optical_plotter.w_tan_data[-1]
                 else:
                     # Interpolation zwischen idx-1 und idx
-                    z0, z1 = self.z_data[idx-1], self.z_data[idx]
-                    w0_sag, w1_sag = self.w_sag_data[idx-1], self.w_sag_data[idx]
-                    w0_tan, w1_tan = self.w_tan_data[idx-1], self.w_tan_data[idx]
+                    z0, z1 = self.optical_plotter.z_data[idx-1], self.optical_plotter.z_data[idx]
+                    w0_sag, w1_sag = self.optical_plotter.w_sag_data[idx-1], self.optical_plotter.w_sag_data[idx]
+                    w0_tan, w1_tan = self.optical_plotter.w_tan_data[idx-1], self.optical_plotter.w_tan_data[idx]
                     t = (z - z0) / (z1 - z0) if z1 != z0 else 0
                     z_val = z
                     w_sag_val = w0_sag + t * (w1_sag - w0_sag)
@@ -218,13 +222,12 @@ class MainWindow(QMainWindow):
                 self.ui.label_z_position.setText(f"{self.vc.convert_to_nearest_string(z_val, self)}")
                 self.ui.label_w_sag.setText(f"{self.vc.convert_to_nearest_string(w_sag_val, self)}")
                 self.ui.label_w_tan.setText(f"{self.vc.convert_to_nearest_string(w_tan_val, self)}")
-                #TODO
                 self.ui.label_roc_sag.setText(f"{self.vc.convert_to_nearest_string(self.beam.radius_of_curvature(z_val, w_sag_val, self.wavelength))}")
                 self.ui.label_roc_tan.setText(f"{self.vc.convert_to_nearest_string(self.beam.radius_of_curvature(z_val, w_tan_val, self.wavelength))}")
                 
         # Connect signal to function
         self.plotWidget.scene().sigMouseMoved.connect(mouseMoved)
-        self.plotWidget.getViewBox().sigXRangeChanged.connect(self.update_plot_for_visible_range)
+        self.plotWidget.getViewBox().sigXRangeChanged.connect(self.optical_plotter.update_plot_for_visible_range)
         self.plotWidget.hideButtons()
 
         # Action-Instanz erstellen
@@ -961,48 +964,6 @@ class MainWindow(QMainWindow):
             # ... weitere Typen ...
         return optical_system
     
-    def update_live_plot(self):
-        if self._plot_busy:
-            return
-        self._plot_busy = True
-        try:
-            if hasattr(self, '_live_plot_update_timer'):
-                self._live_plot_update_timer.stop()
-            beam_item = self.setupList.currentItem()
-            if beam_item is None:
-                beam_item = self.setupList.item(0)
-            if beam_item is not None and hasattr(self, '_property_fields'):
-                updated_beam = self.save_properties_to_component(beam_item.data(QtCore.Qt.UserRole))
-                if updated_beam is not None:
-                    beam_item.setData(QtCore.Qt.UserRole, updated_beam)
-            optical_system_sag = self.build_optical_system_from_setup_list(mode="sagittal")
-            optical_system_tan = self.build_optical_system_from_setup_list(mode="tangential")
-            # Hole Startparameter aus dem Beam (immer an Position 0)
-            beam_item = self.setupList.item(0)
-            beam = beam_item.data(QtCore.Qt.UserRole)
-            props = beam.get("properties", {})
-            wavelength = props.get("Wavelength", 514E-9)
-            waist_sag = props.get("Waist radius sagittal", 1E-3)
-            waist_tan = props.get("Waist radius tangential", 1E-3)
-            waist_pos_sag = props.get("Waist position sagittal", 0.0)
-            waist_pos_tan = props.get("Waist position tangential", 0.0)
-            n = 1  # Optional: aus Beam-Properties holen
-            try:
-                self.plot_optical_system(
-                    z_start_sag=waist_pos_sag,
-                    z_start_tan=waist_pos_tan,
-                    wavelength=wavelength,
-                    waist_sag=waist_sag,
-                    waist_tan=waist_tan,
-                    n=n,
-                    optical_system_sag=optical_system_sag,
-                    optical_system_tan=optical_system_tan
-                )
-            except Exception:
-                pass
-        finally:
-            self._plot_busy = False
-    
     def save_properties_to_component(self, component):
         """Save current field values to the given component."""
         # Verhindere rekursive Aufrufe
@@ -1082,123 +1043,20 @@ class MainWindow(QMainWindow):
         finally:
             self._saving_properties = False
         
-    def plot_optical_system_from_resonator(self, optical_system):
-        self.plot_optical_system(optical_system=optical_system)
-        
     def plot_optical_system(self, z_start_sag, z_start_tan, wavelength, waist_sag, waist_tan, n, optical_system_sag, optical_system_tan):
-        # Speichere die aktuellen Parameter als Attribute, damit update_plot_for_visible_range darauf zugreifen kann
-        
-        self.wavelength = wavelength
-        self.waist_sag = waist_sag
-        self.waist_tan = waist_tan
-        self.waist_pos_sag = z_start_sag
-        self.waist_pos_tan = z_start_tan
-        self.n = n
-        self.optical_system_sag = optical_system_sag
-        self.optical_system_tan = optical_system_tan
-        
-        self.curve_sag = None
-        self.curve_tan = None
-        self.plotWidget.clear()
-
-        # Initialplot (z.B. gesamter Bereich)
-        z_min, z_max = self.plotWidget.getViewBox().viewRange()[0]
-        if not np.isfinite(z_min) or not np.isfinite(z_max) or z_min == z_max:
-            # Fallback: Bereich aus optischem System bestimmen
-            z_min = 0
-            z_max = sum([p[1][0] for p in optical_system_sag if hasattr(p[0], "__func__") and p[0].__func__ is self.matrices.free_space.__func__])
-
-        self.update_plot_for_visible_range(z_min, z_max)
+        self.optical_plotter.plot_optical_system(z_start_sag, z_start_tan, wavelength, waist_sag, waist_tan, n, optical_system_sag, optical_system_tan)
 
     def update_plot_for_visible_range(self, *args, **kwargs):
-        z_min, z_max = self.plotWidget.getViewBox().viewRange()[0]
-        if not np.isfinite(z_min) or not np.isfinite(z_max) or z_min == z_max:
-            z_min = 0
-            z_max = sum([p[1][0] for p in self.optical_system_sag
-                        if hasattr(p[0], "__func__") and p[0].__func__ is self.matrices.free_space.__func__])
-        
-        n_points = 2000
-        self.z_visible = np.linspace(z_min, z_max, n_points)
-
-        # Hole gespeicherte Parameter
-        wavelength = self.wavelength
-        waist_sag = self.waist_sag
-        waist_tan = self.waist_tan
-        waist_pos_sag = self.waist_pos_sag
-        waist_pos_tan = self.waist_pos_tan
-        n = self.n
-        optical_system_sag = self.optical_system_sag
-        optical_system_tan = self.optical_system_tan
-        self.vb = self.plotWidget.getViewBox()
-
-        # q-Werte berechnen und propagieren
-        q_sag = self.beam.q_value(waist_pos_sag, waist_sag, wavelength, n)
-        q_tan = self.beam.q_value(waist_pos_tan, waist_tan, wavelength, n)
-        try:
-            self.z_data, self.w_sag_data, z_setup = self.beam.propagate_through_system(wavelength, q_sag, optical_system_sag, self.z_visible, n_points, n=n)
-            self.z_data, self.w_tan_data, z_setup = self.beam.propagate_through_system(wavelength, q_tan, optical_system_tan, self.z_visible, n_points, n=n)
-            self.z_setup = z_setup
-        except Exception:
-            self.vb.setXRange(0, 1, padding=0.02)
-            #self.show_error()
-
-        # Plot aktualisieren oder neu erstellen
-        if not hasattr(self, "curve_sag") or self.curve_sag is None:
-            self.plotWidget.clear()
-            self.plotWidget.setBackground('w')
-            self.plotWidget.addLegend()
-            self.plotWidget.showGrid(x=True, y=True)
-            self.plotWidget.setLabel('left', 'Waist radius', units='m', color='#333333')
-            self.plotWidget.setLabel('bottom', 'z', units='m', color='#333333')
-            self.plotWidget.setTitle("Gaussian Beam Propagation", color='#333333')
-            axis_pen = pg.mkPen(color='#333333')
-            self.plotWidget.getAxis('left').setTextPen(axis_pen)
-            self.plotWidget.getAxis('bottom').setTextPen(axis_pen)
-            self.plotWidget.setDefaultPadding(0.02)  # 2% padding around the plot
-            region = LinearRegionItem(values=[0, z_setup], orientation='vertical', brush=(100, 100, 255, 30), movable=False)
-            self.plotWidget.addItem(region)
-
-            self.curve_sag = self.plotWidget.plot(self.z_data, self.w_sag_data, pen=pg.mkPen('r', width=1.5), name="Sagittal")
-            self.curve_tan = self.plotWidget.plot(self.z_data, self.w_tan_data, pen=pg.mkPen('b', width=1.5), name="Tangential")
-        else:
-            self.curve_sag.setData(self.z_data, self.w_sag_data)
-            self.curve_tan.setData(self.z_data, self.w_tan_data)
-
-        # → Immer X-Achse an sichtbaren Bereich anpassen
-        current_range = self.plotWidget.getViewBox().viewRange()[0]
-        if abs(current_range[0] - z_min) > 1e-9 or abs(current_range[1] - z_max) > 1e-9:
-            try:
-                self.vb.sigXRangeChanged.disconnect(self.update_plot_for_visible_range)
-            except TypeError:
-                pass
-            self.vb.sigXRangeChanged.connect(self.update_plot_for_visible_range)
-            self.vb.setXRange(0, z_setup, padding=0.02)
-
-        # Vertikale Linien aktualisieren
-        for vline in getattr(self, "vlines", []):
-            self.plotWidget.removeItem(vline)
-        self.vlines = []
-        z_element = 0
-        for idx, (element, param) in enumerate(optical_system_sag):
-            if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
-                z_element += param[0]
-            else:
-                vline = pg.InfiniteLine(pos=z_element, angle=90, pen=pg.mkPen(width=2, color="#FF0000"))
-                self.plotWidget.addItem(vline)
-                self.vlines.append(vline)
+        self.optical_plotter.update_plot_for_visible_range(*args, **kwargs)
                 
     def scale_visible_setup(self):
-        """
-        Skaliert die sichtbaren Setup-Elemente auf die aktuelle Ansicht.
-        """
-        self.vb = self.plotWidget.getViewBox()
-        self.vb.setXRange(0, self.z_setup, padding=0.02)
-        xRange = self.vb.viewRange()[0]
-        visible_mask = (self.z_data >= xRange[0]) & (self.z_data <= xRange[1])
-        visible_y = self.w_sag_data[visible_mask]
-        if len(visible_y) > 0:
-            ymax = visible_y.max()
-            self.vb.setYRange(0, ymax, padding=0.1)
+        self.optical_plotter.scale_visible_setup()
+        
+    def plot_optical_system_from_resonator(self, optical_system):
+        self.optical_plotter.plot_optical_system_from_resonator(optical_system)
+        
+    def update_live_plot(self):
+        self.optical_plotter.update_live_plot(self)
                 
     def show_error(self):
         msg = CustomMessageBox(self, "Error", "You do not have permission to exceed this limit!", "..\\GRay-CAD-2\\assets\\error.gif")
