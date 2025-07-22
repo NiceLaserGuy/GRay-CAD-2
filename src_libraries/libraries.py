@@ -64,6 +64,12 @@ class Libraries(QObject):
 
         # Connect the delete_component button to the method
         self.ui_library.button_delete_component.clicked.connect(self.delete_component)
+        
+        # NEU: Connect comboBox_type to show generic properties
+        self.ui_library.comboBox_type.currentTextChanged.connect(self.on_component_type_changed)
+        
+        # NEU: Load generic components for initial display
+        self.load_generic_components()
 
     def close_library_window(self):
         """
@@ -337,70 +343,36 @@ class Libraries(QObject):
 
         # Get the selected type from comboBox_type
         selected_type = self.ui_library.comboBox_type.currentText()
-
-        # Initialize the new component based on the type
-        if selected_type == "Lens":
-            new_component = {
-                "type": "LENS",
-                    "name": "Lens",
-                    "manufacturer": "",
-                    "properties": {
-                    "Focal length tangential": 0.09606,
-                    "Focal length sagittal": 0.09606,
-                    "Radius of curvature tangential": 0.1,
-                    "Radius of curvature sagittal": 0.1,
-                    "Lens material":"NBK7",
-                    "Plan lens": False,
-                    "Design wavelength":514e-9,
-                    "IS_ROUND": True
-                }
-            }
-        if selected_type == "Mirror":
-            new_component = {
-                 "type": "MIRROR",
-                "name": "Mirror",
-                "manufacturer": "",
-                "properties": {
-                "Radius of curvature tangential": 0.1,
-                "Radius of curvature sagittal": 0.1,
-                "IS_ROUND": True,
-                "Angle of incidence": 0.0
-                }
-            }
-            
-        if selected_type == "Thick Lens":
-            new_component = {
-            "type": "THICK LENS",
-            "name": "Thick Lens",
-            "manufacturer": "",
-            "properties": {
-              "Input radius of curvature tangential": 0.2,
-              "Input radius of curvature sagittal": 0.2,
-              "Output radius of curvature tangential":0.3,
-              "Output radius of curvature sagittal":0.3,
-              "Thickness":0.01,
-              "Lens material":"NBK7",
-              "IS_ROUND": True
-            }
-          }
-            
-        if selected_type == "ABCD":
-            new_component = {
-            "type": "ABCD",
-            "name": "ABCD",
-            "manufacturer": "",
-            "properties": {
-              "A tangential": 1.0,
-              "A sagittal": 1.0,
-              "B tangential": 0.0,
-              "B sagittal": 0.0,
-              "C tangential": 0.0,
-              "C sagittal": 0.0,
-              "D tangential": 1.0,
-              "D sagittal": 1.0,
-              "IS_ROUND": True
-            }
-          }
+        
+        # Mapping von ComboBox-Text zu Component-Type
+        type_mapping = {
+            "Lens": "LENS",
+            "Mirror": "MIRROR", 
+            "Thick Lens": "THICK LENS",
+            "ABCD": "ABCD"
+        }
+        
+        component_type = type_mapping.get(selected_type)
+        
+        # Finde die entsprechende Generic-Komponente
+        if not hasattr(self, 'generic_data'):
+            self.load_generic_components()
+    
+        new_component = None
+        for component in self.generic_data.get("components", []):
+            if component.get("type") == component_type:
+                # Deep copy der Generic-Komponente
+                import copy
+                new_component = copy.deepcopy(component)
+                break
+    
+        if not new_component:
+            QMessageBox.warning(
+                self.library_window,
+                "Component Template Not Found",
+                f"No template found for component type: {selected_type}"
+            )
+            return
 
         # Add the new component to the library
         if "components" not in library_data:
@@ -421,7 +393,7 @@ class Libraries(QObject):
 
         # Update the listView_lib_components to display the new component
         self.display_file_contents(self.ui_library.listView_libraries.currentIndex())
-
+    
     def delete_component(self):
         """
         Deletes the currently selected component from the selected library after user confirmation.
@@ -523,6 +495,9 @@ class Libraries(QObject):
         if not component_data:
             return
             
+        # NEU: Komponententyp für Berechnungen speichern
+        self._current_component_type = component_data.get("type", "").upper()
+    
         properties = component_data.get("properties", {})
         component_type = component_data.get("type", "").upper()
         row = 0
@@ -673,6 +648,11 @@ class Libraries(QObject):
                                 field_tan.blockSignals(False)
                     return sync_sagittal_to_tangential
                 
+                if "Focal length" in sag_key or "Radius of curvature" in sag_key:
+                    field_sag.textChanged.connect(self.on_property_changed)
+                if "Focal length" in tan_key or "Radius of curvature" in tan_key:
+                    field_tan.textChanged.connect(self.on_property_changed)
+                
                 field_sag.textChanged.connect(make_sync_function(field_sag, field_tan))
         
         # Initiale Feldstatus-Aktualisierung
@@ -682,7 +662,7 @@ class Libraries(QObject):
         """Aktualisiert Feldstatus basierend auf IS_ROUND und Variable parameter (wie in graycad_mainwindow.py)"""
         if not hasattr(self, '_property_fields'):
             return
-            
+        
         # Zustände ermitteln
         is_round = False
         edit_focal_length = True  # Default
@@ -694,7 +674,7 @@ class Libraries(QObject):
         var_param_field = self._property_fields.get("Variable parameter")
         if isinstance(var_param_field, QtWidgets.QComboBox):
             edit_focal_length = var_param_field.currentText() == "Edit focal length"
-        
+
         # Die zu prüfenden Feldgruppen
         focal_length_fields = ["Focal length sagittal", "Focal length tangential"]
         curvature_fields = [
@@ -703,45 +683,55 @@ class Libraries(QObject):
             "Output radius of curvature sagittal", "Output radius of curvature tangential"
         ]
         
-        # 1. Zuerst Felder nach Variable parameter setzen
-        for key in focal_length_fields:
-            field = self._property_fields.get(key)
-            if field:
-                if edit_focal_length:
-                    field.setReadOnly(False)
-                    field.setStyleSheet("")
-                else:
-                    field.setReadOnly(True)
-                    field.setStyleSheet("background-color: #eee; color: #888;")
+        # 1. Variable parameter Logik NUR anwenden wenn das Feld existiert (nur für LENS)
+        has_variable_parameter = "Variable parameter" in self._property_fields
+    
+        if has_variable_parameter:
+            # Felder nach Variable parameter setzen (nur für LENS)
+            for key in focal_length_fields:
+                field = self._property_fields.get(key)
+                if field:
+                    if edit_focal_length:
+                        field.setReadOnly(False)
+                        field.setStyleSheet("")
+                    else:
+                        field.setReadOnly(True)
+                        field.setStyleSheet("background-color: #eee; color: #888;")
+
+            for key in curvature_fields:
+                field = self._property_fields.get(key)
+                if field:
+                    if edit_focal_length:
+                        field.setReadOnly(True)
+                        field.setStyleSheet("background-color: #eee; color: #888;")
+                    else:
+                        field.setReadOnly(False)
+                        field.setStyleSheet("")
+
+        # ERWEITERTE Liste aller sagittal/tangential Paare
+        paired_props = [
+            ("Waist radius sagittal", "Waist radius tangential"),
+            ("Waist position sagittal", "Waist position tangential"),
+            ("Rayleigh range sagittal", "Rayleigh range tangential"),
+            ("Focal length sagittal", "Focal length tangential"),
+            ("Radius of curvature sagittal", "Radius of curvature tangential"),
+            ("Input radius of curvature sagittal", "Input radius of curvature tangential"),
+            ("Output radius of curvature sagittal", "Output radius of curvature tangential"),
+            # NEU: ABCD Matrix Paare
+            ("A sagittal", "A tangential"),
+            ("B sagittal", "B tangential"), 
+            ("C sagittal", "C tangential"),
+            ("D sagittal", "D tangential"),
+        ]
         
-        for key in curvature_fields:
-            field = self._property_fields.get(key)
-            if field:
-                if edit_focal_length:
-                    field.setReadOnly(True)
-                    field.setStyleSheet("background-color: #eee; color: #888;")
-                else:
-                    field.setReadOnly(False)
-                    field.setStyleSheet("")
-        
-        # 2. Dann IS_ROUND-Logik anwenden (hat Vorrang für tangentiale Felder)
-        if is_round:
-            paired_props = [
-                ("Waist radius sagittal", "Waist radius tangential"),
-                ("Waist position sagittal", "Waist position tangential"),
-                ("Rayleigh range sagittal", "Rayleigh range tangential"),
-                ("Focal length sagittal", "Focal length tangential"),
-                ("Radius of curvature sagittal", "Radius of curvature tangential"),
-                ("Input radius of curvature sagittal", "Input radius of curvature tangential"),
-                ("Output radius of curvature sagittal", "Output radius of curvature tangential"),
-            ]
-            
-            for sag_key, tan_key in paired_props:
-                if sag_key in self._property_fields and tan_key in self._property_fields:
-                    field_sag = self._property_fields[sag_key]
-                    field_tan = self._property_fields[tan_key]
-                    
-                    # Tangential-Feld immer sperren bei IS_ROUND=True
+        # 2. IS_ROUND-Logik anwenden
+        for sag_key, tan_key in paired_props:
+            if sag_key in self._property_fields and tan_key in self._property_fields:
+                field_sag = self._property_fields[sag_key]
+                field_tan = self._property_fields[tan_key]
+                
+                if is_round:
+                    # Tangential-Feld sperren bei IS_ROUND=True
                     field_tan.setReadOnly(True)
                     field_tan.setStyleSheet("background-color: #eee; color: #888;")
                     
@@ -750,11 +740,113 @@ class Libraries(QObject):
                         field_tan.blockSignals(True)
                         field_tan.setText(field_sag.text())
                         field_tan.blockSignals(False)
+                else:
+                    # Tangential-Feld entsperren bei IS_ROUND=False
+                    if has_variable_parameter:
+                        # Respektiere Variable parameter für Lens-Felder
+                        if tan_key in focal_length_fields:
+                            if edit_focal_length:
+                                field_tan.setReadOnly(False)
+                                field_tan.setStyleSheet("")
+                            # else: bleibt gesperrt durch Variable parameter
+                        elif tan_key in curvature_fields:
+                            if not edit_focal_length:
+                                field_tan.setReadOnly(False)
+                                field_tan.setStyleSheet("")
+                            # else: bleibt gesperrt durch Variable parameter
+                        else:
+                            # Für alle anderen Felder
+                            field_tan.setReadOnly(False)
+                            field_tan.setStyleSheet("")
+                    else:
+                        # Für Komponenten OHNE Variable parameter (Mirror, ABCD, etc.)
+                        field_tan.setReadOnly(False)
+                        field_tan.setStyleSheet("")
 
     def on_property_changed(self):
-        """Callback für Property-Änderungen"""
+        """Callback für Property-Änderungen mit Berechnung der abhängigen Werte"""
+        if not hasattr(self, '_property_fields'):
+            return
+        
+        # Prüfe ob es sich um eine Linse handelt
+        if not hasattr(self, '_current_component_type') or self._current_component_type != "LENS":
+            self.update_field_states()
+            return
+        
+        # Hole die aktuellen Werte
+        try:
+            # Material und Wellenlängen
+            material = self._property_fields.get("Lens material", {}).currentText() if "Lens material" in self._property_fields else "NBK7"
+            lambda_design = self.value_converter.convert_to_float(self._property_fields.get("Design wavelength", {}).text()) if "Design wavelength" in self._property_fields else 514e-9
+            
+            # Material-Brechungsindizes (vereinfacht)
+            if material == "NBK7":
+                n_design = 1.5168
+                n = 1.5168  # Vereinfacht: gleiche Wellenlänge
+            else:  # Fused Silica
+                n_design = 1.4607
+                n = 1.4607
+                
+            is_plane = self._property_fields.get("Plan lens", {}).isChecked() if "Plan lens" in self._property_fields else False
+            var_param = self._property_fields.get("Variable parameter", {}).currentText() if "Variable parameter" in self._property_fields else "Edit focal length"
+            
+            # Für beide Modi (sagittal und tangential)
+            for mode in ["sagittal", "tangential"]:
+                f_key = f"Focal length {mode}"
+                r_key = f"Radius of curvature {mode}"
+                
+                if f_key not in self._property_fields or r_key not in self._property_fields:
+                    continue
+                    
+                f_field = self._property_fields[f_key]
+                r_field = self._property_fields[r_key]
+                
+                # Nur berechnen wenn das Feld nicht readonly ist
+                if var_param == "Edit both curvatures" and not r_field.isReadOnly():
+                    # Von Krümmungsradius zu Brennweite
+                    try:
+                        r_in = self.value_converter.convert_to_float(r_field.text())
+                        if is_plane:
+                            r_out = 1e100
+                        else:
+                            r_out = -r_in
+                        
+                        # Formeln aus graycad_mainwindow.py Zeile 833
+                        f_design_calculated = ((n_design-1) * ((1/r_in) - (1/r_out)))**(-1)
+                        
+                        # Aktualisiere Brennweite
+                        f_field.blockSignals(True)
+                        f_field.setText(self.value_converter.convert_to_nearest_string(f_design_calculated))
+                        f_field.blockSignals(False)
+                        
+                    except Exception:
+                        pass
+                        
+                elif var_param == "Edit focal length" and not f_field.isReadOnly():
+                    # Von Brennweite zu Krümmungsradius
+                    try:
+                        f_design = self.value_converter.convert_to_float(f_field.text())
+                        
+                        # Formeln aus graycad_mainwindow.py Zeile 847
+                        if is_plane:
+                            r_in_calculated = ((n_design - 1)**2)/(n - 1) * f_design
+                        else:
+                            r_in_calculated = 2*((n_design - 1)**2)/(n - 1) * f_design
+                        
+                        # Aktualisiere Krümmungsradius
+                        r_field.blockSignals(True)
+                        r_field.setText(self.value_converter.convert_to_nearest_string(r_in_calculated))
+                        r_field.blockSignals(False)
+                        
+                    except Exception:
+                        pass
+            
+        except Exception:
+            pass
+        
+        # Normale Feldstatus-Aktualisierung
         self.update_field_states()
-
+    
     def display_component_details(self, index: QModelIndex):
         """
         Displays the details of the selected component in the propertyLayout.
@@ -860,5 +952,68 @@ class Libraries(QObject):
                 self.library_window,
                 "Error",
                 f"An error occurred while saving the library file: {e}"
+            )
+
+    def load_generic_components(self):
+        """
+        Lädt die Generic.json Komponenten für die Typ-Auswahl
+        """
+        # Path to Generic.json
+        generic_path = path.abspath(path.join(path.dirname(path.dirname(__file__)), "Library", "Generic.json"))
+        
+        if not path.exists(generic_path):
+            QMessageBox.warning(
+                self.library_window,
+                "Generic File Not Found",
+                f"Generic.json not found: {generic_path}"
+            )
+            return
+        
+        try:
+            with open(generic_path, 'r') as file:
+                self.generic_data = json.load(file)
+        except Exception as e:
+            QMessageBox.critical(
+                self.library_window,
+                "Error Reading Generic File",
+                f"An error occurred while reading Generic.json: {e}"
+            )
+            self.generic_data = {"components": []}
+
+    def on_component_type_changed(self, selected_type):
+        """
+        Wird aufgerufen wenn sich die Auswahl in comboBox_type ändert.
+        Zeigt die entsprechenden Properties aus Generic.json an.
+        """
+        if not hasattr(self, 'generic_data'):
+            self.load_generic_components()
+        
+        # Mapping von ComboBox-Text zu Component-Type
+        type_mapping = {
+            "Lens": "LENS",
+            "Mirror": "MIRROR", 
+            "Thick Lens": "THICK LENS",
+            "ABCD": "ABCD"
+        }
+        
+        component_type = type_mapping.get(selected_type)
+        if not component_type:
+            return
+        
+        # Finde die entsprechende Komponente in Generic.json
+        generic_component = None
+        for component in self.generic_data.get("components", []):
+            if component.get("type") == component_type:
+                generic_component = component
+                break
+        
+        if generic_component:
+            # Zeige die Properties der Generic-Komponente an
+            self.show_component_properties(generic_component)
+        else:
+            QMessageBox.warning(
+                self.library_window,
+                "Component Not Found",
+                f"No generic component found for type: {selected_type}"
             )
 
