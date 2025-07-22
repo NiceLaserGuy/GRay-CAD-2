@@ -30,3 +30,10 @@ def set_temp_light_field_parameters(*args):
     
 def get_temp_light_field_parameters():
     return TEMP_LIGHT_FIELD_PARAMETERS
+
+def set_temp_data_modematcher(*args):
+    global TEMP_DATA_MODEMATCHER
+    TEMP_DATA_MODEMATCHER = args
+
+def get_temp_data_modematcher():
+    return TEMP_DATA_MODEMATCHER

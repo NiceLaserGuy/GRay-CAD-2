@@ -1,13 +1,16 @@
 {
+    "name": "MIRRORS",
+    "type": "LIBRARY",
     "components": [
         {
             "type": "MIRROR",
             "name": "spherical r=100mm",
             "manufacturer": "",
             "properties": {
-                "CURVATURE_TANGENTIAL": 100,
-                "CURVATURE_SAGITTAL": 100,
-                "IS_ROUND": 1.0
+                "Radius of curvature tangential": 0.1,
+                "Radius of curvature sagittal": 0.1,
+                "IS_ROUND": 1.0,
+                "Angle of incidence": 0.0
             }
         },
         {
@@ -15,9 +18,10 @@
             "name": "spherical r=200mm",
             "manufacturer": "",
             "properties": {
-                "CURVATURE_TANGENTIAL": 200,
-                "CURVATURE_SAGITTAL": 200,
-                "IS_ROUND": 1.0
+                "Radius of curvature tangential": 0.2,
+                "Radius of curvature sagittal": 0.2,
+                "IS_ROUND": 1.0,
+                "Angle of incidence": 0.0
             }
         },
         {
@@ -25,9 +29,10 @@
             "name": "spherical r=250mm",
             "manufacturer": "",
             "properties": {
-                "CURVATURE_TANGENTIAL": 250,
-                "CURVATURE_SAGITTAL": 250,
-                "IS_ROUND": 1.0
+                "Radius of curvature tangential": 0.25,
+                "Radius of curvature sagittal": 0.25,
+                "IS_ROUND": 1.0,
+                "Angle of incidence": 0.0
             }
         },
         {
@@ -35,9 +40,10 @@
             "name": "spherical r=750mm",
             "manufacturer": "",
             "properties": {
-                "CURVATURE_TANGENTIAL": 750,
-                "CURVATURE_SAGITTAL": 750,
-                "IS_ROUND": 1.0
+                "Radius of curvature tangential": 0.75,
+                "Radius of curvature sagittal": 0.75,
+                "IS_ROUND": 1.0,
+                "Angle of incidence": 0.0
             }
         },
         {
@@ -45,9 +51,10 @@
             "name": "cylindrical r=100mm",
             "manufacturer": "",
             "properties": {
-                "CURVATURE_TANGENTIAL": 100,
-                "CURVATURE_SAGITTAL": 1e+30,
-                "IS_ROUND": 0.0
+                "Radius of curvature tangential": 0.1,
+                "Radius of curvature sagittal": 1e+30,
+                "IS_ROUND": 0.0,
+                "Angle of incidence": 0.0
             }
         },
         {
@@ -55,9 +62,10 @@
             "name": "cylindrical r=200mm",
             "manufacturer": "",
             "properties": {
-                "CURVATURE_TANGENTIAL": 200,
-                "CURVATURE_SAGITTAL": 1e+30,
-                "IS_ROUND": 0.0
+                "Radius of curvature tangential": 0.2,
+                "Radius of curvature sagittal": 1e+30,
+                "IS_ROUND": 0.0,
+                "Angle of incidence": 0.0
             }
         },
         {
@@ -65,9 +73,10 @@
             "name": "cylindrical r=250mm",
             "manufacturer": "",
             "properties": {
-                "CURVATURE_TANGENTIAL": 250,
-                "CURVATURE_SAGITTAL": 1e+30,
-                "IS_ROUND": 0.0
+                "Radius of curvature tangential": 0.25,
+                "Radius of curvature sagittal": 1e+30,
+                "IS_ROUND": 0.0,
+                "Angle of incidence": 0.0
             }
         },
         {
@@ -75,9 +84,10 @@
             "name": "spherical r=50mm",
             "manufacturer": "",
             "properties": {
-                "CURVATURE_TANGENTIAL": 50,
-                "CURVATURE_SAGITTAL": 50,
-                "IS_ROUND": 1.0
+                "Radius of curvature tangential": 0.05,
+                "Radius of curvature sagittal": 0.05,
+                "IS_ROUND": 1.0,
+                "Angle of incidence": 0.0
             }
         },
         {
@@ -85,12 +95,33 @@
             "name": "cylindrical r=50mm",
             "manufacturer": "",
             "properties": {
-                "CURVATURE_TANGENTIAL": 50,
-                "CURVATURE_SAGITTAL": 1e+30,
-                "IS_ROUND": 0.0
+                "Radius of curvature tangential": 0.05,
+                "Radius of curvature sagittal": 1e+30,
+                "IS_ROUND": 0.0,
+                "Angle of incidence": 0.0
+            }
+        },
+        {
+            "type": "MIRROR",
+            "name": "spherical r=Inf mm",
+            "manufacturer": "",
+            "properties": {
+                "Radius of curvature tangential": 1e+30,
+                "Radius of curvature sagittal": 1e+30,
+                "IS_ROUND": 1.0,
+                "Angle of incidence": 0.0
+            }
+        },
+        {
+            "type": "MIRROR",
+            "name": "spherical r=500mm",
+            "manufacturer": "",
+            "properties": {
+                "Radius of curvature tangential": 1e+30,
+                "Radius of curvature sagittal": 0.5,
+                "IS_ROUND": 1.0,
+                "Angle of incidence": 0.0
             }
         }
-    ],
-    "name": "Mirrors",
-    "type": "LIBRARY"
+    ]
 }

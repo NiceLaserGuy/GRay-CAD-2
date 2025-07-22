@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>679</width>
+    <width>852</width>
     <height>744</height>
    </rect>
   </property>
@@ -18,61 +18,58 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_3">
-    <item row="1" column="0" rowspan="2" colspan="3">
-     <widget class="QListView" name="listView_libraries"/>
-    </item>
-    <item row="1" column="3" colspan="3">
-     <widget class="QFrame" name="gridFrame">
-      <layout class="QGridLayout" name="gridLayout">
-       <item row="1" column="1">
-        <widget class="QLineEdit" name="edit_name"/>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Name</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>Type</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QComboBox" name="comboBox_type">
-         <item>
-          <property name="text">
-           <string>MIRROR</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>LENS</string>
-          </property>
-         </item>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_3">
-         <property name="text">
-          <string>Manufacturer</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLineEdit" name="edit_manufacturer"/>
-       </item>
-      </layout>
+    <item row="3" column="0">
+     <widget class="QLabel" name="label_8">
+      <property name="font">
+       <font>
+        <pointsize>14</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Components</string>
+      </property>
      </widget>
     </item>
-    <item row="4" column="0" colspan="3">
-     <widget class="QListView" name="listView_lib_components"/>
+    <item row="1" column="4" rowspan="4" colspan="2">
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>Type</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="comboBox_type">
+        <item>
+         <property name="text">
+          <string>Lens</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Mirror</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Thick Lens</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>ABCD</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="1" column="0" colspan="2">
+       <layout class="QGridLayout" name="propertyLayout"/>
+      </item>
+     </layout>
     </item>
-    <item row="3" column="1">
-     <widget class="QPushButton" name="button_add_component">
+    <item row="0" column="1">
+     <widget class="QPushButton" name="button_add_lib">
       <property name="font">
        <font>
         <pointsize>15</pointsize>
@@ -84,6 +81,53 @@ background-color: rgb(186, 189, 182);</string>
       </property>
       <property name="text">
        <string>+</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="0" colspan="3">
+     <widget class="QListView" name="listView_lib_components"/>
+    </item>
+    <item row="1" column="6">
+     <spacer name="horizontalSpacer">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>40</width>
+        <height>20</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
+    <item row="0" column="0">
+     <widget class="QLabel" name="label_7">
+      <property name="font">
+       <font>
+        <pointsize>14</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Libraries</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0" rowspan="2" colspan="3">
+     <widget class="QListView" name="listView_libraries"/>
+    </item>
+    <item row="3" column="2">
+     <widget class="QPushButton" name="button_delete_component">
+      <property name="font">
+       <font>
+        <pointsize>15</pointsize>
+       </font>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">color: rgb(204, 0, 0);
+background-color: rgb(186, 189, 182);</string>
+      </property>
+      <property name="text">
+       <string>-</string>
       </property>
      </widget>
     </item>
@@ -103,152 +147,8 @@ background-color: rgb(186, 189, 182);</string>
       </property>
      </widget>
     </item>
-    <item row="3" column="2">
-     <widget class="QPushButton" name="button_delete_component">
-      <property name="font">
-       <font>
-        <pointsize>15</pointsize>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">color: rgb(204, 0, 0);
-background-color: rgb(186, 189, 182);</string>
-      </property>
-      <property name="text">
-       <string>-</string>
-      </property>
-     </widget>
-    </item>
-    <item row="2" column="3" colspan="3">
-     <widget class="QFrame" name="gridFrame">
-      <layout class="QGridLayout" name="gridLayout_2">
-       <item row="0" column="2">
-        <spacer name="horizontalSpacer_2">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLineEdit" name="edit_curvature_sagittal"/>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="label_4">
-         <property name="layoutDirection">
-          <enum>Qt::LeftToRight</enum>
-         </property>
-         <property name="text">
-          <string>Sagittal</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>Curvature / mm</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="2">
-        <spacer name="horizontalSpacer_3">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="2" column="3">
-        <widget class="QLineEdit" name="edit_curvature_tangential">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QRadioButton" name="radioButton_is_spherical">
-         <property name="enabled">
-          <bool>true</bool>
-         </property>
-         <property name="acceptDrops">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>Spherical</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="0" column="3">
-        <widget class="QLabel" name="label_6">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>Tangential</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="3" column="0">
-     <widget class="QLabel" name="label_8">
-      <property name="font">
-       <font>
-        <pointsize>14</pointsize>
-       </font>
-      </property>
-      <property name="text">
-       <string>Components</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="0">
-     <widget class="QLabel" name="label_7">
-      <property name="font">
-       <font>
-        <pointsize>14</pointsize>
-       </font>
-      </property>
-      <property name="text">
-       <string>Libraries</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="1">
-     <widget class="QPushButton" name="button_add_lib">
+    <item row="3" column="1">
+     <widget class="QPushButton" name="button_add_component">
       <property name="font">
        <font>
         <pointsize>15</pointsize>
@@ -263,19 +163,36 @@ background-color: rgb(186, 189, 182);</string>
       </property>
      </widget>
     </item>
-    <item row="5" column="4">
-     <widget class="QPushButton" name="button_accept_changes">
-      <property name="text">
-       <string>Accept Changes</string>
-      </property>
-     </widget>
-    </item>
-    <item row="5" column="5">
-     <widget class="QPushButton" name="button_close">
-      <property name="text">
-       <string>Close</string>
-      </property>
-     </widget>
+    <item row="5" column="6">
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <spacer name="horizontalSpacer_2">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="button_close">
+        <property name="text">
+         <string>Close</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="button_accept_changes">
+        <property name="text">
+         <string>Accept Changes</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>
