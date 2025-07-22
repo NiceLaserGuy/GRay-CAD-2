@@ -252,34 +252,35 @@ class MainWindow(QMainWindow):
             self.setWindowTitle(title[:-1])
 
     def create_new_setup(self):
-        # Finde die höchste existierende Setup-Nummer
+        # Finde die höchste existierende Setup-Nummer aus self.setups
         existing_numbers = []
-        for i in range(self.setupList.count()):
-            item = self.setupList.item(i)
-            name = item.text()
+        for setup in self.setups:
+            name = setup.get("name", "")
             if name.startswith("Setup "):
                 try:
                     num = int(name.split("Setup ")[1])
                     existing_numbers.append(num)
                 except (ValueError, IndexError):
                     pass
-    
+
         # Bestimme die nächste verfügbare Nummer
         if existing_numbers:
             next_number = max(existing_numbers) + 1
         else:
             next_number = 1
-    
+
         # Erstelle neues Setup mit der höchsten Nummer
         new_setup_name = f"Setup {next_number}"
-    
+
+        # Kopiere das aktuelle Setup
         new_setup = []
-        count = len(self.setups)
         for i in range(self.setupList.count()):
             item = self.setupList.item(i)
             comp = item.data(QtCore.Qt.UserRole)
             new_setup.append(copy.deepcopy(comp))
-        self.setups.insert(0, {"name": f"new setup {count}", "components": new_setup})  # Neu an den Anfang!
+        
+        # Verwende den berechneten Namen statt "new setup {count}"
+        self.setups.insert(0, {"name": new_setup_name, "components": new_setup})
         self.update_setup_names_and_combobox()
         self.ui.comboBoxSetup.setCurrentIndex(0)
 
