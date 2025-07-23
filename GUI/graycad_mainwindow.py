@@ -77,7 +77,7 @@ class MainWindow(QMainWindow):
 
         self._property_fields = {}
         # Create instances of helper classes
-        self.res = Resonator()
+        self.res = Resonator(parent=self)
         self.beam = Beam()
         self.modematcher = ModematcherParameters(self)
         self.lib = Libraries(self)
@@ -99,8 +99,10 @@ class MainWindow(QMainWindow):
         self.current_context = None
         self.wavelength = None  # Default wavelength
         self._last_component_item = None
-        
 
+        # Signal verbinden
+        self.res.setup_generated.connect(self.receive_resonator_setup)
+        
         # Set application window icon
         self.setWindowIcon(QIcon(path.abspath(path.join(path.dirname(__file__), 
                          "../../assets/TaskbarIcon.png"))))
@@ -126,7 +128,7 @@ class MainWindow(QMainWindow):
         self.ui.action_Library.triggered.connect(self.lib.open_library_window)
         
         # Plot from resonator setup
-        self.res.setup_generated.connect(self.plot_optical_system_from_resonator)
+        self.res.setup_generated.connect(self.receive_resonator_setup)
         
         # Connect buttons to their respective handlers
         self.ui.action_Cavity_Designer.triggered.connect(lambda: self.action.handle_build_resonator(self))
@@ -482,7 +484,11 @@ class MainWindow(QMainWindow):
             elif key == "Plan lens":
                 label = QtWidgets.QLabel("Plan lens:")
             else:
-                label = QtWidgets.QLabel(key + ":")
+                # NEU: Spezielle Beschriftung für den Einfallswinkel
+                if key == "Angle of incidence":
+                    label = QtWidgets.QLabel("Angle of incidence (°):")  # Zeigt Grad-Symbol
+                else:
+                    label = QtWidgets.QLabel(key + ":")
             layout.addWidget(label, row, 0)
             # Checkbox für boolsche Werte
             if isinstance(value, (int, float)) and (key.startswith("IS_") or key.lower() == "is_round" or key == "Plan lens"):
@@ -540,7 +546,17 @@ class MainWindow(QMainWindow):
             # Standard: QLineEdit
             else:
                 try:
-                    field = QtWidgets.QLineEdit(self.vc.convert_to_nearest_string(value))
+                    # SPEZIELLE BEHANDLUNG FÜR WINKEL
+                    if key == "Angle of incidence":
+                        # Konvertiere von Radiant zu Grad für die Anzeige
+                        if isinstance(value, (int, float)):
+                            display_value = np.rad2deg(value)
+                            field = QtWidgets.QLineEdit(f"{display_value:.2f}")  # Ohne Einheit, nur Zahl
+                        else:
+                            field = QtWidgets.QLineEdit(str(value))
+                    else:
+                        # Normale Behandlung für andere Felder
+                        field = QtWidgets.QLineEdit(self.vc.convert_to_nearest_string(value))
                 except ValueError:
                     field = QtWidgets.QLineEdit(str(value))  # Fallback für nicht konvertierbare Werte
                 layout.addWidget(field, row, 1)
@@ -806,7 +822,7 @@ class MainWindow(QMainWindow):
                 self.wavelength = props.get("Wavelength", 514e-9)
                 continue
             
-            elif ctype == "PROPAGATION" and component.get("name", "").strip().lower() == "propagation":
+            elif ctype == "PROPAGATION":
                 length = props.get("Length", 0.1)
                 n = props.get("Refractive index", 1.0)
                 optical_system.append((self.matrices.free_space, (length, n)))
@@ -1007,9 +1023,17 @@ class MainWindow(QMainWindow):
                 elif isinstance(field, QtWidgets.QLineEdit):
                     old_value = updated["properties"][key]
                     try:
-                        value = self.vc.convert_to_float(field.text(), self)
+                        # SPEZIELLE BEHANDLUNG FÜR WINKEL
+                        if key == "Angle of incidence":
+                            # Konvertiere von Grad zu Radiant für die Speicherung
+                            value_in_degrees = float(field.text())  # Direkt als Float, ohne ValueConverter
+                            value = np.deg2rad(value_in_degrees)
+                        else:
+                            # Normale Behandlung für andere Felder
+                            value = self.vc.convert_to_float(field.text(), self)
                     except Exception:
                         value = field.text()
+    
                     # Fehlerprüfung für Beam
                     if key in ["Waist radius sagittal", "Waist radius tangential", "Wavelength"]:
                         if isinstance(value, (int, float)) and value <= 0:
@@ -1134,3 +1158,91 @@ class MainWindow(QMainWindow):
     def _from_bool(self, value):
         """Konvertiert Boolean zu einheitlichem Format."""
         return bool(value)  # Python Boolean
+    
+    def receive_resonator_setup(self, setup_components):
+        """
+        Empfängt ein Setup vom Resonator und fügt es zur Setup-Liste hinzu
+        """
+        if not setup_components:
+            return
+        
+        try:
+            # Speichere das aktuelle Setup bevor ein neues erstellt wird
+            current_index = self.ui.comboBoxSetup.currentIndex()
+            if 0 <= current_index < len(self.setups):
+                current_setup = []
+                for i in range(self.setupList.count()):
+                    item = self.setupList.item(i)
+                    comp = item.data(QtCore.Qt.UserRole)
+                    if comp:
+                        current_setup.append(copy.deepcopy(comp))
+                self.setups[current_index]["components"] = current_setup
+            
+            # Finde die höchste Setup-Nummer
+            existing_numbers = []
+            for setup in self.setups:
+                name = setup.get("name", "")
+                if name.startswith("Setup "):
+                    try:
+                        num = int(name.split("Setup ")[1])
+                        existing_numbers.append(num)
+                    except (ValueError, IndexError):
+                        pass
+            
+            # Bestimme die nächste verfügbare Nummer
+            if existing_numbers:
+                next_number = max(existing_numbers) + 1
+            else:
+                next_number = 1
+            
+            # Erstelle neues Setup mit Resonator-Komponenten
+            new_setup_name = f"Setup {next_number} (Resonator)"
+            
+            # Füge das Resonator-Setup hinzu
+            self.setups.append({"name": new_setup_name, "components": setup_components})
+            
+            # Aktualisiere ComboBox
+            self.update_setup_names_and_combobox()
+            
+            # Wähle das neue Setup aus
+            new_index = len(self.setups) - 1
+            self.ui.comboBoxSetup.setCurrentIndex(new_index)
+            
+            # Lade das Setup in die setupList
+            self.load_setup_into_list(setup_components)
+            
+            # Markiere als geändert
+            self.mark_as_modified()
+            
+            # Aktualisiere den Plot
+            self.update_live_plot()
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error adding resonator setup: {str(e)}"
+            )
+
+    def load_setup_into_list(self, components):
+        """
+        Lädt Komponenten in die setupList
+        """
+        
+        # Liste leeren
+        self.setupList.clear()
+        
+        # Komponenten hinzufügen
+        for i, comp in enumerate(components):
+            if comp:  # Prüfe auf None
+                item_name = comp.get("name", f"Component {i}")
+                item = QtWidgets.QListWidgetItem(item_name)
+                item.setData(QtCore.Qt.UserRole, copy.deepcopy(comp))
+                self.setupList.addItem(item)
+        
+        # Properties-Panel zurücksetzen
+        self._last_component_item = None
+        if hasattr(self, '_property_fields'):
+            self._property_fields.clear()
