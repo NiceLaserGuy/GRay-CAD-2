@@ -125,15 +125,47 @@ class Resonator(QObject):
             }
             setup_components.append(beam_component)
             
-            # 2. Resonator-spezifische Komponenten basierend auf dem Typ
+            # 2. NEU: Resonator-spezifische Komponenten basierend auf dem Typ
             if self.selected_class_name == "BowTie":
-                self._add_bowtie_components(setup_components, wavelength, lc, nc)
+                # Erstelle eine BowTie-Instanz und setze die berechneten Werte
+                bowtie = BowTie()
+                bowtie.l1 = self.l1
+                bowtie.l2 = self.l2
+                bowtie.l3 = self.l3
+                bowtie.theta = self.theta
+                bowtie.r1_sag = self.r1_sag
+                bowtie.r1_tan = self.r1_tan
+                bowtie.r2_sag = self.r2_sag
+                bowtie.r2_tan = self.r2_tan
+                bowtie._add_bowtie_components(setup_components, wavelength, lc, nc)
+                
             elif self.selected_class_name == "FabryPerot":
-                self._add_fabryperot_components(setup_components, wavelength, lc, nc)
+                fabry = FabryPerot()
+                fabry.l1 = self.l1
+                fabry.r1_sag = self.r1_sag
+                fabry.r1_tan = self.r1_tan
+                fabry._add_fabryperot_components(setup_components, wavelength, lc, nc)
+                
             elif self.selected_class_name == "Rectangle":
-                self._add_rectangle_components(setup_components, wavelength, lc, nc)
+                rectangle = Rectangle()
+                rectangle.l1 = self.l1
+                rectangle.l2 = self.l2
+                rectangle.r1_sag = self.r1_sag
+                rectangle.r1_tan = self.r1_tan
+                rectangle.r2_sag = self.r2_sag
+                rectangle.r2_tan = self.r2_tan
+                rectangle._add_rectangle_components(setup_components, wavelength, lc, nc)
+                
             elif self.selected_class_name == "Triangle":
-                self._add_triangle_components(setup_components, wavelength, lc, nc)
+                triangle = Triangle()
+                triangle.l1 = self.l1
+                triangle.l2 = self.l2
+                triangle.theta = self.theta
+                triangle.r1_sag = self.r1_sag
+                triangle.r1_tan = self.r1_tan
+                triangle.r2_sag = self.r2_sag
+                triangle.r2_tan = self.r2_tan
+                triangle._add_triangle_components(setup_components, wavelength, lc, nc)
         
             # Übertrage das Setup an das Hauptfenster
             self._transfer_setup_to_mainwindow(setup_components)
@@ -176,196 +208,6 @@ class Resonator(QObject):
             
         except Exception as e:
             raise Exception(f"Failed to transfer setup: {e}")
-
-    def _add_bowtie_components(self, setup_components, wavelength, lc, nc):
-        """Fügt BowTie-spezifische Komponenten hinzu"""
-        # Kristall erste Hälfte
-        if lc > 0:
-            setup_components.append({
-                "type": "PROPAGATION",
-                "name": "Crystal (first half)",
-                "properties": {
-                    "Length": lc / 2,
-                    "Refractive index": nc
-                }
-            })
-        
-        # Propagation zu Spiegel 1
-        setup_components.append({
-            "type": "PROPAGATION",
-            "name": "Propagation to Mirror 1",
-            "properties": {
-                "Length": self.l1,
-                "Refractive index": 1.0
-            }
-        })
-        
-        # Spiegel 1
-        setup_components.append({
-            "type": "MIRROR",
-            "name": "Mirror 1",
-            "properties": {
-                "Radius of curvature sagittal": self.r1_sag,
-                "Radius of curvature tangential": self.r1_tan,
-                "Angle of incidence": self.theta,
-                "IS_ROUND": abs(self.r1_sag - self.r1_tan) < 1e-12
-            }
-        })
-        
-        # Propagation zu Spiegel 2
-        setup_components.append({
-            "type": "PROPAGATION",
-            "name": "Propagation to Mirror 2", 
-            "properties": {
-                "Length": self.l2,
-                "Refractive index": 1.0
-            }
-        })
-        
-        # Spiegel 2
-        setup_components.append({
-            "type": "MIRROR",
-            "name": "Mirror 2",
-            "properties": {
-                "Radius of curvature sagittal": self.r2_sag,
-                "Radius of curvature tangential": self.r2_tan,
-                "Angle of incidence": self.theta,
-                "IS_ROUND": abs(self.r2_sag - self.r2_tan) < 1e-12
-            }
-        })
-        
-        # Propagation zurück
-        setup_components.append({
-            "type": "PROPAGATION",
-            "name": "Propagation back",
-            "properties": {
-                "Length": self.l3,
-                "Refractive index": 1.0
-            }
-        })
-        
-        # Spiegel 2 (Rückweg)
-        setup_components.append({
-            "type": "MIRROR",
-            "name": "Mirror 2 (return)",
-            "properties": {
-                "Radius of curvature sagittal": self.r2_sag,
-                "Radius of curvature tangential": self.r2_tan,
-                "Angle of incidence": self.theta,
-                "IS_ROUND": abs(self.r2_sag - self.r2_tan) < 1e-12
-            }
-        })
-        
-        # Propagation zurück zu Spiegel 1
-        setup_components.append({
-            "type": "PROPAGATION",
-            "name": "Propagation back to Mirror 1",
-            "properties": {
-                "Length": self.l2,
-                "Refractive index": 1.0
-            }
-        })
-        
-        # Spiegel 1 (Rückweg)
-        setup_components.append({
-            "type": "MIRROR",
-            "name": "Mirror 1 (return)",
-            "properties": {
-                "Radius of curvature sagittal": self.r1_sag,
-                "Radius of curvature tangential": self.r1_tan,
-                "Angle of incidence": self.theta,
-                "IS_ROUND": abs(self.r1_sag - self.r1_tan) < 1e-12
-            }
-        })
-        
-        # Propagation zurück zum Kristall
-        setup_components.append({
-            "type": "PROPAGATION",
-            "name": "Propagation back to crystal",
-            "properties": {
-                "Length": self.l1,
-                "Refractive index": 1.0
-            }
-        })
-        
-        # Kristall zweite Hälfte
-        if lc > 0:
-            setup_components.append({
-                "type": "PROPAGATION",
-                "name": "Crystal (second half)",
-                "properties": {
-                    "Length": lc / 2,
-                    "Refractive index": nc
-                }
-            })
-
-    def _add_fabryperot_components(self, setup_components, wavelength, lc, nc):
-        """Fügt FabryPerot-spezifische Komponenten hinzu"""
-        # Kristall erste Hälfte
-        if lc > 0:
-            setup_components.append({
-                "type": "PROPAGATION",
-                "name": "Crystal (first half)",
-                "properties": {
-                    "Length": lc / 2,
-                    "Refractive index": nc
-                }
-            })
-        
-        # Propagation zu Spiegel
-        setup_components.append({
-            "type": "PROPAGATION",
-            "name": "Propagation to End Mirror",
-            "properties": {
-                "Length": self.l1,
-                "Refractive index": 1.0
-            }
-        })
-        
-        # End Mirror
-        setup_components.append({
-            "type": "MIRROR",
-            "name": "End Mirror",
-            "properties": {
-                "Radius of curvature sagittal": self.r1_sag,
-                "Radius of curvature tangential": self.r1_tan,
-                "Angle of incidence": 0.0,
-                "IS_ROUND": abs(self.r1_sag - self.r1_tan) < 1e-12
-            }
-        })
-        
-        # Propagation zurück
-        setup_components.append({
-            "type": "PROPAGATION",
-            "name": "Propagation back",
-            "properties": {
-                "Length": self.l1,
-                "Refractive index": 1.0
-            }
-        })
-        
-        # Kristall zweite Hälfte
-        if lc > 0:
-            setup_components.append({
-                "type": "PROPAGATION",
-                "name": "Crystal (second half)",
-                "properties": {
-                    "Length": lc / 2,
-                    "Refractive index": nc
-                }
-            })
-
-    def _add_rectangle_components(self, setup_components, wavelength, lc, nc):
-        """Fügt Rectangle-spezifische Komponenten hinzu"""
-        # Analog zu BowTie, aber mit l3 = (2 * l1) + lc und theta = π/4
-        # Implementierung ähnlich wie BowTie...
-        pass
-
-    def _add_triangle_components(self, setup_components, wavelength, lc, nc):
-        """Fügt Triangle-spezifische Komponenten hinzu"""
-        # phi = (π/2 - 2*theta), l2 = (l1 + lc/2)/cos(2*theta)
-        # Implementierung ähnlich wie BowTie...
-        pass
 
     def close_resonator_window(self):
         """

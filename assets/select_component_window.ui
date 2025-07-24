@@ -123,7 +123,7 @@ background-color: rgb(186, 189, 182);</string>
      <widget class="QListView" name="listView_lib_components"/>
     </item>
     <item row="2" column="4" colspan="5">
-     <widget class="QFrame" name="gridFrame">
+     <widget class="QFrame" name="propertyLayout">
       <layout class="QGridLayout" name="gridLayout_2">
        <item row="0" column="2">
         <spacer name="horizontalSpacer_2">
