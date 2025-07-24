@@ -35,7 +35,7 @@ class ValueConverter:
         try:
             q = value * self.ureg.meter
             q = q.to_compact()
-            return f"{q:.2f#~P}"  # Kompakte SI-Notation mit 3 signifikanten Stellen
+            return f"{q:.3f#~P}"  # Kompakte SI-Notation mit 3 signifikanten Stellen
         except Exception:
             self._pending_error = value
             self._pending_parent = parent

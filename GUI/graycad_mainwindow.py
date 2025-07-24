@@ -551,7 +551,7 @@ class MainWindow(QMainWindow):
                         # Konvertiere von Radiant zu Grad für die Anzeige
                         if isinstance(value, (int, float)):
                             display_value = np.rad2deg(value)
-                            field = QtWidgets.QLineEdit(f"{display_value:.2f}")  # Ohne Einheit, nur Zahl
+                            field = QtWidgets.QLineEdit(f"{display_value:.3f}")  # Ohne Einheit, nur Zahl
                         else:
                             field = QtWidgets.QLineEdit(str(value))
                     else:
