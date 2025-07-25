@@ -7,6 +7,7 @@ from PyQt5.QtGui import QStandardItemModel, QStandardItem
 
 from src_resonator.resonators import Resonator
 from src_physics.value_converter import ValueConverter
+from GUI.properties_handler import PropertiesHandler
 import config
 
 class LibraryWindow(QMainWindow):
@@ -23,16 +24,19 @@ class LibraryWindow(QMainWindow):
         if self.item_selector:
             self.item_selector.handle_back_button()
 
-class ItemSelector(QObject):
+class ItemSelector(QObject, PropertiesHandler):
     def __init__(self, parent=None):
-        super().__init__(parent)
+        QObject.__init__(self, parent)
+        PropertiesHandler.__init__(self, live_plot_callback=None)
+        
         self.library_window = None
         self.ui_select_component_window = None
         self.components_data = []  # Store components data
         
         self.res = Resonator()
-        self.vc = ValueConverter()  # Instance of ValueConverter
-        
+
+        self._last_component_item = None
+
     def open_library_window(self, parent=None):
         """
         Creates and shows the library window.
@@ -46,6 +50,11 @@ class ItemSelector(QObject):
         self.ui_select_component_window = uic.loadUi(ui_path, 
             self.lib_resonator_window
         )
+        if hasattr(self.ui_select_component_window, 'propertyLayout'):
+            self.propertyLayout = self.ui_select_component_window.propertyLayout
+        else:
+            # Optional: Erstelle ein GridLayout
+            self.propertyLayout = QtWidgets.QGridLayout()
         
         # Configure and show the window
         self.lib_resonator_window.setWindowTitle("Select Components")
@@ -215,45 +224,45 @@ class ItemSelector(QObject):
         
     def display_component_details(self, index: QModelIndex):
         """
-        Displays the details of the selected component in the UI fields.
+        Displays the details of the selected component using the modern properties system.
         """
-        # Get the selected component index
         selected_index = index.row()
 
-        # Retrieve the corresponding component data
         if 0 <= selected_index < len(self.components_data):
             component = self.components_data[selected_index]
+            
+            # NEU: Verwende das moderne Properties-System
+            self._last_component_item = None  # Reset für ItemSelector
+            
+            # Dynamisch Properties hinzufügen für Linsen (wie in graycad_mainwindow)
+            ctype = component.get("type", "").strip().upper()
+            props = component.get("properties", {})
+            
+            if ctype == "LENS":
+                if "Variable parameter" not in props:
+                    props["Variable parameter"] = "Edit focal length"
+                if "Plan lens" not in props:
+                    props["Plan lens"] = False
+                if "Lens material" not in props:
+                    props["Lens material"] = "NBK7"
+                component["properties"] = props
 
-            # Extract CURVATURE_TANGENTIAL and CURVATURE_SAGITTAL
-            curvature_tangential = component.get("properties", {}).get("Radius of curvature tangential", "N/A")
-            curvature_sagittal = component.get("properties", {}).get("Radius of curvature sagittal", "N/A")
-
-            if component.get("properties", {}).get("IS_ROUND", 0.0) == 1.0:
-                self.toggle_curvature_tangential(True)
-                self.ui_select_component_window.checkBox_is_spherical.setChecked(True)
-            else:
-                self.toggle_curvature_tangential(False)
-                self.ui_select_component_window.checkBox_is_spherical.setChecked(False)
-
-            # Set the values in the UI fields
-            self.ui_select_component_window.edit_curvature_tangential.setText(self.vc.convert_to_nearest_string(curvature_tangential, self.library_window))
-            self.ui_select_component_window.edit_curvature_sagittal.setText(self.vc.convert_to_nearest_string(curvature_sagittal, self.library_window))
-
-            # Extract and set the type in comboBox_type
-            component_type = component.get("type", "N/A")
-            index_in_combobox = self.ui_select_component_window.comboBox_type.findText(component_type)
-            if index_in_combobox != -1:
-                self.ui_select_component_window.comboBox_type.setCurrentIndex(index_in_combobox)
-            else:
-                QMessageBox.warning(
-                    self.library_window,
-                    "Unknown Component Type",
-                    f"Unknown component type: {component_type}"
-                )
-
-            # Set the name and manufacturer in the UI fields
-            self.ui_select_component_window.edit_name.setText(component.get("name", ""))
-            self.ui_select_component_window.edit_manufacturer.setText(component.get("manufacturer", ""))
+            # Zeige Properties mit dem modernen System
+            if hasattr(self, 'propertyLayout'):
+                self.show_properties(props, component)
+          
+            # Behalte nur diese für Rückwärtskompatibilität:
+            if hasattr(self.ui_select_component_window, 'edit_name'):
+                self.ui_select_component_window.edit_name.setText(component.get("name", ""))
+            if hasattr(self.ui_select_component_window, 'edit_manufacturer'):
+                self.ui_select_component_window.edit_manufacturer.setText(component.get("manufacturer", ""))
+            
+            # Komponententyp setzen
+            if hasattr(self.ui_select_component_window, 'comboBox_type'):
+                component_type = component.get("type", "N/A")
+                index_in_combobox = self.ui_select_component_window.comboBox_type.findText(component_type)
+                if index_in_combobox != -1:
+                    self.ui_select_component_window.comboBox_type.setCurrentIndex(index_in_combobox)
         else:
             QMessageBox.warning(
                 self.library_window,
@@ -329,10 +338,8 @@ class ItemSelector(QObject):
         
     def add_component_to_temporary_list(self):
         """
-        Fügt die ausgewählte Komponente von listView_lib_components zur temporären Liste hinzu
-        und speichert sie in der temporären Datei.
+        Fügt die ausgewählte Komponente zur temporären Liste hinzu.
         """
-        # Überprüfen, ob eine Komponente ausgewählt ist
         selected_indexes = self.ui_select_component_window.listView_lib_components.selectedIndexes()
         if not selected_indexes:
             QMessageBox.warning(
@@ -342,23 +349,16 @@ class ItemSelector(QObject):
             )
             return
 
-        # Hole die ausgewählte Komponente
         selected_index = selected_indexes[0].row()
         if 0 <= selected_index < len(self.components_data):
             selected_component = self.components_data[selected_index].copy()
-            # Werte aus dem UI holen und umrechnen
-            try:
-                selected_component["properties"]["Radius of curvature tangential"] = self.vc.convert_to_float(
-                    self.ui_select_component_window.edit_curvature_tangential.text().strip(), self.library_window)
-                selected_component["properties"]["Radius of curvature sagittal"] = self.vc.convert_to_float(
-                    self.ui_select_component_window.edit_curvature_sagittal.text().strip(), self.library_window)
-            except Exception:
-                QMessageBox.warning(
-                    self.library_window,
-                    "Ungültige Eingabe",
-                    "Bitte geben Sie gültige Zahlenwerte mit Einheit für die Krümmungen ein."
-                )
-                return
+            
+            # NEU: Verwende save_properties_to_component für aktuelle Werte
+            if hasattr(self, '_property_fields') and self._property_fields:
+                updated_component = self.save_properties_to_component(selected_component)
+                if updated_component:
+                    selected_component = updated_component
+        
         else:
             QMessageBox.warning(
                 self.library_window,
@@ -369,13 +369,11 @@ class ItemSelector(QObject):
 
         # Füge die Komponente zur temporären Liste hinzu
         if not hasattr(self, "temporary_components"):
-            self.temporary_components = []  # Initialisiere die temporäre Liste
+            self.temporary_components = []
         self.temporary_components.append(selected_component)
 
-        # Aktualisiere die temporäre Datei
+        # Aktualisiere die temporäre Datei und Liste
         self.update_temporary_file()
-
-        # Zeige die temporäre Liste in listView_temporary_component an
         self.update_temporary_list_view()
 
     def update_temporary_file(self):
@@ -414,57 +412,6 @@ class ItemSelector(QObject):
                 model.appendRow(item)
         # Setze das Modell in listView_temporary_component (immer!)
         self.ui_select_component_window.listView_temporary_component.setModel(model)
-
-    def add_component_to_temporary_list(self):
-        """
-        Fügt die ausgewählte Komponente von listView_lib_components zur temporären Liste hinzu
-        und speichert sie in der temporären Datei.
-        """
-        # Überprüfen, ob eine Komponente ausgewählt ist
-        selected_indexes = self.ui_select_component_window.listView_lib_components.selectedIndexes()
-        if not selected_indexes:
-            QMessageBox.warning(
-                self.library_window,
-                "No Component Selected",
-                "Bitte wählen Sie eine Komponente aus der Liste aus."
-            )
-            return
-
-        # Hole die ausgewählte Komponente
-        selected_index = selected_indexes[0].row()
-        if 0 <= selected_index < len(self.components_data):
-            selected_component = self.components_data[selected_index].copy()
-            # Werte aus dem UI holen und umrechnen
-            try:
-                selected_component["properties"]["Radius of curvature tangential"] = self.vc.convert_to_float(
-                    self.ui_select_component_window.edit_curvature_tangential.text().strip(), self.library_window)
-                selected_component["properties"]["Radius of curvature sagittal"] = self.vc.convert_to_float(
-                    self.ui_select_component_window.edit_curvature_sagittal.text().strip(), self.library_window)
-            except Exception:
-                QMessageBox.warning(
-                    self.library_window,
-                    "Ungültige Eingabe",
-                    "Bitte geben Sie gültige Zahlenwerte mit Einheit für die Krümmungen ein."
-                )
-                return
-        else:
-            QMessageBox.warning(
-                self.library_window,
-                "Invalid Selection",
-                "Die ausgewählte Komponente ist ungültig."
-            )
-            return
-
-        # Füge die Komponente zur temporären Liste hinzu
-        if not hasattr(self, "temporary_components"):
-            self.temporary_components = []  # Initialisiere die temporäre Liste
-        self.temporary_components.append(selected_component)
-
-        # Aktualisiere die temporäre Datei
-        self.update_temporary_file()
-
-        # Zeige die temporäre Liste in listView_temporary_component an
-        self.update_temporary_list_view()
 
     def add_all_components_to_temporary_list(self):
         """
@@ -567,7 +514,7 @@ class ItemSelector(QObject):
         main_window = self.parent()
         
         if self.lib_resonator_window:
-            self.lib_resonator_window.hide()  # Verbirgt das aktuelle Fenster
+            self.lib_resonator_window.hide()  # Verbirgt das aktuelles Fenster
             
         if main_window:
             main_window.show()  # Zeigt das Hauptfenster

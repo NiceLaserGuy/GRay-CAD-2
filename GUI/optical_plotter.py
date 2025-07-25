@@ -3,7 +3,7 @@ import pyqtgraph as pg
 from pyqtgraph import LinearRegionItem
 import copy
 
-from PyQt5.QtCore import Qt
+from PyQt5 import QtCore
 
 class OpticalSystemPlotter:
     def __init__(self, plotWidget, beam, matrices, vc):
@@ -42,14 +42,17 @@ class OpticalSystemPlotter:
             if beam_item is None:
                 beam_item = main_window.setupList.item(0)
             if beam_item is not None and hasattr(main_window, '_property_fields'):
-                updated_beam = main_window.save_properties_to_component(beam_item.data(Qt.UserRole))
+                # KORRIGIERT: Verwende die geerbte Methode aus PropertiesHandler
+                updated_beam = main_window.save_properties_to_component(beam_item.data(QtCore.Qt.UserRole))
                 if updated_beam is not None:
-                    beam_item.setData(Qt.UserRole, updated_beam)
+                    beam_item.setData(QtCore.Qt.UserRole, updated_beam)
+            
             optical_system_sag = main_window.build_optical_system_from_setup_list(mode="sagittal")
             optical_system_tan = main_window.build_optical_system_from_setup_list(mode="tangential")
+            
             # Hole Startparameter aus dem Beam (immer an Position 0)
             beam_item = main_window.setupList.item(0)
-            beam = beam_item.data(Qt.UserRole)
+            beam = beam_item.data(QtCore.Qt.UserRole)
             props = beam.get("properties", {})
             wavelength = props.get("Wavelength", 514E-9)
             waist_sag = props.get("Waist radius sagittal", 1E-3)
