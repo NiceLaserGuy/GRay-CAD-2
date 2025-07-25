@@ -1,6 +1,6 @@
 import json, tempfile
 from os import path, listdir
-from PyQt5 import uic
+from PyQt5 import uic, QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QMessageBox
 from PyQt5.QtCore import QModelIndex, QObject
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
@@ -252,17 +252,14 @@ class ItemSelector(QObject, PropertiesHandler):
                 self.show_properties(props, component)
           
             # Behalte nur diese für Rückwärtskompatibilität:
-            if hasattr(self.ui_select_component_window, 'edit_name'):
-                self.ui_select_component_window.edit_name.setText(component.get("name", ""))
-            if hasattr(self.ui_select_component_window, 'edit_manufacturer'):
-                self.ui_select_component_window.edit_manufacturer.setText(component.get("manufacturer", ""))
+            if hasattr(self.ui_select_component_window, 'labelName'):
+                self.ui_select_component_window.labelName.setText(component.get("name", ""))
+            if hasattr(self.ui_select_component_window, 'labelManufacturer'):
+                self.ui_select_component_window.labelManufacturer.setText(component.get("manufacturer", ""))
+            if hasattr(self.ui_select_component_window, 'labelType'):
+                self.ui_select_component_window.labelType.setText(component.get("type", ""))
             
-            # Komponententyp setzen
-            if hasattr(self.ui_select_component_window, 'comboBox_type'):
-                component_type = component.get("type", "N/A")
-                index_in_combobox = self.ui_select_component_window.comboBox_type.findText(component_type)
-                if index_in_combobox != -1:
-                    self.ui_select_component_window.comboBox_type.setCurrentIndex(index_in_combobox)
+            
         else:
             QMessageBox.warning(
                 self.library_window,
