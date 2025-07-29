@@ -174,7 +174,7 @@ class PropertiesHandler:
                 layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
                 field.textChanged.connect(self.make_field_slot(key, component))
-                # NEU: Plot-Update nur bei Enter
+                # NEU: Enter-Handler mit Validierung
                 field.returnPressed.connect(self.make_enter_slot(key, component))
             row += 1
         # Spacer am Ende
@@ -196,8 +196,8 @@ class PropertiesHandler:
                 pass
             self._property_fields["Variable parameter"].currentIndexChanged.connect(self.update_field_states)
 
-        # --- NEU: Live-Synchronisierung für IS_ROUND ---
-        # Verbinde sagittale Felder mit Synchronisierung
+        # --- NEU: Live-Synchronisierung für IS_ROUND (KORRIGIERT) ---
+        # Verbinde nur sagittale Felder mit Synchronisierung (nicht beide Richtungen!)
         paired_props = [
         ("Waist radius sagittal", "Waist radius tangential"),
         ("Waist position sagittal", "Waist position tangential"),
@@ -212,18 +212,18 @@ class PropertiesHandler:
                 field_sag = self._property_fields[sag_key]
                 field_tan = self._property_fields[tan_key]
                 
-                def make_sync_function(field_sag, field_tan):
-                    def sync_sagittal_to_tangential():
+                def make_sync_function(source_field, target_field):
+                    def sync_to_target():
                         # Nur synchronisieren, wenn IS_ROUND aktiv ist
                         if "IS_ROUND" in self._property_fields:
                             is_round_field = self._property_fields["IS_ROUND"]
                             if isinstance(is_round_field, QtWidgets.QCheckBox) and is_round_field.isChecked():
-                                field_tan.blockSignals(True)
-                                field_tan.setText(field_sag.text())
-                                field_tan.blockSignals(False)
-                    return sync_sagittal_to_tangential
+                                target_field.blockSignals(True)
+                                target_field.setText(source_field.text())
+                                target_field.blockSignals(False)
+                    return sync_to_target
                 
-                # Verbinde das sagittale Feld mit der Sync-Funktion
+                # NUR sagittales Feld synchronisiert zum tangentialen (EINSEITIG!)
                 field_sag.textChanged.connect(make_sync_function(field_sag, field_tan))
 
         # Initiale Anwendung
