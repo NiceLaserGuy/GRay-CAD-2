@@ -483,11 +483,12 @@ class PropertiesHandler:
         """Konvertiert Boolean zu einheitlichem Format."""
         return bool(value)  # Python Boolean
     
-    def update_rayleigh_delayed(self):
-        self._property_update_timer.stop()
-        self._property_update_timer.start()
-
     def update_live_plot_delayed(self):
-        if hasattr(self, '_live_plot_update_timer'):
-            self._live_plot_update_timer.stop()
-            self._live_plot_update_timer.start()
+        """Direkter Live-Plot-Update ohne Timer"""
+        if self.live_plot_callback:
+            self.live_plot_callback()
+
+    def update_rayleigh_delayed(self):
+        """Direkter Rayleigh-Update ohne Timer"""
+        if hasattr(self, 'update_rayleigh'):
+            self.update_rayleigh()

@@ -177,6 +177,7 @@ class Resonator(QObject):
             )
             
         except Exception as e:
+            print(f"Error in plot_current_setup: {e}")  # Debug-Ausgabe
             QMessageBox.critical(
                 self.resonator_window,
                 "Error",

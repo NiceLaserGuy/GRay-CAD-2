@@ -64,7 +64,7 @@ class MainWindow(QMainWindow, PropertiesHandler):
         Sets up menu actions and button connections.
         """
         QMainWindow.__init__(self, *args, **kwargs)
-        PropertiesHandler.__init__(self, live_plot_callback=self.update_live_plot_delayed_original)
+        PropertiesHandler.__init__(self, live_plot_callback=self.update_live_plot)
         
         if hasattr(self, '_property_update_timer') and hasattr(self, 'update_rayleigh'):
             self._property_update_timer.timeout.connect(self.update_rayleigh)
