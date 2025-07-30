@@ -506,6 +506,8 @@ class Libraries(QObject):
             
         # NEU: Komponententyp für Berechnungen speichern
         self._current_component_type = component_data.get("type", "").upper()
+        # NEU: Referenz zur aktuellen Komponente speichern
+        self._current_component_data = component_data
 
         # ComboBox auf entsprechenden Typ setzen
         component_type = component_data.get("type", "").upper()
@@ -881,7 +883,7 @@ class Libraries(QObject):
         """
         if not hasattr(self, '_property_fields') or not self._property_fields:
             return
-            
+        
         # Get the currently selected library file
         selected_file_index = self.ui_library.listView_libraries.currentIndex().row()
         model = self.ui_library.listView_libraries.model()
@@ -926,6 +928,18 @@ class Libraries(QObject):
         # Update component properties from UI fields
         component = library_data["components"][selected_component_index]
         
+        # NEU: Update Component Type aus ComboBox
+        selected_type = self.ui_library.comboBox_type.currentText()
+        type_mapping = {
+            "Lens": "LENS",
+            "Mirror": "MIRROR", 
+            "Thick Lens": "THICK LENS",
+            "ABCD": "ABCD"
+        }
+        component_type = type_mapping.get(selected_type, "MIRROR")
+        component["type"] = component_type
+
+        # Update andere Felder
         for key, field in self._property_fields.items():
             if key == "name":
                 # Spezielle Behandlung für Name (direkt auf component-Level)
@@ -942,6 +956,10 @@ class Libraries(QObject):
                 except:
                     # Falls das fehlschlägt, als String speichern
                     component["properties"][key] = field.text()
+
+        # NEU: Aktualisiere auch die lokalen components_data
+        if 0 <= selected_component_index < len(self.components_data):
+            self.components_data[selected_component_index] = component
 
         # Save the updated library file
         try:
@@ -962,7 +980,7 @@ class Libraries(QObject):
                 self.library_window,
                 "Error",
                 f"An error occurred while saving the library file: {e}"
-            )
+        )
 
     def load_generic_components(self):
         """

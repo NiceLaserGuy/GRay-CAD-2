@@ -44,7 +44,7 @@ class ItemSelector(QObject, PropertiesHandler):
         self.library_window = parent  # Store main window reference
         self.lib_resonator_window = LibraryWindow(parent)  # Create new window with main window as parent
         self.lib_resonator_window.item_selector = self
-        
+    
         # Load the library UI
         ui_path = path.abspath(path.join(path.dirname(path.dirname(__file__)), "assets/select_component_window.ui"))
         self.ui_select_component_window = uic.loadUi(ui_path, 
@@ -68,6 +68,12 @@ class ItemSelector(QObject, PropertiesHandler):
 
         # Connect the listView_libraries to a click event
         self.ui_select_component_window.listView_libraries.clicked.connect(self.display_file_contents)
+        
+        # Connect the listView_lib_components to a click event
+        self.ui_select_component_window.listView_lib_components.clicked.connect(self.display_component_details)
+        
+        # NEU: Connect the listView_temporary_component to a click event
+        self.ui_select_component_window.listView_temporary_component.clicked.connect(self.display_temporary_component_details)
         
         # Connect the pushButton_add_all to the method
         self.ui_select_component_window.pushButton_add_all.clicked.connect(self.add_all_components_to_temporary_list)
@@ -516,3 +522,59 @@ class ItemSelector(QObject, PropertiesHandler):
         if main_window:
             main_window.show()  # Zeigt das Hauptfenster
             main_window.raise_()  # Bringt das Hauptfenster in den Vordergrund
+
+    def display_temporary_component_details(self, index: QModelIndex):
+        """
+        Displays the details of the selected component from the temporary list.
+        """
+        selected_index = index.row()
+
+        if not hasattr(self, "temporary_components") or not self.temporary_components:
+            QMessageBox.warning(
+                self.library_window,
+                "No Temporary Components",
+                "Es gibt keine temporären Komponenten."
+            )
+            return
+
+        if 0 <= selected_index < len(self.temporary_components):
+            component = self.temporary_components[selected_index]
+            
+            # NEU: Verwende das moderne Properties-System
+            self._last_component_item = None  # Reset für ItemSelector
+            
+            # Dynamisch Properties hinzufügen für Linsen (wie in graycad_mainwindow)
+            ctype = component.get("type", "").strip().upper()
+            props = component.get("properties", {})
+            
+            if ctype == "LENS":
+                if "Variable parameter" not in props:
+                    props["Variable parameter"] = "Edit focal length"
+                if "Plan lens" not in props:
+                    props["Plan lens"] = False
+                if "Lens material" not in props:
+                    props["Lens material"] = "NBK7"
+                component["properties"] = props
+
+            # Zeige Properties mit dem modernen System
+            if hasattr(self, 'propertyLayout'):
+                self.show_properties(props, component)
+                
+            # NEU: Speichere Referenz zur aktuellen temporären Komponente
+            self._current_temp_component_index = selected_index
+            self._current_temp_component = component
+          
+            # Behalte nur diese für Rückwärtskompatibilität:
+            if hasattr(self.ui_select_component_window, 'labelName'):
+                self.ui_select_component_window.labelName.setText(component.get("name", ""))
+            if hasattr(self.ui_select_component_window, 'labelManufacturer'):
+                self.ui_select_component_window.labelManufacturer.setText(component.get("manufacturer", ""))
+            if hasattr(self.ui_select_component_window, 'labelType'):
+                self.ui_select_component_window.labelType.setText(component.get("type", ""))
+            
+        else:
+            QMessageBox.warning(
+                self.library_window,
+                "Invalid Component Index",
+                f"Invalid temporary component index: {selected_index}"
+            )

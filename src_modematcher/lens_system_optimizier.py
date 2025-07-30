@@ -4,6 +4,7 @@ from scipy.optimize import minimize
 import random
 import json
 import config
+from PyQt5.QtWidgets import QMessageBox
 
 class LensSystemOptimizer:
     def __init__(self, matrices):
@@ -20,14 +21,26 @@ class LensSystemOptimizer:
         
         # Lade Linsenbibliothek aus temporärer Datei
         self._load_lens_library_from_temp_file()
-    
+
+        #Lade Strahlparameter aus temporärer Datei
+        self.wavelength = None
+        self.distance = None
+        self.waist_input_sag = None
+        self.waist_input_tan = None
+        self.waist_position_sag = None
+        self.waist_position_tan = None
+        self.waist_goal_sag = None
+        self.waist_goal_tan = None
+        self.waist_position_goal_sag = None
+        self.waist_position_goal_tan = None
+        self.get_beam_parameters()  # Lade die Strahlparameter
+
     def _load_lens_library_from_temp_file(self):
         """Lade Linsenbibliothek aus der temporären Datei"""
         try:
             temp_file_path = config.get_temp_file_path()
             if not temp_file_path:
-                print("Warning: No temp file path found, using default lens library")
-                self._use_default_lens_library()
+                QMessageBox.warning(self, "Error", "Warning: No temp file path found, using default lens library")
                 return
             
             with open(temp_file_path, 'r') as file:
@@ -44,7 +57,7 @@ class LensSystemOptimizer:
                     
                     # Bestimme Brennweite (verschiedene mögliche Felder)
                     focal_length = None
-                    for key in ["Focal length", "Focal length sagittal", "Brennweite"]:
+                    for key in ["Focal length tangential", "Focal length sagittal"]:
                         if key in properties:
                             focal_length = float(properties[key])
                             break
@@ -57,64 +70,66 @@ class LensSystemOptimizer:
                         }
                         self.lens_library.append(lens_entry)
             
-            if not self.lens_library:
-                print("Warning: No lenses found in temp file, using default library")
-                self._use_default_lens_library()
-            else:
-                print(f"Loaded {len(self.lens_library)} lenses from temp file")
                 
         except Exception as e:
-            print(f"Error loading lens library from temp file: {e}")
-            self._use_default_lens_library()
+            QMessageBox.warning(self, "Error", f"Error loading lens library from temp file: {e}, using fallback library")
     
-    def _use_default_lens_library(self):
-        """Fallback: Verwende Standard-Linsenbibliothek"""
-        self.lens_library = [
-            {'name': 'f=50mm', 'focal_length': 0.05, 'component_data': None},
-            {'name': 'f=75mm', 'focal_length': 0.075, 'component_data': None},
-            {'name': 'f=100mm', 'focal_length': 0.1, 'component_data': None},
-            {'name': 'f=150mm', 'focal_length': 0.15, 'component_data': None},
-            {'name': 'f=200mm', 'focal_length': 0.2, 'component_data': None},
-            {'name': 'f=300mm', 'focal_length': 0.3, 'component_data': None},
-            {'name': 'f=500mm', 'focal_length': 0.5, 'component_data': None},
-            {'name': 'f=-50mm', 'focal_length': -0.05, 'component_data': None},
-            {'name': 'f=-100mm', 'focal_length': -0.1, 'component_data': None},
-            {'name': 'f=-200mm', 'focal_length': -0.2, 'component_data': None},
-        ]
-    
-    def reload_lens_library(self):
-        """Lade Linsenbibliothek neu (für dynamische Updates)"""
-        self._load_lens_library_from_temp_file()
-    
-    def optimize_lens_system(self, w0, z0, w_target, z_target, wavelength, 
-                           max_lenses=3, max_length=1.0, n_medium=1.0):
+    def get_beam_parameters(self):
+        try:
+            temp_data_modematcher = config.get_temp_data_modematcher()
+            self.wavelength, self.distance, self.waist_input_sag, self.waist_input_tan, self.waist_position_sag, self.waist_position_tan, self.waist_goal_sag, self.waist_goal_tan, self.waist_position_goal_sag, self.waist_position_goal_tan = temp_data_modematcher
+            
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Error loading lens library from temp file: {e}.")
+
+    def optimize_lens_system(self, max_lenses=3, max_length=1.0, n_medium=1.0):
         """
-        Hauptoptimierungsfunktion
+        Hauptoptimierungsfunktion - verwendet Parameter aus get_beam_parameters
         
         Parameters:
-        - w0, z0: Start-Strahlparameter
-        - w_target, z_target: Ziel-Strahlparameter
-        - wavelength: Wellenlänge
         - max_lenses: Maximale Anzahl Linsen
         - max_length: Maximale Systemlänge
+        - n_medium: Brechungsindex des Mediums
         """
-        
-        # Lade Linsenbibliothek neu (für den Fall, dass sie sich geändert hat)
-        self.reload_lens_library()
         
         if not self.lens_library:
             raise Exception("No lenses available in library")
         
-        # 1. PHASE: Genetischer Algorithmus für globale Optimierung
-        best_individual = self._genetic_optimization(
-            w0, z0, w_target, z_target, wavelength, max_lenses, max_length, n_medium)
+        if not self.wavelength:
+            raise Exception("No beam parameters loaded. Call get_beam_parameters() first.")
         
-        # 2. PHASE: Lokale Verfeinerung mit scipy.optimize
-        refined_solution = self._local_refinement(
-            best_individual, w0, z0, w_target, z_target, wavelength, n_medium)
+        # Verwende die geladenen Parameter
+        w0_sag = self.waist_input_sag
+        w0_tan = self.waist_input_tan
+        z0_sag = self.waist_position_sag
+        z0_tan = self.waist_position_tan
+        w_target_sag = self.waist_goal_sag
+        w_target_tan = self.waist_goal_tan
+        z_target_sag = self.waist_position_goal_sag
+        z_target_tan = self.waist_position_goal_tan
+        wavelength = self.wavelength
         
-        # 3. PHASE: Ergebnis-Konvertierung (mit korrekten Beam-Parametern)
-        optimized_system = self._convert_to_optical_system(refined_solution, w0, z0, wavelength)
+        print(f"Optimizing for:")
+        print(f"  Sagittal: w0={w0_sag:.6f}, z0={z0_sag:.3f} -> w_target={w_target_sag:.6f}, z_target={z_target_sag:.3f}")
+        print(f"  Tangential: w0={w0_tan:.6f}, z0={z0_tan:.3f} -> w_target={w_target_tan:.6f}, z_target={z_target_tan:.3f}")
+        print(f"  Wavelength: {wavelength:.9f}")
+        
+        # 1. PHASE: Genetischer Algorithmus für globale Optimierung (beide Ebenen)
+        best_individual = self._genetic_optimization_dual(
+            w0_sag, z0_sag, w_target_sag, z_target_sag,
+            w0_tan, z0_tan, w_target_tan, z_target_tan,
+            wavelength, max_lenses, max_length, n_medium)
+        
+        # 2. PHASE: Lokale Verfeinerung mit scipy.optimize (beide Ebenen)
+        refined_solution = self._local_refinement_dual(
+            best_individual, 
+            w0_sag, z0_sag, w_target_sag, z_target_sag,
+            w0_tan, z0_tan, w_target_tan, z_target_tan,
+            wavelength, n_medium)
+        
+        # 3. PHASE: Ergebnis-Konvertierung
+        optimized_system = self._convert_to_optical_system_dual(
+            refined_solution, w0_sag, w0_tan, z0_sag, z0_tan, wavelength)
         
         return optimized_system
     
@@ -251,6 +266,63 @@ class LensSystemOptimizer:
         # Baue finales Individual
         refined_individual = [n_lenses]
         for i, pos in enumerate(result.x):
+            refined_individual.extend([lens_types[i], pos])
+        
+        # Fülle mit inaktiven Linsen auf
+        max_lenses = (len(ga_solution) - 1) // 2
+        for i in range(n_lenses, max_lenses):
+            refined_individual.extend([-1, 0.0])
+        
+        return refined_individual
+    
+    def _local_refinement_dual(self, ga_solution, 
+                          w0_sag, z0_sag, w_target_sag, z_target_sag,
+                          w0_tan, z0_tan, w_target_tan, z_target_tan,
+                          wavelength, n_medium):
+        """Lokale Verfeinerung mit scipy.optimize für beide Ebenen"""
+        
+        # Extrahiere nur die Positionen für lokale Optimierung
+        n_lenses = int(ga_solution[0])
+        positions = []
+        lens_types = []
+        
+        for i in range(n_lenses):
+            lens_type = int(ga_solution[1 + i * 2])
+            position = ga_solution[2 + i * 2]
+            lens_types.append(lens_type)
+            positions.append(position)
+        
+        # Optimiere nur Positionen (Linsentypen bleiben fix)
+        def objective_dual(positions_array):
+            # Baue Individual für Fehlerberechnung
+            temp_individual = [n_lenses]
+            for i, pos in enumerate(positions_array):
+                temp_individual.extend([lens_types[i], pos])
+            
+            # Fülle mit inaktiven Linsen auf
+            max_lenses = (len(ga_solution) - 1) // 2
+            for i in range(n_lenses, max_lenses):
+                temp_individual.extend([-1, 0.0])
+            
+            return self._calculate_error_dual(temp_individual,
+                                        w0_sag, z0_sag, w_target_sag, z_target_sag,
+                                        w0_tan, z0_tan, w_target_tan, z_target_tan,
+                                        wavelength, n_medium)
+    
+        # Grenzen für Positionen
+        bounds = [(0, 1.0) for _ in range(n_lenses)]
+        
+        try:
+            # Lokale Optimierung
+            result = minimize(objective_dual, positions, method='L-BFGS-B', bounds=bounds)
+            positions = result.x
+        except Exception as e:
+            print(f"Local refinement failed: {e}, using GA solution")
+            # Bei Fehlern verwende GA-Lösung
+        
+        # Baue finales Individual
+        refined_individual = [n_lenses]
+        for i, pos in enumerate(positions):
             refined_individual.extend([lens_types[i], pos])
         
         # Fülle mit inaktiven Linsen auf
@@ -402,3 +474,261 @@ class LensSystemOptimizer:
                     })
         
         return setup_components
+    
+    def _convert_to_optical_system_dual(self, solution, w0_sag, w0_tan, z0_sag, z0_tan, wavelength):
+        """Konvertiere Lösung in Setup-Format für GUI mit beiden Ebenen"""
+        optical_system = self._build_system_from_individual(solution)
+        
+        setup_components = []
+        
+        # Start mit Beam (mit korrekten Parametern für beide Ebenen)
+        setup_components.append({
+            "type": "BEAM",
+            "name": "Optimized Beam",
+            "properties": {
+                "Wavelength": wavelength,
+                "Waist radius sagittal": w0_sag,
+                "Waist radius tangential": w0_tan,
+                "Waist position sagittal": z0_sag,
+                "Waist position tangential": z0_tan
+            }
+        })
+        
+        # Füge optische Elemente hinzu
+        for element, param in optical_system:
+            if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
+                setup_components.append({
+                    "type": "FREESPACE",
+                    "name": f"Free Space {param[0]:.3f}m",
+                    "properties": {
+                        "Distance": param[0],
+                        "Refractive index": param[1]
+                    }
+                })
+            else:
+                # Linse - verwende Original-Komponentendaten mit beiden Brennweiten
+                lens_focal_length = param
+                
+                # Finde die entsprechende Linse in der Bibliothek
+                matching_lens = None
+                for lens in self.lens_library:
+                    if abs(lens['focal_length'] - lens_focal_length) < 1e-6:
+                        matching_lens = lens
+                        break
+                
+                if matching_lens and matching_lens['component_data']:
+                    # Verwende Original-Komponentendaten
+                    lens_component = matching_lens['component_data'].copy()
+                    setup_components.append(lens_component)
+                else:
+                    # Fallback: Erstelle Standard-Linsenkomponente mit beiden Brennweiten
+                    lens_name = f"Lens f={lens_focal_length:.3f}m"
+                    setup_components.append({
+                        "type": "LENS",
+                        "name": lens_name,
+                        "properties": {
+                            "Focal length sagittal": lens_focal_length,
+                            "Focal length tangential": lens_focal_length
+                        }
+                    })
+    
+        return setup_components
+    
+    def _genetic_optimization_dual(self, w0_sag, z0_sag, w_target_sag, z_target_sag,
+                                  w0_tan, z0_tan, w_target_tan, z_target_tan,
+                                  wavelength, max_lenses, max_length, n_medium):
+        """Genetischer Algorithmus für beide Ebenen gleichzeitig"""
+        
+        # Individual-Struktur: [n_lenses, lens1_type, lens1_pos, lens2_type, lens2_pos, ...]
+        def create_individual():
+            n_lenses = random.randint(1, max_lenses)
+            individual = [n_lenses]
+            
+            for i in range(max_lenses):
+                if i < n_lenses:
+                    # Lens type (Index in der Bibliothek)
+                    lens_type = random.randint(0, len(self.lens_library) - 1)
+                    # Position (0 bis max_length)
+                    position = random.uniform(0, max_length)
+                    individual.extend([lens_type, position])
+                else:
+                    # Inaktive Linse
+                    individual.extend([-1, 0.0])
+            
+            return creator.Individual(individual)
+        
+        # Fitness-Funktion für beide Ebenen
+        def evaluate_fitness_dual(individual):
+            return (self._calculate_error_dual(individual, 
+                                             w0_sag, z0_sag, w_target_sag, z_target_sag,
+                                             w0_tan, z0_tan, w_target_tan, z_target_tan,
+                                             wavelength, n_medium),)
+        
+        # Crossover-Funktion (gleich wie vorher)
+        def crossover_lenses(ind1, ind2):
+            tools.cxTwoPoint(ind1, ind2)
+            ind1[0] = max(1, min(max_lenses, int(ind1[0])))
+            ind2[0] = max(1, min(max_lenses, int(ind2[0])))
+            return ind1, ind2
+        
+        # Mutations-Funktion (gleich wie vorher)
+        def mutate_lenses(individual, mu=0, sigma=0.1):
+            if random.random() < 0.1:
+                individual[0] = max(1, min(max_lenses, 
+                              individual[0] + random.randint(-1, 1)))
+            
+            for i in range(max_lenses):
+                lens_type_idx = 1 + i * 2
+                position_idx = 2 + i * 2
+                
+                if i < individual[0]:
+                    if random.random() < 0.2:
+                        individual[lens_type_idx] = random.randint(0, len(self.lens_library) - 1)
+                    
+                    if random.random() < 0.5:
+                        individual[position_idx] += random.gauss(mu, sigma * max_length)
+                        individual[position_idx] = max(0, min(max_length, individual[position_idx]))
+        
+            return individual,
+        
+        # DEAP Toolbox neu konfigurieren
+        self.toolbox.unregister("individual")
+        self.toolbox.unregister("population") 
+        self.toolbox.unregister("evaluate")
+        self.toolbox.unregister("mate")
+        self.toolbox.unregister("mutate")
+        self.toolbox.unregister("select")
+        
+        self.toolbox.register("individual", create_individual)
+        self.toolbox.register("population", tools.initRepeat, list, self.toolbox.individual)
+        self.toolbox.register("evaluate", evaluate_fitness_dual)
+        self.toolbox.register("mate", crossover_lenses)
+        self.toolbox.register("mutate", mutate_lenses)
+        self.toolbox.register("select", tools.selTournament, tournsize=3)
+        
+        # GA-Parameter
+        population_size = 100
+        generations = 50
+        crossover_prob = 0.7
+        mutation_prob = 0.3
+        
+        # Evolutionärer Algorithmus
+        population = self.toolbox.population(n=population_size)
+        
+        # Hall of Fame für beste Individuen
+        hof = tools.HallOfFame(1)
+        
+        # Statistiken
+        stats = tools.Statistics(lambda ind: ind.fitness.values)
+        stats.register("avg", np.mean)
+        stats.register("min", np.min)
+        stats.register("max", np.max)
+        
+        # Evolution ausführen
+        population, logbook = algorithms.eaSimple(
+            population, self.toolbox, crossover_prob, mutation_prob, 
+            generations, stats=stats, halloffame=hof, verbose=True)
+        
+        return hof[0]  # Bestes Individuum
+    
+    def _calculate_error_dual(self, individual, 
+                         w0_sag, z0_sag, w_target_sag, z_target_sag,
+                         w0_tan, z0_tan, w_target_tan, z_target_tan,
+                         wavelength, n_medium):
+        """Berechne Fitnessfunktion für beide Ebenen"""
+        try:
+            # Baue optisches System aus Individual
+            optical_system = self._build_system_from_individual(individual)
+            
+            from src_physics.beam import Beam
+            beam = Beam()
+            
+            # === SAGITTALE EBENE ===
+            q_start_sag = beam.q_value(z0_sag, w0_sag, wavelength, n_medium)
+            q_final_sag = q_start_sag
+            
+            for element, param in optical_system:
+                if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
+                    # Freiraum
+                    A, B, C, D = 1, param[0]/param[1], 0, 1
+                else:
+                    # Optisches Element - verwende sagittale Brennweite
+                    lens_data = self._get_lens_data_from_param(param)
+                    if lens_data:
+                        focal_length_sag = self._get_sagittal_focal_length(lens_data)
+                        ABCD = self.matrices.thin_lens(focal_length_sag)
+                    else:
+                        ABCD = self.matrices.thin_lens(param)  # Fallback
+                    A, B, C, D = ABCD.flatten()
+            
+                q_final_sag = (A * q_final_sag + B) / (C * q_final_sag + D)
+            
+            # === TANGENTIALE EBENE ===
+            q_start_tan = beam.q_value(z0_tan, w0_tan, wavelength, n_medium)
+            q_final_tan = q_start_tan
+            
+            for element, param in optical_system:
+                if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
+                    # Freiraum (gleich für beide Ebenen)
+                    A, B, C, D = 1, param[0]/param[1], 0, 1
+                else:
+                    # Optisches Element - verwende tangentiale Brennweite
+                    lens_data = self._get_lens_data_from_param(param)
+                    if lens_data:
+                        focal_length_tan = self._get_tangential_focal_length(lens_data)
+                        ABCD = self.matrices.thin_lens(focal_length_tan)
+                    else:
+                        ABCD = self.matrices.thin_lens(param)  # Fallback
+                    A, B, C, D = ABCD.flatten()
+            
+                q_final_tan = (A * q_final_tan + B) / (C * q_final_tan + D)
+            
+            # Berechne finale Strahlparameter
+            w_final_sag = beam.beam_radius(q_final_sag, wavelength, n_medium)
+            w_final_tan = beam.beam_radius(q_final_tan, wavelength, n_medium)
+            
+            # Fehler berechnen (gewichtete Summe beider Ebenen)
+            w_error_sag = abs(w_final_sag - w_target_sag) / w_target_sag
+            w_error_tan = abs(w_final_tan - w_target_tan) / w_target_tan
+            
+            # Kombinierter Fehler (gleiche Gewichtung beider Ebenen)
+            total_error = 0.5 * (w_error_sag + w_error_tan)
+            
+            # Penalty für zu viele Linsen
+            n_lenses = individual[0]
+            complexity_penalty = 0.1 * n_lenses
+            
+            # Zusätzliche Penalty wenn eine Ebene sehr schlecht ist
+            max_error = max(w_error_sag, w_error_tan)
+            if max_error > 0.5:  # Wenn eine Ebene >50% Fehler hat
+                balance_penalty = max_error * 0.5
+            else:
+                balance_penalty = 0
+            
+            return total_error + complexity_penalty + balance_penalty
+            
+        except Exception as e:
+            # Bei Fehlern hohe Strafe
+            print(f"Error in fitness calculation: {e}")
+            return 1000.0
+
+    def _get_lens_data_from_param(self, param):
+        """Extrahiere Linsendaten basierend auf Brennweite"""
+        for lens in self.lens_library:
+            if abs(lens['focal_length'] - param) < 1e-6:
+                return lens['component_data']
+        return None
+
+    def _get_sagittal_focal_length(self, lens_data):
+        """Extrahiere sagittale Brennweite aus Linsendaten"""
+        if not lens_data:
+            return None
+        properties = lens_data.get("properties", {})
+        return properties.get("Focal length sagittal", properties.get("Focal length", None))
+
+    def _get_tangential_focal_length(self, lens_data):
+        """Extrahiere tangentiale Brennweite aus Linsendaten"""
+        if not lens_data:
+            return None
+        properties = lens_data.get("properties", {})
+        return properties.get("Focal length tangential", properties.get("Focal length", None))

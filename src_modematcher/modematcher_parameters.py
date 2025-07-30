@@ -88,19 +88,24 @@ class ModematcherParameters(QObject):
             # Save the parameters first
             self.get_parameters()
             
-            # Hide the current window
-            self.modematcher_parameter_window.hide()
-            
             # Create calculator instance if it doesn't exist
             if not hasattr(self, 'calculator'):
                 self.calculator = ModematcherCalculator(self)
             
-            # Open calculator window and set previous window reference
-            self.calculator.open_modematcher_calculator_window()
-            self.calculator.previous_window = self.modematcher_parameter_window
+            # Zeige Calculator mit Referenz zum Parameter-Fenster
+            self.calculator.show_with_previous(self.modematcher_parameter_window)
+            
+            # Hide the current window NACH dem Öffnen des neuen Fensters
+            self.modematcher_parameter_window.hide()
             
         except ValueError as e:
             QMessageBox.critical(self.modematcher_parameter_window, "Error", str(e))
+        except Exception as e:
+            QMessageBox.critical(
+                self.modematcher_parameter_window, 
+                "Unexpected Error", 
+                f"An error occurred: {str(e)}"
+            )
 
     def get_parameters(self):
 
@@ -113,16 +118,11 @@ class ModematcherParameters(QObject):
         waist_input_tan = self.vc.convert_to_float(self.ui_modematcher.lineEdit_waist_input_tan.text())
         waist_position_sag = self.vc.convert_to_float(self.ui_modematcher.lineEdit_waist_position_sag.text())
         waist_position_tan = self.vc.convert_to_float(self.ui_modematcher.lineEdit_waist_position_tan.text())
-        zr_input_sag = np.pi * (waist_position_sag**2) / wavelength
-        zr_input_tan = np.pi * (waist_position_tan**2) / wavelength
-
         #Output Beam
-        waist_output_sag = self.vc.convert_to_float(self.ui_modematcher.lineEdit_waist_output_sag.text())
-        waist_output_tan = self.vc.convert_to_float(self.ui_modematcher.lineEdit_waist_output_tan.text())
-        waist_position_output_sag = self.vc.convert_to_float(self.ui_modematcher.lineEdit_waist_position_output_sag.text())
-        waist_position_output_tan = self.vc.convert_to_float(self.ui_modematcher.lineEdit_waist_position_output_tan.text())
-        zr_output_sag = np.pi * (waist_position_output_sag**2) / wavelength
-        zr_output_tan = np.pi * (waist_position_output_tan**2) / wavelength
+        waist_goal_sag = self.vc.convert_to_float(self.ui_modematcher.lineEdit_waist_output_sag.text())
+        waist_goal_tan = self.vc.convert_to_float(self.ui_modematcher.lineEdit_waist_output_tan.text())
+        waist_position_goal_sag = self.vc.convert_to_float(self.ui_modematcher.lineEdit_waist_position_output_sag.text())
+        waist_position_goal_tan = self.vc.convert_to_float(self.ui_modematcher.lineEdit_waist_position_output_tan.text())
 
         config.set_temp_data_modematcher(
             wavelength,
@@ -131,15 +131,8 @@ class ModematcherParameters(QObject):
             waist_input_tan,
             waist_position_sag,
             waist_position_tan,
-            zr_input_sag,
-            zr_input_tan,
-            waist_output_sag,
-            waist_output_tan,
-            waist_position_output_sag,
-            waist_position_output_tan,
-            zr_output_sag,
-            zr_output_tan
-        ) 
-
-
-    
+            waist_goal_sag,
+            waist_goal_tan,
+            waist_position_goal_sag,
+            waist_position_goal_tan
+        )

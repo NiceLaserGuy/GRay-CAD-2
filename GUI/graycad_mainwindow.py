@@ -785,3 +785,36 @@ class MainWindow(QMainWindow, PropertiesHandler):
         self._last_component_item = None
         if hasattr(self, '_property_fields'):
             self._property_fields.clear()
+    
+    def receive_optimized_system(self, optimized_system):
+        """Receive and process optimized lens system from modematcher"""
+        try:
+            # Leere die aktuelle Setup-Liste
+            self.setupList.clear()
+            
+            # Füge alle Komponenten zur Setup-Liste hinzu
+            for component in optimized_system:
+                self.add_component_to_setup(component)
+            
+            if self.setupList.count() > 0:
+                # Wähle das erste Item aus
+                self.setupList.setCurrentRow(0)
+                
+                # Zeige Properties des ersten Items
+                first_item = self.setupList.item(0)
+                if first_item:
+                    self.show_properties_for_selected_item()
+                
+                # Update Live Plot
+                QtCore.QTimer.singleShot(100, self.update_live_plot)
+            
+            # Zeige Erfolgs-Nachricht
+            QMessageBox.information(
+                self,
+                "Optimized System Loaded", 
+                f"Loaded optimized lens system with {len(optimized_system)} components."
+            )
+                
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error receiving optimized system: {str(e)}")
+            print(f"Error in receive_optimized_system: {e}")

@@ -119,22 +119,22 @@
       </column>
       <column>
        <property name="text">
-        <string>w&lt;sub&gt;0, sag&lt;/sub&gt;</string>
+        <string>w₀, sag</string>
        </property>
       </column>
       <column>
        <property name="text">
-        <string>Δw0 sag</string>
+        <string>Δw₀ sag</string>
        </property>
       </column>
       <column>
        <property name="text">
-        <string>w&lt;sub&gt;0, tan&lt;/sub&gt;</string>
+        <string>w₀, tan</string>
        </property>
       </column>
       <column>
        <property name="text">
-        <string>Δw0 tan</string>
+        <string>Δw₀ tan</string>
        </property>
       </column>
      </widget>

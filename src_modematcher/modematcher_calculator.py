@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QMainWindow, QMessageBox
 from PyQt5 import uic
 from os import path
 from src_modematcher.lens_system_optimizier import LensSystemOptimizer
+import config
 
 class ModematcherCalculationWindow(QMainWindow):
     def __init__(self, parent=None):
@@ -20,25 +21,24 @@ class ModematcherCalculationWindow(QMainWindow):
 class ModematcherCalculator:
     def __init__(self, modematcher):
         self.modematcher = modematcher
+        self.previous_window = None  # NEU: Referenz zum vorherigen Fenster
         
         # Optimizer initialisieren (ohne feste Linsenbibliothek)
         from src_physics.matrices import Matrices
         self.matrices = Matrices()
         self.optimizer = LensSystemOptimizer(self.matrices)  # Keine lens_library mehr
     
-    def calculate_optimal_system(self, w0, z0, w_target, z_target, wavelength):
-        """Berechne optimales Linsensystem"""
+    def calculate_optimal_system(self):
+        """Berechne optimales Linsensystem mit geladenen Parametern"""
         try:
             # Prüfe ob Linsenbibliothek verfügbar ist
             if not self.optimizer.lens_library:
                 raise Exception("No lens library available. Please select lenses first.")
             
+            print(f"Starting optimization with {len(self.optimizer.lens_library)} lenses")
+            
+            # Verwende die Parameter aus get_beam_parameters (keine UI-Parameter mehr nötig)
             optimized_system = self.optimizer.optimize_lens_system(
-                w0=w0,
-                z0=z0, 
-                w_target=w_target,
-                z_target=z_target,
-                wavelength=wavelength,
                 max_lenses=3,
                 max_length=1.0,
                 n_medium=1.0
@@ -48,8 +48,8 @@ class ModematcherCalculator:
             
         except Exception as e:
             print(f"Error in optimization: {e}")
-            return None
-    
+            raise e
+
     def open_modematcher_calculator_window(self):
         """UI-Integration"""
         self.modematcher_calculation_window = QMainWindow()
@@ -63,29 +63,83 @@ class ModematcherCalculator:
         # Configure and show the window
         self.modematcher_calculation_window.setWindowTitle("Mode Matching")
         self.modematcher_calculation_window.show()
-
-        self.ui_modematcher_calculation.button_back.clicked.connect(self.close_modematcher_calculation_window)
         
-        # Neue Button-Verbindungen
+        # Button-Verbindungen
         self.ui_modematcher_calculation.button_optimize.clicked.connect(self.run_optimization)
-
+        # NEU: Back-Button verbinden
+        self.ui_modematcher_calculation.button_back.clicked.connect(self.handle_back_button)
+        
+        # Optional: Lens-Selection Button falls vorhanden
+        if hasattr(self.ui_modematcher_calculation, 'button_select_lenses'):
+            self.ui_modematcher_calculation.button_select_lenses.clicked.connect(self.open_lens_selection)
+    
+    def handle_back_button(self):
+        """
+        Schließt das aktuelle Fenster und zeigt das vorherige (Parameter-Fenster) an
+        """
+        try:
+            # Aktuelles Fenster schließen
+            if hasattr(self, 'modematcher_calculation_window') and self.modematcher_calculation_window:
+                self.modematcher_calculation_window.close()
+                self.modematcher_calculation_window = None
+                self.ui_modematcher_calculation = None
+            
+            # Vorheriges Fenster anzeigen
+            if hasattr(self, 'previous_window') and self.previous_window:
+                self.previous_window.show()
+                self.previous_window.raise_()  # Fenster in den Vordergrund bringen
+                self.previous_window.activateWindow()  # Fenster aktivieren
+            else:
+                # Fallback: Erstelle neues Parameter-Fenster
+                if hasattr(self.modematcher, 'open_modematcher_parameter_window'):
+                    self.modematcher.open_modematcher_parameter_window()
+                else:
+                    print("Warning: No previous window reference found")
+                    
+        except Exception as e:
+            print(f"Error in handle_back_button: {e}")
+            # Fallback: Versuche Parameter-Fenster zu öffnen
+            try:
+                if hasattr(self.modematcher, 'open_modematcher_parameter_window'):
+                    self.modematcher.open_modematcher_parameter_window()
+            except Exception as fallback_error:
+                print(f"Fallback error: {fallback_error}")
+    
     def close_modematcher_calculation_window(self):
         """
-        Hides the current window and shows the previous window.
+        Alternative Methode zum Schließen (für Rückwärtskompatibilität)
         """
-        if hasattr(self, 'previous_window') and self.previous_window:
-            self.previous_window.show()  # Show the previous window
-            self.previous_window.raise_()  # Bring previous window to front
-        
-        if self.modematcher_calculation_window:
-            self.modematcher_calculation_window.hide()  # Hide current window instead of closing
+        self.handle_back_button()
+    
+    def open_lens_selection(self):
+        """Öffne Linsenauswahl-Dialog"""
+        try:
+            # Setze Context für Linsenauswahl
+            if hasattr(self.parent(), 'current_context'):
+                self.parent().current_context = "modematcher"
+            
+            # Öffne ItemSelector für Linsenauswahl
+            from src_libraries.select_items import ItemSelector
+            self.lens_selector = ItemSelector(self.parent())
+            self.lens_selector.open_library_window(self.parent())
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self.modematcher_calculation_window,
+                "Error",
+                f"Error opening lens selection: {str(e)}"
+            )
     
     def run_optimization(self):
-        """GUI-Callback für Optimierung"""
+        """GUI-Callback für Optimierung - ohne Parameter-Eingabe"""
         try:
+            # Prüfe ob UI-Elemente existieren
+            if not self.ui_modematcher_calculation:
+                raise Exception("UI not initialized")
+            
             # Prüfe ob Linsen ausgewählt wurden
-            temp_file_path = config.get_temp_file_path()
-            if not temp_file_path:
+            if not self.optimizer.lens_library:
+                from PyQt5.QtWidgets import QMessageBox
                 QMessageBox.warning(
                     self.modematcher_calculation_window,
                     "No Lenses Selected",
@@ -93,47 +147,51 @@ class ModematcherCalculator:
                 )
                 return
             
-            # Lese Parameter aus GUI
-            w0 = float(self.ui_modematcher_calculation.input_w0.text())
-            z0 = float(self.ui_modematcher_calculation.input_z0.text())
-            w_target = float(self.ui_modematcher_calculation.input_w_target.text())
-            z_target = float(self.ui_modematcher_calculation.input_z_target.text())
-            wavelength = float(self.ui_modematcher_calculation.input_wavelength.text())
-            
             # Status-Update
-            self.ui_modematcher_calculation.label_status.setText("Optimizing...")
-            self.ui_modematcher_calculation.button_optimize.setEnabled(False)
+            if hasattr(self.ui_modematcher_calculation, 'label_status'):
+                self.ui_modematcher_calculation.label_status.setText("Optimizing for both sagittal and tangential planes...")
+            if hasattr(self.ui_modematcher_calculation, 'button_optimize'):
+                self.ui_modematcher_calculation.button_optimize.setEnabled(False)
             
-            # Optimierung durchführen
-            optimized_system = self.calculate_optimal_system(
-                w0, z0, w_target, z_target, wavelength)
+            # Optimierung durchführen (verwendet automatisch die geladenen Parameter)
+            optimized_system = self.calculate_optimal_system()
             
             if optimized_system:
                 # Übertrage an Hauptfenster
                 self._transfer_optimized_system(optimized_system)
+                
+                from PyQt5.QtWidgets import QMessageBox
                 QMessageBox.information(
                     self.modematcher_calculation_window,
                     "Optimization Complete",
-                    f"Generated optimized lens system with {len(optimized_system)} components."
+                    f"Generated optimized lens system with {len(optimized_system)} components for both sagittal and tangential planes."
                 )
-                self.ui_modematcher_calculation.label_status.setText("Optimization successful")
+                
+                if hasattr(self.ui_modematcher_calculation, 'label_status'):
+                    self.ui_modematcher_calculation.label_status.setText("Optimization successful for both planes")
             else:
+                from PyQt5.QtWidgets import QMessageBox
                 QMessageBox.warning(
                     self.modematcher_calculation_window,
                     "Optimization Failed",
-                    "Could not find a suitable lens system."
+                    "Could not find a suitable lens system for the given constraints."
                 )
-                self.ui_modematcher_calculation.label_status.setText("Optimization failed")
-                
+                if hasattr(self.ui_modematcher_calculation, 'label_status'):
+                    self.ui_modematcher_calculation.label_status.setText("Optimization failed")
+                    
         except Exception as e:
+            from PyQt5.QtWidgets import QMessageBox
             QMessageBox.critical(
                 self.modematcher_calculation_window,
                 "Error",
                 f"Error in optimization: {str(e)}"
             )
-            self.ui_modematcher_calculation.label_status.setText("Error in optimization")
+            if hasattr(self.ui_modematcher_calculation, 'label_status'):
+                self.ui_modematcher_calculation.label_status.setText("Error in optimization")
         finally:
-            self.ui_modematcher_calculation.button_optimize.setEnabled(True)
+            # Button wieder aktivieren
+            if hasattr(self.ui_modematcher_calculation, 'button_optimize'):
+                self.ui_modematcher_calculation.button_optimize.setEnabled(True)
     
     def _transfer_optimized_system(self, optimized_system):
         """Übertrage optimiertes System an Hauptfenster"""
@@ -157,3 +215,18 @@ class ModematcherCalculator:
             
         except Exception as e:
             raise Exception(f"Failed to transfer optimized system: {e}")
+    
+    # NEU: In ModematcherCalculator eine bessere Window-Verwaltung hinzufügen
+
+    def set_previous_window(self, previous_window):
+        """
+        Setze das vorherige Fenster für Navigation
+        """
+        self.previous_window = previous_window
+
+    def show_with_previous(self, previous_window):
+        """
+        Zeige Calculator-Fenster mit Referenz zum vorherigen Fenster
+        """
+        self.previous_window = previous_window
+        self.open_modematcher_calculator_window()
