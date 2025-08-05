@@ -11,7 +11,7 @@ class OptimizationWorker(QObject):
     """Worker-Klasse für die Durchführung der Optimierung in einem separaten Thread"""
     finished = pyqtSignal(dict)  # Signal mit Optimierungsergebnis
     error = pyqtSignal(str)      # Signal für Fehler
-    progress = pyqtSignal(int, int)   # Signal für Fortschrittsanzeige (aktueller Wert, Maximum)
+    progress = pyqtSignal(int)   # Signal für Fortschrittsanzeige (nur aktueller Wert)
     
     def __init__(self, optimizer, max_lenses, num_runs=3):
         super().__init__()
@@ -64,8 +64,8 @@ class OptimizationWorker(QObject):
             if self.abort_flag:
                 break
                 
-            # Emittiere Fortschritt
-            self.progress.emit(run * total_generations, total_steps)
+            # Emittiere Fortschritt (nur aktueller Wert)
+            self.progress.emit(run * total_generations)
             
             # Startpopulation erzeugen
             pop_size = 70
@@ -84,7 +84,7 @@ class OptimizationWorker(QObject):
             for gen in range(total_generations):
                 if self.abort_flag:
                     break
-                    
+                
                 # Ein Schritt des Algorithmus
                 population = algorithms.varAnd(population, self.optimizer.toolbox, 0.5, 0.2)
                 
@@ -99,8 +99,8 @@ class OptimizationWorker(QObject):
                 # Aktualisiere Hall of Fame
                 hof.update(population)
                 
-                # Emittiere Fortschritt
-                self.progress.emit(run * total_generations + gen + 1, total_steps)
+                # Emittiere Fortschritt (nur aktueller Wert)
+                self.progress.emit(run * total_generations + gen + 1)
             
             if not self.abort_flag and hof:
                 # Berechne Parameter für das beste Individuum dieses Laufs
@@ -514,7 +514,7 @@ class LensSystemOptimizer:
             QMessageBox.critical(None, "Optimization Error", f"Error during optimization: {str(e)}")
             return None'''
     
-    def optimize_lens_system(self, max_lenses, num_runs=100):
+    def optimize_lens_system(self, max_lenses, num_runs=50):
         """Startet die Multi-Run-Optimierung in einem separaten Thread"""
         try:
             # Validierungen
@@ -530,16 +530,46 @@ class LensSystemOptimizer:
             self.thread = QThread()
             self.worker = OptimizationWorker(self, max_lenses, num_runs)
             
-            # Erstelle Fortschrittsdialog
-            progress_dialog = QProgressDialog("Running multi-optimization...", "Cancel", 0, num_runs * 50)
-            progress_dialog.setWindowTitle("Optimization Progress")
-            progress_dialog.setMinimumDuration(0)
-            progress_dialog.setValue(0)
-            progress_dialog.setModal(True)
+            # UI-Elemente aktualisieren
+            ui_found = False
             
-            # Verbinde Cancel-Button mit Abbruch-Funktion
-            progress_dialog.canceled.connect(self.worker.stop)
+            # Suche progressBar in der UI
+            for attr_name in ['ui', 'modematcher_calculation', 'ui_modematcher_calculation']:
+                if hasattr(self, attr_name):
+                    ui_obj = getattr(self, attr_name)
+                    if hasattr(ui_obj, 'progressBar'):
+                        # Setze progressBar in der UI
+                        total_steps = num_runs * 50
+                        ui_obj.progressBar.setMinimum(0)
+                        ui_obj.progressBar.setMaximum(total_steps)
+                        ui_obj.progressBar.setValue(0)
+                        
+                        # Verbinde Worker-Fortschritt mit progressBar
+                        self.worker.progress.connect(ui_obj.progressBar.setValue)
+                        
+                        # Deaktiviere Optimize-Button falls vorhanden
+                        if hasattr(ui_obj, 'button_optimize'):
+                            ui_obj.button_optimize.setEnabled(False)
+                        
+                        ui_found = True
+                        break
             
+            # Fallback zu QProgressDialog wenn keine UI-ProgressBar gefunden wurde
+            if not ui_found:
+                progress_dialog = QProgressDialog("Running multi-optimization...", "Cancel", 0, num_runs * 50)
+                progress_dialog.setWindowTitle("Optimization Progress")
+                progress_dialog.setMinimumDuration(0)
+                progress_dialog.setValue(0)
+                progress_dialog.setModal(True)
+                
+                # Verbinde Cancel-Button mit Abbruch-Funktion
+                progress_dialog.canceled.connect(self.worker.stop)
+                
+                # Verbinde Worker-Fortschritt mit progressDialog
+                self.worker.progress.connect(progress_dialog.setValue)
+                self.worker.finished.connect(progress_dialog.close)
+                self.worker.error.connect(progress_dialog.close)
+        
             # Verschiebe Worker in Thread
             self.worker.moveToThread(self.thread)
             
@@ -547,26 +577,40 @@ class LensSystemOptimizer:
             self.thread.started.connect(self.worker.run)
             self.worker.finished.connect(self._on_multi_optimization_finished)
             self.worker.error.connect(self._on_optimization_error)
-            self.worker.progress.connect(progress_dialog.setValue)
-            self.worker.finished.connect(progress_dialog.close)
-            self.worker.error.connect(progress_dialog.close)
             self.worker.finished.connect(self.thread.quit)
             self.worker.finished.connect(self.worker.deleteLater)
             self.thread.finished.connect(self.thread.deleteLater)
+            self.thread.finished.connect(self._reset_ui)
             
             # Starte Thread
             self.thread.start()
             
-            # Zeige Fortschrittsdialog
-            progress_dialog.exec_()
+            # Zeige Fortschrittsdialog falls nötig
+            if not ui_found:
+                progress_dialog.exec_()
             
             # Wir geben kein Ergebnis zurück, da die Berechnung asynchron erfolgt
-            # Das Ergebnis wird später über Signale übermittelt
             return None
             
         except Exception as e:
             QMessageBox.critical(None, "Optimization Error", f"Error setting up optimization: {str(e)}")
             return None
+
+    def _reset_ui(self):
+        """Setzt UI-Elemente nach der Optimierung zurück"""
+        # Suche UI-Objekt mit progressBar
+        for attr_name in ['ui', 'modematcher_calculation', 'ui_modematcher_calculation']:
+            if hasattr(self, attr_name):
+                ui_obj = getattr(self, attr_name)
+                if hasattr(ui_obj, 'progressBar'):
+                    # Setze progressBar zurück
+                    ui_obj.progressBar.setValue(0)
+                    
+                    # Aktiviere Optimize-Button falls vorhanden
+                    if hasattr(ui_obj, 'button_optimize'):
+                        ui_obj.button_optimize.setEnabled(True)
+                    
+                    break
     
     def _on_multi_optimization_finished(self, result):
         """Wird aufgerufen, wenn die Multi-Run-Optimierung erfolgreich abgeschlossen wurde"""
@@ -584,17 +628,17 @@ class LensSystemOptimizer:
         run = result.get('run', 0)
         
         # Zeige Erfolgs-Nachricht
-        print(None, "Multi-Run Optimization Complete", 
-                             f"Optimization completed successfully.\n"
-                             f"Best result found in run {run} of {self.worker.num_runs}.\n"
-                             f"Number of lenses: {len(lenses)}\n"
-                             f"Lenses: {', '.join([lens[0] for lens in lenses])}\n"
-                             f"Waist Sagittal: {waist_sag*1e6:.2f} μm\n"
-                             f"Waist Tangential: {waist_tan*1e6:.2f} μm\n"
-                             f"Position Sagittal: {position_sag*1e2:.2f} cm\n"
-                             f"Position Tangential: {position_tan*1e2:.2f} cm\n"
-                             f"Fitness: {fitness:.4f}")
-        
+        QMessageBox.information(None, "Multi-Run Optimization Complete", 
+                         f"Optimization completed successfully.\n"
+                         f"Best result found in run {run} of {self.worker.num_runs}.\n"
+                         f"Number of lenses: {len(lenses)}\n"
+                         f"Lenses: {', '.join([lens[0] for lens in lenses])}\n"
+                         f"Waist Sagittal: {waist_sag*1e6:.2f} μm\n"
+                         f"Waist Tangential: {waist_tan*1e6:.2f} μm\n"
+                         f"Position Sagittal: {position_sag*1e2:.2f} cm\n"
+                         f"Position Tangential: {position_tan*1e2:.2f} cm\n"
+                         f"Fitness: {fitness:.4f}")
+    
         # Speichere Ergebnis für spätere Verwendung
         self.last_optimization_result = result
     

@@ -130,10 +130,12 @@ class ModematcherCalculator:
                 "Please select lenses first using the 'Select Lenses' button.")
             return
 
-        self.ui_modematcher_calculation.button_optimize.setEnabled(False)
+        # Übergebe UI-Referenz an den Optimizer
+        self.optimizer.ui_modematcher_calculation = self.ui_modematcher_calculation
+
+        # Starte Optimierung mit der aktuellen Anzahl an Linsen
         self.optimizer.optimize_lens_system(
             max_lenses=self.ui_modematcher_calculation.lensNumber.value())
-        self.ui_modematcher_calculation.button_optimize.setEnabled(True)
 
     def calculate_optimal_system(self):
         """Berechne optimales Linsensystem mit geladenen Parametern"""
