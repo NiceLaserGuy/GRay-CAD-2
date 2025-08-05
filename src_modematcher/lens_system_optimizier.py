@@ -4,7 +4,129 @@ from scipy.optimize import minimize
 import random
 import json
 import config
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QProgressDialog, QApplication
+from PyQt5.QtCore import QThread, QObject, pyqtSignal, pyqtSlot
+
+class OptimizationWorker(QObject):
+    """Worker-Klasse für die Durchführung der Optimierung in einem separaten Thread"""
+    finished = pyqtSignal(dict)  # Signal mit Optimierungsergebnis
+    error = pyqtSignal(str)      # Signal für Fehler
+    progress = pyqtSignal(int, int)   # Signal für Fortschrittsanzeige (aktueller Wert, Maximum)
+    
+    def __init__(self, optimizer, max_lenses, num_runs=3):
+        super().__init__()
+        self.optimizer = optimizer
+        self.max_lenses = max_lenses
+        self.num_runs = num_runs
+        self.abort_flag = False
+        
+    @pyqtSlot()
+    def run(self):
+        """Führt die Optimierung in einem separaten Thread aus"""
+        try:
+            # Validiere Parameter
+            if not self.optimizer.lens_library:
+                self.error.emit("No lenses in library. Please select lenses first.")
+                return
+                
+            # Stellt sicher, dass max_lenses mindestens 1 ist
+            max_lenses = max(1, self.max_lenses)
+            
+            # Stellt sicher, dass genügend Linsen in der Bibliothek vorhanden sind
+            if len(self.optimizer.lens_library) < 1:
+                self.error.emit("Not enough lenses in library. Need at least 1 lens.")
+                return
+            
+            # Führe Multi-Run Optimierung durch
+            result = self._run_multi_optimization(max_lenses, self.num_runs)
+            
+            # Sende Ergebnis zurück
+            self.finished.emit(result)
+            
+        except Exception as e:
+            self.error.emit(f"Error during optimization: {str(e)}")
+    
+    def _run_multi_optimization(self, max_lenses, num_runs):
+        """Führt mehrere Durchläufe der Optimierung durch und gibt das beste Ergebnis zurück"""
+        best_result = None
+        best_fitness = float('inf')
+        
+        total_generations = 50  # Anzahl der Generationen pro Lauf
+        total_steps = num_runs * total_generations
+        
+        # Setze max_lenses für den Optimizer
+        self.optimizer.max_lenses = max_lenses
+        
+        # Problem definieren (nur einmal)
+        self.optimizer.problem()
+        
+        for run in range(num_runs):
+            if self.abort_flag:
+                break
+                
+            # Emittiere Fortschritt
+            self.progress.emit(run * total_generations, total_steps)
+            
+            # Startpopulation erzeugen
+            pop_size = 70
+            population = self.optimizer.toolbox.population(n=pop_size)
+            
+            # Statistik-Objekt für Tracking
+            stats = tools.Statistics(lambda ind: ind.fitness.values)
+            stats.register("avg", np.mean)
+            stats.register("min", np.min)
+            stats.register("max", np.max)
+            
+            # Hall of Fame für die besten Individuen
+            hof = tools.HallOfFame(1)
+            
+            # Genetischer Algorithmus ausführen
+            for gen in range(total_generations):
+                if self.abort_flag:
+                    break
+                    
+                # Ein Schritt des Algorithmus
+                population = algorithms.varAnd(population, self.optimizer.toolbox, 0.5, 0.2)
+                
+                # Bewerte Population
+                fits = self.optimizer.toolbox.map(self.optimizer.toolbox.evaluate, population)
+                for fit, ind in zip(fits, population):
+                    ind.fitness.values = fit
+                
+                # Selektiere für nächste Generation
+                population = self.optimizer.toolbox.select(population, len(population))
+                
+                # Aktualisiere Hall of Fame
+                hof.update(population)
+                
+                # Emittiere Fortschritt
+                self.progress.emit(run * total_generations + gen + 1, total_steps)
+            
+            if not self.abort_flag and hof:
+                # Berechne Parameter für das beste Individuum dieses Laufs
+                best_individual = hof[0]
+                current_fitness = best_individual.fitness.values[0]
+                
+                # Wenn besser als bisher bestes Ergebnis, aktualisiere
+                if current_fitness < best_fitness:
+                    waist_sag, waist_tan, position_sag, position_tan = self.optimizer.calculate_beam_parameters(best_individual)
+                    
+                    best_result = {
+                        'lenses': [(lens['name'], lens['focal_length'], pos) for lens, pos in best_individual],
+                        'waist_sag': waist_sag,
+                        'waist_tan': waist_tan,
+                        'position_sag': position_sag,
+                        'position_tan': position_tan,
+                        'fitness': current_fitness,
+                        'run': run + 1
+                    }
+                    best_fitness = current_fitness
+        
+        return best_result
+    
+    def stop(self):
+        """Bricht die Optimierung ab"""
+        self.abort_flag = True
 
 class LensSystemOptimizer:
     def __init__(self, matrices):
@@ -41,23 +163,54 @@ class LensSystemOptimizer:
                     properties = component.get("properties", {})
                     name = component.get("name", "Unknown Lens")
                     
-                    # Bestimme Brennweite (verschiedene mögliche Felder)
-                    focal_length = None
-                    for key in ["Focal length tangential", "Focal length sagittal", "Focal length"]:
+                    # Bestimme Linsentyp basierend auf IS_ROUND
+                    is_round = properties.get("IS_ROUND", True)
+                    lens_type = "spherical" if is_round else "cylindrical"
+                    
+                    # Extrahiere Brennweiten für beide Achsen
+                    f_sag = None
+                    f_tan = None
+                    
+                    # Extrahiere sagittale und tangentiale Brennweite direkt
+                    for key in ["Focal length sagittal", "focal length sagittal"]:
                         if key in properties:
-                            focal_length = float(properties[key])
+                            f_sag = float(properties[key])
                             break
                     
-                    if focal_length is not None:
+                    for key in ["Focal length tangential", "focal length tangential"]:
+                        if key in properties:
+                            f_tan = float(properties[key])
+                            break
+                    
+                    # Wenn keine spezifischen Brennweiten gefunden wurden, suche nach allgemeiner Brennweite
+                    if f_sag is None and f_tan is None:
+                        for key in ["Focal length", "focal length"]:
+                            if key in properties:
+                                f_sag = f_tan = float(properties[key])
+                                break
+                    
+                    # Wenn wir eine Brennweite haben, füge die Linse zur Bibliothek hinzu
+                    if f_sag is not None or f_tan is not None:
+                        # Prüfe auf unendliche oder sehr große Brennweiten (zylindrische Linsen)
+                        if f_sag is not None and (f_sag > 1e20 or f_sag == float('inf')):
+                            f_sag = float('inf')  # Standardisiere auf unendlich
+                        
+                        if f_tan is not None and (f_tan > 1e20 or f_tan == float('inf')):
+                            f_tan = float('inf')  # Standardisiere auf unendlich
+                        
                         lens_entry = {
                             'name': name,
-                            'focal_length': focal_length,
-                            'component_data': component  # Vollständige Komponentendaten für später
+                            'focal_length': f_sag if f_sag is not None and f_sag != float('inf') else f_tan,  # Für Abwärtskompatibilität
+                            'focal_length_sag': f_sag,
+                            'focal_length_tan': f_tan,
+                            'lens_type': lens_type,
+                            'is_round': is_round,
+                            'component_data': component  # Vollständige Komponentendaten
                         }
                         self.lens_library.append(lens_entry)
 
         except Exception as e:
-            QMessageBox.critical(None, "Error", "No lenses found in the lens library. Please check the temp file.")
+            QMessageBox.critical(None, "Error", f"Error loading lens library: {str(e)}")
 
     def get_beam_parameters(self):
         """Lade Strahlparameter aus der temporären Datei"""
@@ -182,9 +335,15 @@ class LensSystemOptimizer:
                 elements_sag.append((beam.matrices.free_space, (distance, n)))
                 elements_tan.append((beam.matrices.free_space, (distance, n)))
             
-            # Linseneffekt hinzufügen
-            elements_sag.append((beam.matrices.lens, (lens['focal_length'],)))
-            elements_tan.append((beam.matrices.lens, (lens['focal_length'],)))
+            # Extrahiere Brennweiten für beide Ebenen
+            f_sag, f_tan = self._get_lens_focal_lengths(lens)
+            
+            # Linseneffekt hinzufügen - berücksichtige unterschiedliche Brennweiten
+            if f_sag is not None and f_sag != float('inf'):
+                elements_sag.append((beam.matrices.lens, (f_sag,)))
+            
+            if f_tan is not None and f_tan != float('inf'):
+                elements_tan.append((beam.matrices.lens, (f_tan,)))
             
             # Position aktualisieren
             last_position = position
@@ -215,12 +374,49 @@ class LensSystemOptimizer:
         waist_tan = beam.beam_radius(q_tan_final, self.wavelength, n)
         
         # Berechne Waist-Positionen
-        # Für genaue Waist-Position müssten wir den Imaginary-Teil zu Null setzen und rückwärts propagieren
-        # Vereinfachte Berechnung: 
         position_sag = self.distance - q_sag_final.real
         position_tan = self.distance - q_tan_final.real
         
         return waist_sag, waist_tan, position_sag, position_tan
+    
+    def _get_lens_focal_lengths(self, lens):
+        """Extrahiere sagittale und tangentiale Brennweite einer Linse"""
+        # Wenn bereits spezifische Brennweiten in der Linse gespeichert sind, verwende diese
+        f_sag = lens.get('focal_length_sag')
+        f_tan = lens.get('focal_length_tan')
+        
+        if f_sag is None or f_tan is None:
+            # Alternativ schaue in den Komponentendaten nach
+            component_data = lens.get('component_data', {})
+            properties = component_data.get('properties', {})
+            
+            # Extrahiere Brennweiten aus den Eigenschaften
+            if f_sag is None:
+                f_sag = properties.get('Focal length sagittal', lens.get('focal_length'))
+            
+            if f_tan is None:
+                f_tan = properties.get('Focal length tangential', lens.get('focal_length'))
+            
+            # Wenn immer noch nicht gefunden, verwende die generische Brennweite
+            if f_sag is None and f_tan is None:
+                f_default = lens.get('focal_length')
+                f_sag = f_tan = f_default
+        
+        # Konvertiere in float wenn möglich
+        try:
+            f_sag = float(f_sag) if f_sag is not None else None
+            f_tan = float(f_tan) if f_tan is not None else None
+        except (ValueError, TypeError):
+            f_sag = f_tan = lens.get('focal_length')
+        
+        # Prüfe auf unendliche oder sehr große Werte
+        if f_sag is not None and (f_sag > 1e20 or f_sag == float('inf')):
+            f_sag = float('inf')
+        
+        if f_tan is not None and (f_tan > 1e20 or f_tan == float('inf')):
+            f_tan = float('inf')
+        
+        return f_sag, f_tan
     
     def fitness_function(self, individual):
         """Berechne Fitness für ein gegebenes Individuum"""
@@ -228,8 +424,9 @@ class LensSystemOptimizer:
         waist_sag, waist_tan, position_sag, position_tan = self.calculate_beam_parameters(individual)
         
         # Berechne Abweichung von Zielparametern
-        fitness_waist = abs(self.waist_goal_sag - waist_sag) + abs(self.waist_goal_tan - waist_tan)
-        fitness_position = abs(self.waist_position_goal_sag - position_sag) + abs(self.waist_position_goal_tan - position_tan)
+        fitness_waist = abs(self.waist_goal_sag - waist_sag)/self.waist_goal_sag + abs(self.waist_goal_tan - waist_tan)/self.waist_goal_tan
+        fitness_position = abs(self.distance + self.waist_position_goal_sag - position_sag)/(self.distance + self.waist_position_goal_sag)
+        + abs(self.distance + self.waist_position_goal_tan - position_tan)/(self.distance + self.waist_position_goal_tan)
         
         # Gewichtung zwischen Strahlgröße und Position
         try:
@@ -242,7 +439,7 @@ class LensSystemOptimizer:
         
         return (fitness,)
     
-    def optimize_lens_system(self, max_lenses):
+    '''def optimize_lens_system(self, max_lenses):
         """Optimiere das Linsensystem mit einem genetischen Algorithmus"""
         try:
             # Validate input parameters
@@ -262,7 +459,7 @@ class LensSystemOptimizer:
             self.problem()
             
             # Startpopulation erzeugen
-            pop_size = 50
+            pop_size = 70
             population = self.toolbox.population(n=pop_size)
             
             # Statistik-Objekt für Tracking
@@ -280,7 +477,7 @@ class LensSystemOptimizer:
                 self.toolbox,
                 cxpb=0.5,      # Wahrscheinlichkeit für Crossover
                 mutpb=0.2,      # Wahrscheinlichkeit für Mutation
-                ngen=40,        # Anzahl der Generationen
+                ngen=50,        # Anzahl der Generationen
                 stats=stats,
                 halloffame=hof,
                 verbose=False   # Terminal-Ausgabe deaktivieren
@@ -303,12 +500,104 @@ class LensSystemOptimizer:
             }
             
             QMessageBox.information(None, "Optimization Complete", 
-                                  f"Optimization completed successfully.\n"
-                                  f"Final fitness: {result['fitness']:.6f}\n"
-                                  f"Number of lenses: {len(best_individual)}")
-            print (f"Final result: {result}")
+                                    f"Optimization completed successfully.\n"
+                                    f"Number of lenses: {len(best_individual)}\n"
+                                    f"Lenses: {', '.join([lens[0] for lens in result['lenses']])}\n"
+                                    f"Waist Sagittal: {waist_sag*1e6:.2f} um\n"
+                                    f"Waist Tangential: {waist_tan*1e6:.2f} um\n"
+                                    f"Position Sagittal: {position_sag*1e2:.2f} cm\n"
+                                    f"Position Tangential: {position_tan*1e2:.2f} cm\n"
+                                    f"Fitness: {best_individual.fitness.values[0]:.4f}")
             return result
             
         except Exception as e:
             QMessageBox.critical(None, "Optimization Error", f"Error during optimization: {str(e)}")
+            return None'''
+    
+    def optimize_lens_system(self, max_lenses, num_runs=100):
+        """Startet die Multi-Run-Optimierung in einem separaten Thread"""
+        try:
+            # Validierungen
+            if not self.lens_library:
+                QMessageBox.warning(None, "Warning", "No lenses in library. Please select lenses first.")
+                return None
+                
+            if len(self.lens_library) < 1:
+                QMessageBox.warning(None, "Warning", "Not enough lenses in library. Need at least 1 lens.")
+                return None
+            
+            # Erstelle Thread und Worker-Objekt
+            self.thread = QThread()
+            self.worker = OptimizationWorker(self, max_lenses, num_runs)
+            
+            # Erstelle Fortschrittsdialog
+            progress_dialog = QProgressDialog("Running multi-optimization...", "Cancel", 0, num_runs * 50)
+            progress_dialog.setWindowTitle("Optimization Progress")
+            progress_dialog.setMinimumDuration(0)
+            progress_dialog.setValue(0)
+            progress_dialog.setModal(True)
+            
+            # Verbinde Cancel-Button mit Abbruch-Funktion
+            progress_dialog.canceled.connect(self.worker.stop)
+            
+            # Verschiebe Worker in Thread
+            self.worker.moveToThread(self.thread)
+            
+            # Verbinde Signale und Slots
+            self.thread.started.connect(self.worker.run)
+            self.worker.finished.connect(self._on_multi_optimization_finished)
+            self.worker.error.connect(self._on_optimization_error)
+            self.worker.progress.connect(progress_dialog.setValue)
+            self.worker.finished.connect(progress_dialog.close)
+            self.worker.error.connect(progress_dialog.close)
+            self.worker.finished.connect(self.thread.quit)
+            self.worker.finished.connect(self.worker.deleteLater)
+            self.thread.finished.connect(self.thread.deleteLater)
+            
+            # Starte Thread
+            self.thread.start()
+            
+            # Zeige Fortschrittsdialog
+            progress_dialog.exec_()
+            
+            # Wir geben kein Ergebnis zurück, da die Berechnung asynchron erfolgt
+            # Das Ergebnis wird später über Signale übermittelt
             return None
+            
+        except Exception as e:
+            QMessageBox.critical(None, "Optimization Error", f"Error setting up optimization: {str(e)}")
+            return None
+    
+    def _on_multi_optimization_finished(self, result):
+        """Wird aufgerufen, wenn die Multi-Run-Optimierung erfolgreich abgeschlossen wurde"""
+        if not result:
+            QMessageBox.warning(None, "Optimization Result", "No valid solution found in any run.")
+            return
+            
+        # Extrahiere Ergebnisse für bessere Lesbarkeit
+        waist_sag = result['waist_sag']
+        waist_tan = result['waist_tan']
+        position_sag = result['position_sag']
+        position_tan = result['position_tan']
+        fitness = result['fitness']
+        lenses = result['lenses']
+        run = result.get('run', 0)
+        
+        # Zeige Erfolgs-Nachricht
+        print(None, "Multi-Run Optimization Complete", 
+                             f"Optimization completed successfully.\n"
+                             f"Best result found in run {run} of {self.worker.num_runs}.\n"
+                             f"Number of lenses: {len(lenses)}\n"
+                             f"Lenses: {', '.join([lens[0] for lens in lenses])}\n"
+                             f"Waist Sagittal: {waist_sag*1e6:.2f} μm\n"
+                             f"Waist Tangential: {waist_tan*1e6:.2f} μm\n"
+                             f"Position Sagittal: {position_sag*1e2:.2f} cm\n"
+                             f"Position Tangential: {position_tan*1e2:.2f} cm\n"
+                             f"Fitness: {fitness:.4f}")
+        
+        # Speichere Ergebnis für spätere Verwendung
+        self.last_optimization_result = result
+    
+    def _on_optimization_error(self, error_message):
+        """Wird aufgerufen, wenn ein Fehler während der Optimierung auftritt"""
+        QMessageBox.critical(None, "Optimization Error", error_message)

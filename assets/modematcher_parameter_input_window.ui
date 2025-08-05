@@ -232,7 +232,7 @@
          <bool>false</bool>
         </property>
         <property name="text">
-         <string>15 cm</string>
+         <string>0 cm</string>
         </property>
        </widget>
       </item>
@@ -242,7 +242,7 @@
          <bool>false</bool>
         </property>
         <property name="text">
-         <string>10 cm</string>
+         <string>0 cm</string>
         </property>
        </widget>
       </item>
@@ -378,14 +378,14 @@
       <item row="10" column="5">
        <widget class="QLineEdit" name="lineEdit_waist_position_output_sag">
         <property name="text">
-         <string>15 cm</string>
+         <string>0 cm</string>
         </property>
        </widget>
       </item>
       <item row="10" column="1">
        <widget class="QLineEdit" name="lineEdit_waist_position_sag">
         <property name="text">
-         <string>10 cm</string>
+         <string>0 cm</string>
         </property>
        </widget>
       </item>

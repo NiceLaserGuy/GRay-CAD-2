@@ -60,9 +60,94 @@ class ModematcherParameters(QObject):
         self.modematcher_parameter_window.show()
 
         self.ui_modematcher.button_back.clicked.connect(self.close_modematcher_parameter_window)
-
         self.ui_modematcher.button_next.clicked.connect(self.handle_next_button)
-
+        
+        # Verbinde CheckBox für sphärischen Eingangsstrahl mit Handler-Funktion
+        self.ui_modematcher.CheckBox_spherical_input_beam.stateChanged.connect(
+            self.handle_spherical_input_beam_changed)
+        
+        # Verbinde CheckBox für sphärischen Ausgangsstrahl mit Handler-Funktion
+        self.ui_modematcher.CheckBox_spherical_output_beam.stateChanged.connect(
+            self.handle_spherical_output_beam_changed)
+        
+        # Initialen Zustand für beide Checkboxen setzen
+        self.handle_spherical_input_beam_changed(
+            self.ui_modematcher.CheckBox_spherical_input_beam.isChecked())
+        self.handle_spherical_output_beam_changed(
+            self.ui_modematcher.CheckBox_spherical_output_beam.isChecked())
+    
+    def handle_spherical_input_beam_changed(self, state):
+        """
+        Handler für Änderungen an der CheckBox für sphärischen Eingabestrahl.
+        Wenn aktiviert, werden sagittal und tangential gleichgesetzt.
+        """
+        if state:
+            # Checkbox ist aktiviert - sphärischer Strahl
+            # Übernehme Wert von sagittal nach tangential
+            sag_value = self.ui_modematcher.lineEdit_waist_input_sag.text()
+            self.ui_modematcher.lineEdit_waist_input_tan.setText(sag_value)
+            sag_value_position = self.ui_modematcher.lineEdit_waist_position_sag.text()
+            self.ui_modematcher.lineEdit_waist_position_tan.setText(sag_value_position)
+            
+            # Sperre das tangentiale Feld
+            self.ui_modematcher.lineEdit_waist_input_tan.setEnabled(False)
+            self.ui_modematcher.lineEdit_waist_position_tan.setEnabled(False)
+            
+            # Verbinde Änderungen im sagittalen Feld mit dem tangentialen
+            self.ui_modematcher.lineEdit_waist_input_sag.textChanged.connect(
+                lambda text: self.ui_modematcher.lineEdit_waist_input_tan.setText(text))
+            self.ui_modematcher.lineEdit_waist_position_sag.textChanged.connect(
+                lambda text: self.ui_modematcher.lineEdit_waist_position_tan.setText(text))
+        else:
+            # Checkbox ist deaktiviert - astigmatischer Strahl
+            # Entsperre das tangentiale Feld
+            self.ui_modematcher.lineEdit_waist_input_tan.setEnabled(True)
+            self.ui_modematcher.lineEdit_waist_position_tan.setEnabled(True)
+            
+            # Trenne die Verbindung zwischen den Feldern
+            try:
+                self.ui_modematcher.lineEdit_waist_input_sag.textChanged.disconnect()
+                self.ui_modematcher.lineEdit_waist_position_sag.textChanged.disconnect()
+            except TypeError:
+                # Ignoriere Fehler, falls keine Verbindung besteht
+                pass
+    
+    def handle_spherical_output_beam_changed(self, state):
+        """
+        Handler für Änderungen an der CheckBox für sphärischen Ausgangsstrahl.
+        Wenn aktiviert, werden sagittal und tangential gleichgesetzt.
+        """
+        if state:
+            # Checkbox ist aktiviert - sphärischer Strahl
+            # Übernehme Wert von sagittal nach tangential
+            sag_value = self.ui_modematcher.lineEdit_waist_output_sag.text()
+            self.ui_modematcher.lineEdit_waist_output_tan.setText(sag_value)
+            sag_value_position = self.ui_modematcher.lineEdit_waist_position_output_sag.text()
+            self.ui_modematcher.lineEdit_waist_position_output_tan.setText(sag_value_position)
+            
+            # Sperre das tangentiale Feld
+            self.ui_modematcher.lineEdit_waist_output_tan.setEnabled(False)
+            self.ui_modematcher.lineEdit_waist_position_output_tan.setEnabled(False)
+            
+            # Verbinde Änderungen im sagittalen Feld mit dem tangentialen
+            self.ui_modematcher.lineEdit_waist_output_sag.textChanged.connect(
+                lambda text: self.ui_modematcher.lineEdit_waist_output_tan.setText(text))
+            self.ui_modematcher.lineEdit_waist_position_output_sag.textChanged.connect(
+                lambda text: self.ui_modematcher.lineEdit_waist_position_output_tan.setText(text))
+        else:
+            # Checkbox ist deaktiviert - astigmatischer Strahl
+            # Entsperre das tangentiale Feld
+            self.ui_modematcher.lineEdit_waist_output_tan.setEnabled(True)
+            self.ui_modematcher.lineEdit_waist_position_output_tan.setEnabled(True)
+            
+            # Trenne die Verbindung zwischen den Feldern
+            try:
+                self.ui_modematcher.lineEdit_waist_output_sag.textChanged.disconnect()
+                self.ui_modematcher.lineEdit_waist_position_output_sag.textChanged.disconnect()
+            except TypeError:
+                # Ignoriere Fehler, falls keine Verbindung besteht
+                pass
+    
     def close_modematcher_parameter_window(self):
         """
         Hides the current window and shows the previous window.
