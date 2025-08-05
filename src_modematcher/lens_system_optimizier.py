@@ -51,7 +51,7 @@ class OptimizationWorker(QObject):
         best_result = None
         best_fitness = float('inf')
         
-        total_generations = 50  # Anzahl der Generationen pro Lauf
+        total_generations = 70  # Anzahl der Generationen pro Lauf
         total_steps = num_runs * total_generations
         
         # Setze max_lenses für den Optimizer
@@ -68,7 +68,7 @@ class OptimizationWorker(QObject):
             self.progress.emit(run * total_generations)
             
             # Startpopulation erzeugen
-            pop_size = 70
+            pop_size = 50
             population = self.optimizer.toolbox.population(n=pop_size)
             
             # Statistik-Objekt für Tracking
@@ -105,12 +105,33 @@ class OptimizationWorker(QObject):
             if not self.abort_flag and hof:
                 # Berechne Parameter für das beste Individuum dieses Laufs
                 best_individual = hof[0]
+                
+                # Führe lokale Optimierung der Positionen durch
+                try:
+                    optimized_individual = self.optimizer._local_optimize(best_individual)
+                    # Prüfe, ob die optimierte Lösung besser ist
+                    if self.optimizer.fitness_function(optimized_individual)[0] < self.optimizer.fitness_function(best_individual)[0]:
+                        best_individual = optimized_individual
+                except Exception as e:
+                    print(f"Lokale Optimierung fehlgeschlagen: {str(e)}")
+                
                 current_fitness = best_individual.fitness.values[0]
+                
+                # Berechne Strahlparameter für diesen Lauf
+                waist_sag, waist_tan, position_sag, position_tan = self.optimizer.calculate_beam_parameters(best_individual)
+                
+                # Ausgabe der Ergebnisse dieses Runs
+                print(f"\n--- Ergebnisse für Run {run+1}/{num_runs} ---")
+                print(f"Fitness: {current_fitness:.6f}")
+                print(f"Anzahl Linsen: {len(best_individual)}")
+                print(f"Linsen: {', '.join([lens['name'] for lens, _ in best_individual])}")
+                print(f"Waist Sagittal: {waist_sag*1e6:.2f} μm")
+                print(f"Waist Tangential: {waist_tan*1e6:.2f} μm")
+                print(f"Position Sagittal: {position_sag*1e2:.2f} cm")
+                print(f"Position Tangential: {position_tan*1e2:.2f} cm")
                 
                 # Wenn besser als bisher bestes Ergebnis, aktualisiere
                 if current_fitness < best_fitness:
-                    waist_sag, waist_tan, position_sag, position_tan = self.optimizer.calculate_beam_parameters(best_individual)
-                    
                     best_result = {
                         'lenses': [(lens['name'], lens['focal_length'], pos) for lens, pos in best_individual],
                         'waist_sag': waist_sag,
@@ -121,6 +142,7 @@ class OptimizationWorker(QObject):
                         'run': run + 1
                     }
                     best_fitness = current_fitness
+        print(f"Best overall: {best_result}")
         
         return best_result
     
@@ -424,9 +446,17 @@ class LensSystemOptimizer:
         waist_sag, waist_tan, position_sag, position_tan = self.calculate_beam_parameters(individual)
         
         # Berechne Abweichung von Zielparametern
-        fitness_waist = abs(self.waist_goal_sag - waist_sag)/self.waist_goal_sag + abs(self.waist_goal_tan - waist_tan)/self.waist_goal_tan
-        fitness_position = abs(self.distance + self.waist_position_goal_sag - position_sag)/(self.distance + self.waist_position_goal_sag)
-        + abs(self.distance + self.waist_position_goal_tan - position_tan)/(self.distance + self.waist_position_goal_tan)
+        rel_waist_error_sag = ((self.waist_goal_sag - waist_sag)/self.waist_goal_sag)**2
+        rel_waist_error_tan = ((self.waist_goal_tan - waist_tan)/self.waist_goal_tan)**2
+        fitness_waist = rel_waist_error_sag + rel_waist_error_tan
+        
+        # Normalisierte Positionsabweichung
+        target_pos_sag = self.distance + self.waist_position_goal_sag
+        target_pos_tan = self.distance + self.waist_position_goal_tan
+        
+        rel_pos_error_sag = ((target_pos_sag - position_sag)/target_pos_sag)**2
+        rel_pos_error_tan = ((target_pos_tan - position_tan)/target_pos_tan)**2
+        fitness_position = rel_pos_error_sag + rel_pos_error_tan
         
         # Gewichtung zwischen Strahlgröße und Position
         try:
@@ -539,7 +569,7 @@ class LensSystemOptimizer:
                     ui_obj = getattr(self, attr_name)
                     if hasattr(ui_obj, 'progressBar'):
                         # Setze progressBar in der UI
-                        total_steps = num_runs * 50
+                        total_steps = num_runs * 70
                         ui_obj.progressBar.setMinimum(0)
                         ui_obj.progressBar.setMaximum(total_steps)
                         ui_obj.progressBar.setValue(0)
@@ -645,3 +675,43 @@ class LensSystemOptimizer:
     def _on_optimization_error(self, error_message):
         """Wird aufgerufen, wenn ein Fehler während der Optimierung auftritt"""
         QMessageBox.critical(None, "Optimization Error", error_message)
+    
+    def _local_optimize(self, best_individual):
+        """Führt eine lokale Optimierung der Linsenpositionen durch"""
+        # Extrahiere nur die Positionen für die Optimierung
+        initial_positions = np.array([pos for _, pos in best_individual])
+        
+        # Definiere Grenzen (0 bis self.distance)
+        bounds = [(0, self.distance) for _ in range(len(initial_positions))]
+        
+        # Fitness-Funktion für lokale Optimierung
+        def position_fitness(positions):
+            # Erstelle neues Individuum mit optimierten Positionen
+            new_individual = [(lens, pos) for (lens, _), pos in zip(best_individual, positions)]
+            # Sortiere nach Position
+            new_individual.sort(key=lambda x: x[1])
+            # Berechne Fitness
+            return self.fitness_function(new_individual)[0]
+        
+        # Führe lokale Optimierung durch
+        result = minimize(
+            position_fitness,
+            initial_positions,
+            method='L-BFGS-B',
+            bounds=bounds,
+            options={'maxiter': 100, 'disp': False}
+        )
+        
+        # Erstelle optimiertes Individuum als neue Liste
+        optimized_list = [(lens, pos) for (lens, _), pos in zip(best_individual, result.x)]
+        # Sortiere nach Position
+        optimized_list.sort(key=lambda x: x[1])
+        
+        # Konvertiere zu einem DEAP Individual-Objekt
+        optimized_individual = creator.Individual(optimized_list)
+        
+        # Berechne und setze Fitness
+        fitness_value = self.fitness_function(optimized_individual)
+        optimized_individual.fitness.values = fitness_value
+        
+        return optimized_individual
