@@ -4,12 +4,23 @@ from scipy.optimize import minimize
 import random
 import json
 import config
-from PyQt5.QtWidgets import QMessageBox, QProgressDialog, QApplication
-from PyQt5.QtCore import QThread, QObject, pyqtSignal, pyqtSlot
+from PyQt5.QtWidgets import QMessageBox, QProgressDialog, QApplication, QTableWidgetItem
+from PyQt5.QtCore import QThread, QObject, pyqtSignal, pyqtSlot, Qt
+from src_physics.value_converter import ValueConverter
+
+class NumericTableWidgetItem(QTableWidgetItem):
+    """QTableWidgetItem-Subklasse für korrekte numerische Sortierung"""
+    def __init__(self, text, value):
+        super().__init__(text)
+        self.setData(Qt.UserRole, float(value))
+        
+    def __lt__(self, other):
+        # Vergleich basierend auf dem tatsächlichen numerischen Wert
+        return self.data(Qt.UserRole) < other.data(Qt.UserRole)
 
 class OptimizationWorker(QObject):
     """Worker-Klasse für die Durchführung der Optimierung in einem separaten Thread"""
-    finished = pyqtSignal(dict)  # Signal mit Optimierungsergebnis
+    finished = pyqtSignal(object)  # Signal mit Optimierungsergebnis
     error = pyqtSignal(str)      # Signal für Fehler
     progress = pyqtSignal(int)   # Signal für Fortschrittsanzeige (nur aktueller Wert)
     
@@ -47,103 +58,66 @@ class OptimizationWorker(QObject):
             self.error.emit(f"Error during optimization: {str(e)}")
     
     def _run_multi_optimization(self, max_lenses, num_runs):
-        """Führt mehrere Durchläufe der Optimierung durch und gibt das beste Ergebnis zurück"""
+        results = []
         best_result = None
         best_fitness = float('inf')
-        
-        total_generations = 20  # Anzahl der Generationen pro Lauf
-        total_steps = num_runs * total_generations
-        
-        # Setze max_lenses für den Optimizer
+        total_generations = 25
+
         self.optimizer.max_lenses = max_lenses
-        
-        # Problem definieren (nur einmal)
         self.optimizer.problem()
-        
+
         for run in range(num_runs):
             if self.abort_flag:
                 break
-                
-            # Emittiere Fortschritt (nur aktueller Wert)
+
             self.progress.emit(run * total_generations)
-            
-            # Startpopulation erzeugen
-            pop_size = 50
+            pop_size = 70
             population = self.optimizer.toolbox.population(n=pop_size)
-            
-            # Statistik-Objekt für Tracking
             stats = tools.Statistics(lambda ind: ind.fitness.values)
             stats.register("avg", np.mean)
             stats.register("min", np.min)
             stats.register("max", np.max)
-            
-            # Hall of Fame für die besten Individuen
             hof = tools.HallOfFame(1)
-            
-            # Genetischer Algorithmus ausführen
+
             for gen in range(total_generations):
                 if self.abort_flag:
                     break
-                
-                # Ein Schritt des Algorithmus
                 population = algorithms.varAnd(population, self.optimizer.toolbox, 0.5, 0.2)
-                
-                # Bewerte Population
                 fits = self.optimizer.toolbox.map(self.optimizer.toolbox.evaluate, population)
                 for fit, ind in zip(fits, population):
                     ind.fitness.values = fit
-                
-                # Selektiere für nächste Generation
                 population = self.optimizer.toolbox.select(population, len(population))
-                
-                # Aktualisiere Hall of Fame
                 hof.update(population)
-                
-                # Emittiere Fortschritt (nur aktueller Wert)
                 self.progress.emit(run * total_generations + gen + 1)
-            
+
             if not self.abort_flag and hof:
-                # Berechne Parameter für das beste Individuum dieses Laufs
                 best_individual = hof[0]
-                
-                # Führe lokale Optimierung der Positionen durch
                 try:
                     optimized_individual = self.optimizer._local_optimize(best_individual)
-                    # Prüfe, ob die optimierte Lösung besser ist
                     if self.optimizer.fitness_function(optimized_individual)[0] < self.optimizer.fitness_function(best_individual)[0]:
                         best_individual = optimized_individual
                 except Exception as e:
                     print(f"Lokale Optimierung fehlgeschlagen: {str(e)}")
-                
+
                 current_fitness = best_individual.fitness.values[0]
-                
-                # Berechne Strahlparameter für diesen Lauf
                 waist_sag, waist_tan, position_sag, position_tan = self.optimizer.calculate_beam_parameters(best_individual)
-                
-                # Ausgabe der Ergebnisse dieses Runs
-                print(f"\n--- Ergebnisse für Run {run+1}/{num_runs} ---")
-                print(f"Fitness: {current_fitness:.6f}")
-                print(f"Anzahl Linsen: {len(best_individual)}")
-                print(f"Linsen: {', '.join([lens['name'] for lens, _ in best_individual])}")
-                print(f"Waist Sagittal: {waist_sag*1e6:.2f} μm")
-                print(f"Waist Tangential: {waist_tan*1e6:.2f} μm")
-                print(f"Position Sagittal: {position_sag*1e2:.2f} cm")
-                print(f"Position Tangential: {position_tan*1e2:.2f} cm")
-                
-                # Wenn besser als bisher bestes Ergebnis, aktualisiere
+
+                result = {
+                    'lenses': [(lens['name'], lens['focal_length'], pos) for lens, pos in best_individual],
+                    'waist_sag': waist_sag,
+                    'waist_tan': waist_tan,
+                    'position_sag': position_sag,
+                    'position_tan': position_tan,
+                    'fitness': current_fitness,
+                    'run': run + 1
+                }
+                results.append(result)
+
                 if current_fitness < best_fitness:
-                    best_result = {
-                        'lenses': [(lens['name'], lens['focal_length'], pos) for lens, pos in best_individual],
-                        'waist_sag': waist_sag,
-                        'waist_tan': waist_tan,
-                        'position_sag': position_sag,
-                        'position_tan': position_tan,
-                        'fitness': current_fitness,
-                        'run': run + 1
-                    }
+                    best_result = result
                     best_fitness = current_fitness
-        
-        return best_result
+
+        return results  # <--- Jetzt wird eine Liste zurückgegeben!
     
     def stop(self):
         """Bricht die Optimierung ab"""
@@ -153,6 +127,7 @@ class LensSystemOptimizer:
     def __init__(self, matrices):
         self.matrices = matrices
         self.lens_library = []  # Wird dynamisch geladen
+        self.vc = ValueConverter()
         
         # DEAP Setup entfernt - wird jetzt global in graycad_start.py gemacht
         self.toolbox = base.Toolbox()
@@ -468,81 +443,6 @@ class LensSystemOptimizer:
         
         return (fitness,)
     
-    '''def optimize_lens_system(self, max_lenses):
-        """Optimiere das Linsensystem mit einem genetischen Algorithmus"""
-        try:
-            # Validate input parameters
-            if not self.lens_library:
-                QMessageBox.warning(None, "Warning", "No lenses in library. Please select lenses first.")
-                return None
-                
-            # FIX: Ensure max_lenses is at least 1
-            self.max_lenses = max(1, max_lenses)
-            
-            # FIX: Make sure we have at least 2 individuals for crossover to work
-            if len(self.lens_library) < 1:
-                QMessageBox.warning(None, "Warning", "Not enough lenses in library. Need at least 1 lens.")
-                return None
-            
-            # Problem definieren
-            self.problem()
-            
-            # Startpopulation erzeugen
-            pop_size = 70
-            population = self.toolbox.population(n=pop_size)
-            
-            # Statistik-Objekt für Tracking
-            stats = tools.Statistics(lambda ind: ind.fitness.values)
-            stats.register("avg", np.mean)
-            stats.register("min", np.min)
-            stats.register("max", np.max)
-            
-            # Hall of Fame für die besten Individuen
-            hof = tools.HallOfFame(1)
-            
-            # Genetischer Algorithmus ausführen
-            algorithms.eaSimple(
-                population, 
-                self.toolbox,
-                cxpb=0.5,      # Wahrscheinlichkeit für Crossover
-                mutpb=0.2,      # Wahrscheinlichkeit für Mutation
-                ngen=50,        # Anzahl der Generationen
-                stats=stats,
-                halloffame=hof,
-                verbose=False   # Terminal-Ausgabe deaktivieren
-            )
-            
-            # Bestes Individuum zurückgeben
-            best_individual = hof[0]
-            
-            # Berechne finale Parameter
-            waist_sag, waist_tan, position_sag, position_tan = self.calculate_beam_parameters(best_individual)
-            
-            # Ergebnisse vorbereiten
-            result = {
-                'lenses': [(lens['name'], lens['focal_length'], pos) for lens, pos in best_individual],
-                'waist_sag': waist_sag,
-                'waist_tan': waist_tan,
-                'position_sag': position_sag,
-                'position_tan': position_tan,
-                'fitness': best_individual.fitness.values[0]
-            }
-            
-            QMessageBox.information(None, "Optimization Complete", 
-                                    f"Optimization completed successfully.\n"
-                                    f"Number of lenses: {len(best_individual)}\n"
-                                    f"Lenses: {', '.join([lens[0] for lens in result['lenses']])}\n"
-                                    f"Waist Sagittal: {waist_sag*1e6:.2f} um\n"
-                                    f"Waist Tangential: {waist_tan*1e6:.2f} um\n"
-                                    f"Position Sagittal: {position_sag*1e2:.2f} cm\n"
-                                    f"Position Tangential: {position_tan*1e2:.2f} cm\n"
-                                    f"Fitness: {best_individual.fitness.values[0]:.4f}")
-            return result
-            
-        except Exception as e:
-            QMessageBox.critical(None, "Optimization Error", f"Error during optimization: {str(e)}")
-            return None'''
-    
     def optimize_lens_system(self, max_lenses, num_runs=50):
         """Startet die Multi-Run-Optimierung in einem separaten Thread"""
         try:
@@ -568,7 +468,7 @@ class LensSystemOptimizer:
                     ui_obj = getattr(self, attr_name)
                     if hasattr(ui_obj, 'progressBar'):
                         # Setze progressBar in der UI
-                        total_steps = num_runs * 20
+                        total_steps = num_runs * 25
                         ui_obj.progressBar.setMinimum(0)
                         ui_obj.progressBar.setMaximum(total_steps)
                         ui_obj.progressBar.setValue(0)
@@ -641,35 +541,67 @@ class LensSystemOptimizer:
                     
                     break
     
-    def _on_multi_optimization_finished(self, result):
-        """Wird aufgerufen, wenn die Multi-Run-Optimierung erfolgreich abgeschlossen wurde"""
-        if not result:
+    def _on_multi_optimization_finished(self, results):
+        """
+        Befüllt das QTableWidget tableResults mit allen Optimierungsergebnissen.
+        Jeder Eintrag in results ist ein Dictionary mit den Keys:
+        'fitness', 'waist_sag', 'position_sag', 'run'
+        """
+        if not results:
             QMessageBox.warning(None, "Optimization Result", "No valid solution found in any run.")
             return
+
+        # Zielwerte aus den geladenen Parametern
+        w0_sag_goal = self.waist_goal_sag
+        z0_sag_goal = self.distance + self.waist_position_goal_sag
+
+        # UI finden
+        ui = None
+        for attr_name in ['ui', 'modematcher_calculation', 'ui_modematcher_calculation']:
+            if hasattr(self, attr_name):
+                ui = getattr(self, attr_name)
+                break
+
+        if ui and hasattr(ui, 'tableResults'):
+            table = ui.tableResults
+            table.setRowCount(len(results))
+            for row, result in enumerate(results):
+                waist_sag = result['waist_sag']
+                position_sag = result['position_sag']
+                fitness = result['fitness']
+                delta_w0_sag = waist_sag - w0_sag_goal
+                delta_z0_sag = position_sag - z0_sag_goal
+
+                # Fitness mit numerischem Wert für Sortierung
+                item_fitness = NumericTableWidgetItem(f"{fitness:.3e}", fitness)
+                
+                # Waist mit NumericTableWidgetItem
+                item_waist = NumericTableWidgetItem(f"{self.vc.convert_to_nearest_string(waist_sag)}", waist_sag)
+                
+                # Delta Waist mit NumericTableWidgetItem
+                item_delta_waist = NumericTableWidgetItem(f"{self.vc.convert_to_nearest_string(delta_w0_sag)}", delta_w0_sag)
+                
+                # Position mit NumericTableWidgetItem
+                item_position = NumericTableWidgetItem(f"{self.vc.convert_to_nearest_string(position_sag)}", position_sag)
+                
+                # Delta Position mit NumericTableWidgetItem
+                item_delta_position = NumericTableWidgetItem(f"{self.vc.convert_to_nearest_string(delta_z0_sag)}", delta_z0_sag)
+                
+                # Setze Items in Tabelle
+                table.setItem(row, 0, item_fitness)
+                table.setItem(row, 1, item_waist)
+                table.setItem(row, 2, item_delta_waist)
+                table.setItem(row, 3, item_position)
+                table.setItem(row, 4, item_delta_position)
+
+            # Aktiviere Sortierung für die Tabelle
+            table.setSortingEnabled(True)
             
-        # Extrahiere Ergebnisse für bessere Lesbarkeit
-        waist_sag = result['waist_sag']
-        waist_tan = result['waist_tan']
-        position_sag = result['position_sag']
-        position_tan = result['position_tan']
-        fitness = result['fitness']
-        lenses = result['lenses']
-        run = result.get('run', 0)
-        
-        # Zeige Erfolgs-Nachricht
-        QMessageBox.information(None, "Multi-Run Optimization Complete", 
-                         f"Optimization completed successfully.\n"
-                         f"Best result found in run {run} of {self.worker.num_runs}.\n"
-                         f"Number of lenses: {len(lenses)}\n"
-                         f"Lenses: {', '.join([lens[0] for lens in lenses])}\n"
-                         f"Waist Sagittal: {waist_sag*1e6:.2f} μm\n"
-                         f"Waist Tangential: {waist_tan*1e6:.2f} μm\n"
-                         f"Position Sagittal: {position_sag*1e2:.2f} cm\n"
-                         f"Position Tangential: {position_tan*1e2:.2f} cm\n"
-                         f"Fitness: {fitness:.4f}")
-    
-        # Speichere Ergebnis für spätere Verwendung
-        self.last_optimization_result = result
+            # Sortiere nach Fitness (Spalte 0)
+            table.sortItems(0, Qt.AscendingOrder)
+
+        # Speichere alle Ergebnisse für spätere Verwendung
+        self.last_optimization_results = results
     
     def _on_optimization_error(self, error_message):
         """Wird aufgerufen, wenn ein Fehler während der Optimierung auftritt"""

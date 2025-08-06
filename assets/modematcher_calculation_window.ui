@@ -30,6 +30,9 @@
       <property name="sizeAdjustPolicy">
        <enum>QAbstractScrollArea::AdjustToContentsOnFirstShow</enum>
       </property>
+      <property name="alternatingRowColors">
+       <bool>true</bool>
+      </property>
       <property name="selectionMode">
        <enum>QAbstractItemView::ExtendedSelection</enum>
       </property>
@@ -89,12 +92,12 @@
       </column>
       <column>
        <property name="text">
-        <string>w₀, tan</string>
+        <string>z₀, sag</string>
        </property>
       </column>
       <column>
        <property name="text">
-        <string>Δw₀, tan</string>
+        <string>Δz₀, sag</string>
        </property>
       </column>
      </widget>
