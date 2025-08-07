@@ -383,87 +383,38 @@ class PropertiesHandler:
         self._property_update_timer.timeout.connect(self.update_rayleigh)
         
     def save_properties_to_component(self, component):
-        """Save current field values to the given component."""
-        # Verhindere rekursive Aufrufe
-        if hasattr(self, '_saving_properties') and self._saving_properties:
+        if not component or not hasattr(self, '_property_fields'):
             return component
-        
-        self._saving_properties = True
-        
-        try:
-            if not isinstance(component, dict) or "properties" not in component:
-                return None
-            
-            updated = copy.deepcopy(component)
-            error_msgs = []
-            # Merke alte Werte für Rücksetzen
-            old_values = {}
-
-            for key, field in self._property_fields.items():
-                if key not in updated["properties"]:
-                    continue
-                if "Rayleigh range" in key:
-                    continue
-                # NEU: Refractive index kann QComboBox oder QLineEdit sein
-                if key == "Refractive index":
-                    if isinstance(field, QtWidgets.QComboBox):
-                        value = field.currentText()
-                    elif isinstance(field, QtWidgets.QLineEdit):
-                        try:
-                            value = float(field.text())
-                        except Exception:
-                            value = field.text()
-                    else:
-                        value = updated["properties"][key]
-                    updated["properties"][key] = value
-                    continue  # Restliche Prüfungen für dieses Feld überspringen
-                # Standardbehandlung
-                if isinstance(field, QtWidgets.QComboBox):
-                    value = field.currentText()
-                    updated["properties"][key] = value
-                elif isinstance(field, QtWidgets.QLineEdit):
-                    old_value = updated["properties"][key]
-                    try:
-                        # SPEZIELLE BEHANDLUNG FÜR WINKEL
-                        if key == "Angle of incidence":
-                            # Konvertiere von Grad zu Radiant für die Speicherung
-                            value_in_degrees = float(field.text())  # Direkt als Float, ohne ValueConverter
-                            value = np.deg2rad(value_in_degrees)
-                        else:
-                            # Normale Behandlung für andere Felder
-                            value = self.vc.convert_to_float(field.text(), self)
-                    except Exception:
-                        value = field.text()
     
-                    # Fehlerprüfung für Beam
-                    if key in ["Waist radius sagittal", "Waist radius tangential", "Wavelength"]:
-                        if isinstance(value, (int, float)) and value <= 0:
-                            error_msgs.append(f"{key} must be > 0!")
-                            old_values[key] = old_value
-                    # Fehlerprüfung für Propagation
-                    if key == "Length" and "propagation" in updated.get("name", "").lower():
-                        if isinstance(value, (int, float, str)) and value < 0:
-                            error_msgs.append("Length (Propagation) must be > 0!")
-                            old_values[key] = old_value
-                    if key in ["Radius of curvature tangential", "Radius of curvature sagittal", "Focal length tangential", "Focal length sagittal"]:
-                        if isinstance(value, (int, float)) and value == 0:
-                            error_msgs.append(f"{key} must be not 0!")
-                            old_values[key] = old_value
-                    updated["properties"][key] = value
+        # Verhindere Updates während Setup-Wechsel
+        if hasattr(self, '_switching_setups') and self._switching_setups:
+            return component
+    
+        if self._saving_properties:
+            return component
+    
+        self._saving_properties = True
+    
+        try:
+            updated = copy.deepcopy(component)
+            if "properties" not in updated:
+                updated["properties"] = {}
+            
+            for key, field in self._property_fields.items():
+                if isinstance(field, QtWidgets.QLineEdit):
+                    updated["properties"][key] = self.vc.convert_to_float(field.text())
                 elif isinstance(field, QtWidgets.QCheckBox):
-                    # KONSISTENTE Boolean-Speicherung
-                    updated["properties"][key] = field.isChecked()  # Echte Python Booleans
-
-            if error_msgs:
-                # Setze ungültige Felder auf alten Wert zurück
-                for key, old_value in old_values.items():
-                    if key in self._property_fields:
-                        self._property_fields[key].blockSignals(True)
-                        self._property_fields[key].setText(self.vc.convert_to_nearest_string(old_value))
-                        self._property_fields[key].blockSignals(False)
-                QtWidgets.QMessageBox.critical(self, "Invalid Input", "\n".join(error_msgs))
-                return None
-
+                    updated["properties"][key] = field.isChecked()
+            
+            # Synchronisiere Beam-Properties in der gesamten setupList
+            if updated.get("type", "").upper() == "BEAM" and hasattr(self, "setupList"):
+                for i in range(self.setupList.count()):
+                    item = self.setupList.item(i)
+                    comp = item.data(QtCore.Qt.UserRole)
+                    if isinstance(comp, dict) and comp.get("type", "").upper() == "BEAM":
+                        comp["properties"] = copy.deepcopy(updated["properties"])
+                        item.setData(QtCore.Qt.UserRole, comp)
+            
             return updated
             
         finally:

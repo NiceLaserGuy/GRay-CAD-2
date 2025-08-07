@@ -239,6 +239,8 @@ class MainWindow(QMainWindow, PropertiesHandler):
         # Projects-Ordner in Fenstertitel anzeigen
         self.setWindowTitle(f"GRay-CAD 2 - Projects: {self.action_handler.projects_dir}")
         
+        self._previous_setup_index = 0  # Initial ist Setup 0 aktiv
+    
     def update_live_plot_delayed_original(self):
         """Original-Implementation für Live-Plot-Updates"""
         if hasattr(self, '_live_plot_update_timer'):
@@ -258,6 +260,9 @@ class MainWindow(QMainWindow, PropertiesHandler):
             self.setWindowTitle(title[:-1])
 
     def create_new_setup(self):
+        # WICHTIG: Speichere das aktuelle Setup vor dem Erstellen eines neuen
+        self.save_current_setup()
+        
         # Finde die höchste existierende Setup-Nummer aus self.setups
         existing_numbers = []
         for setup in self.setups:
@@ -278,12 +283,9 @@ class MainWindow(QMainWindow, PropertiesHandler):
         # Erstelle neues Setup mit der höchsten Nummer
         new_setup_name = f"Setup {next_number}"
 
-        # Kopiere das aktuelle Setup
-        new_setup = []
-        for i in range(self.setupList.count()):
-            item = self.setupList.item(i)
-            comp = item.data(QtCore.Qt.UserRole)
-            new_setup.append(copy.deepcopy(comp))
+        # Verwende das Default-Setup aus SetupList statt das aktuelle Setup
+        default_components = SetupList.get_default_components()
+        new_setup = [copy.deepcopy(comp) for comp in default_components]
         
         # Verwende den berechneten Namen statt "new setup {count}"
         self.setups.append({"name": new_setup_name, "components": new_setup})
@@ -304,38 +306,87 @@ class MainWindow(QMainWindow, PropertiesHandler):
             # Optional: ComboBox-Eintrag aktualisieren (falls nötig)
             self.ui.comboBoxSetup.setItemText(idx, new_name)
 
+    def save_current_setup(self, target_index=None):
+        """Speichert die aktuelle setupList in das angegebene Setup."""
+        if target_index is None:
+            target_index = self.ui.comboBoxSetup.currentIndex()
+        
+        if target_index < 0 or target_index >= len(self.setups):
+            return
+            
+        if self.setupList.count() == 0:
+            return
+            
+        current_setup = []
+        for i in range(self.setupList.count()):
+            item = self.setupList.item(i)
+            comp = item.data(QtCore.Qt.UserRole)
+            if comp:
+                current_setup.append(copy.deepcopy(comp))
+    
+        self.setups[target_index]["components"] = current_setup
+
     def on_setup_selection_changed(self, index):
+        """Wechselt zwischen Setups mit vollständiger Isolation"""
         if index < 0 or index >= len(self.setups):
             return
-        
-        # Speichere aktuelle Properties bevor Setup gewechselt wird
-        if hasattr(self, "_last_component_item") and self._last_component_item is not None:
-            try:
-                last_component = self._last_component_item.data(QtCore.Qt.UserRole)
-                if isinstance(last_component, dict):
-                    updated_last = self.save_properties_to_component(last_component)
-                    if updated_last:
-                        self._last_component_item.setData(QtCore.Qt.UserRole, updated_last)
-            except (RuntimeError, AttributeError):
-                pass
     
-        # Setup laden
-        self.setupList.clear()
-        setup = self.setups[index]["components"]
-        for comp in setup:
-            item = QtWidgets.QListWidgetItem(comp.get("name", "Unnamed"))
-            item.setData(QtCore.Qt.UserRole, copy.deepcopy(comp))
-            self.setupList.addItem(item)
+        self._switching_setups = True
+    
+        try:
+            # Speichere das VORHERIGE Setup (falls vorhanden)
+            previous_index = getattr(self, '_previous_setup_index', None)
+            if previous_index is not None and previous_index != index:
+                self.save_current_setup(previous_index)
         
-        # Wichtig: Letztes Item zurücksetzen
-        self._last_component_item = None
+            self._previous_setup_index = index
         
-        # Properties-Panel leeren
-        if hasattr(self, '_property_fields'):
-            self._property_fields.clear()
+            # Trenne alle Signal-Verbindungen UND leere Property-Panel
+            if hasattr(self, '_property_fields'):
+                for field in self._property_fields.values():
+                    if hasattr(field, 'blockSignals'):
+                        field.blockSignals(True)
+                
+                    if hasattr(field, 'textChanged'):
+                        try:
+                            field.textChanged.disconnect()
+                        except TypeError:
+                            pass
+                    if hasattr(field, 'stateChanged'):
+                        try:
+                            field.stateChanged.disconnect()
+                        except TypeError:
+                            pass
+                    if hasattr(field, 'currentIndexChanged'):
+                        try:
+                            field.currentIndexChanged.disconnect()
+                        except TypeError:
+                            pass
+            
+                self._property_fields.clear()
         
-        self.update_live_plot()
-        self.scale_visible_setup()
+            # Leere das Property-Panel komplett
+            if hasattr(self, 'propertyLayout'):
+                while self.propertyLayout.count():
+                    child = self.propertyLayout.takeAt(0)
+                    if child.widget():
+                        child.widget().deleteLater()
+        
+            self._last_component_item = None
+            self.setupList.clear()
+        
+            # Lade das neue Setup
+            setup = self.setups[index]["components"]
+            for comp in setup:
+                item = QtWidgets.QListWidgetItem(comp.get("name", "Unnamed"))
+                item.setData(QtCore.Qt.UserRole, copy.deepcopy(comp))
+                self.setupList.addItem(item)
+        
+            self.update_live_plot()
+            self.scale_visible_setup()
+    
+        finally:
+            self._switching_setups = False
 
     def delete_setup(self):
         idx = self.ui.comboBoxSetup.currentIndex()
@@ -634,70 +685,74 @@ class MainWindow(QMainWindow, PropertiesHandler):
         self.optical_plotter.plot_optical_system_from_resonator(optical_system)
         
     def update_live_plot(self):
+        """Update live plot with proper saving"""
+        print(f"DEBUG update_live_plot: Plot-Update gestartet")
+        
+        # Führe das Plot-Update durch
         self.optical_plotter.update_live_plot(self)
-                
-    def show_error(self):
-        msg = CustomMessageBox(self, "Error", "You do not have permission to exceed this limit!", "..\\GRay-CAD-2\\assets\\error.gif")
-        msg.exec()
-    
-    def update_plane_lens_fields(self):
-        """Update UI when Plan lens checkbox changes"""
-        is_plane = False
-        plane_field = self._property_fields.get("Plan lens")
-        if isinstance(plane_field, QtWidgets.QCheckBox):
-            is_plane = plane_field.isChecked()
         
-        # Aktualisiere die Felder entsprechend (vereinfacht für normale LENS)
-        for direction in ["sagittal", "tangential"]:
-            key = f"Radius of curvature {direction}"
-            field = self._property_fields.get(key)
-            if field and is_plane:
-                field.setReadOnly(True)
-                field.setStyleSheet("background-color: #eee; color: #888;")
-                field.setText("inf")  # Unendlich für Plan lens
-            elif field:
-                field.setReadOnly(False)
-                field.setStyleSheet("")
+        # NACH dem Plot-Update: Speichere die aktuellen Änderungen
+        # Aber nur wenn wir nicht gerade zwischen Setups wechseln
+        if hasattr(self, '_switching_setups') and self._switching_setups:
+            print(f"DEBUG update_live_plot: Überspringe Speicherung während Setup-Wechsel")
+            return
         
-        # Force update of optical system plot
-        self.update_live_plot()
+        print(f"DEBUG update_live_plot: Plane verzögerte Speicherung")
+        # Verzögerte Speicherung um Race Conditions zu vermeiden
+        QtCore.QTimer.singleShot(10, self.save_current_setup)
+
+    def save_properties_to_component(self, component):
+        """Debug-erweiterte Version"""
+        if not component or not hasattr(self, '_property_fields'):
+            return component
         
-        # Optional: Sichtbaren Bereich anpassen
-        if is_plane:
-            self.scale_visible_setup()
+        comp_type = component.get("type", "UNKNOWN")
+        comp_name = component.get("name", "UNNAMED")
+        print(f"DEBUG save_properties_to_component: Speichere Properties für {comp_type} '{comp_name}'")
         
-        # Zeige Hinweistext bei planparallelen Eingangsflächen
-        info_text = ""
-        if is_plane:
-            info_text = "Note: Lens is plane, curvature radius is infinite."
-        if hasattr(self, 'label_info'):
-            self.label_info.setText(info_text)
+        if self._saving_properties:
+            print(f"DEBUG save_properties_to_component: Bereits am Speichern, überspringe")
+            return component
         
-        # Bei Änderung der Checkbox auch die Sichtbarkeit der Felder steuern
-        def on_state_changed():
-            checked = plane_field.isChecked()
-            for side in ["Input", "Output"]:
-                for direction in ["sagittal", "tangential"]:
-                    key = f"{side} radius of curvature {direction}"
-                    field = self._property_fields.get(key)
-                    if field:
-                        field.setVisible(not checked or side == "Output")
+        self._saving_properties = True
         
-        on_state_changed()  # Initiale Anwendung
-        plane_field.stateChanged.connect(lambda _: on_state_changed())
+        try:
+            updated = copy.deepcopy(component)
+            if "properties" not in updated:
+                updated["properties"] = {}
+            
+            for key, field in self._property_fields.items():
+                if isinstance(field, QtWidgets.QLineEdit):
+                    old_value = updated["properties"].get(key, "N/A")
+                    new_value = self.vc.convert_to_float(field.text())
+                    if old_value != new_value:
+                        print(f"DEBUG save_properties_to_component: {key}: {old_value} -> {new_value}")
+                    updated["properties"][key] = new_value
+                elif isinstance(field, QtWidgets.QCheckBox):
+                    old_value = updated["properties"].get(key, "N/A")
+                    new_value = field.isChecked()
+                    if old_value != new_value:
+                        print(f"DEBUG save_properties_to_component: {key}: {old_value} -> {new_value}")
+                    updated["properties"][key] = new_value
+            
+            # Synchronisiere Beam-Properties in der gesamten setupList
+            if updated.get("type", "").upper() == "BEAM" and hasattr(self, "setupList"):
+                print(f"DEBUG save_properties_to_component: Synchronisiere Beam-Properties in setupList")
+                for i in range(self.setupList.count()):
+                    item = self.setupList.item(i)
+                    comp = item.data(QtCore.Qt.UserRole)
+                    if isinstance(comp, dict) and comp.get("type", "").upper() == "BEAM":
+                        old_waist = comp.get("properties", {}).get("Waist radius sagittal", "N/A")
+                        new_waist = updated["properties"].get("Waist radius sagittal", "N/A")
+                        print(f"DEBUG save_properties_to_component: Beam sync {i}: {old_waist} -> {new_waist}")
+                        comp["properties"] = copy.deepcopy(updated["properties"])
+                        item.setData(QtCore.Qt.UserRole, comp)
         
-        # Nach dem Hinzufügen der "Plan lens" Checkbox
-        if "Plan lens" in self._property_fields:
-            # Vorherige Verbindung trennen, falls vorhanden
-            try:
-                self._property_fields["Plan lens"].stateChanged.disconnect(self.update_plane_lens_fields)
-            except TypeError:
-                pass
-            # Bei Änderung aktualisieren
-            self._property_fields["Plan lens"].stateChanged.connect(self.update_plane_lens_fields)
-            # Initial anwenden
-            self.update_plane_lens_fields()
-    
+        finally:
+            self._saving_properties = False
+        
+        return updated
+        
     def receive_setup(self, setup_components):
         """
         Empfängt ein Setup vom Resonator und fügt es zur Setup-Liste hinzu
@@ -735,7 +790,7 @@ class MainWindow(QMainWindow, PropertiesHandler):
                 next_number = 1
             
             # Erstelle neues Setup mit Resonator-Komponenten
-            new_setup_name = f"Setup {next_number} (Resonator)"
+            new_setup_name = f"Setup {next_number}"
             
             # Füge das Resonator-Setup hinzu
             self.setups.append({"name": new_setup_name, "components": setup_components})
