@@ -286,7 +286,7 @@ class MainWindow(QMainWindow, PropertiesHandler):
             new_setup.append(copy.deepcopy(comp))
         
         # Verwende den berechneten Namen statt "new setup {count}"
-        self.setups.insert(0, {"name": new_setup_name, "components": new_setup})
+        self.setups.append({"name": new_setup_name, "components": new_setup})
         self.update_setup_names_and_combobox()
         self.ui.comboBoxSetup.setCurrentIndex(len(self.setups) - 1)
 
