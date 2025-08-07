@@ -7,7 +7,6 @@ from PyQt5 import uic
 from PyQt5.QtCore import QThread, pyqtSignal, QObject
 from PyQt5.QtGui import QPixmap
 from src_resonator.problem import Problem
-from src_resonator.plot_setup import Plotter
 from src_resonator.resonator_types import *
 from src_modematcher.modematcher_calculator import ModematcherCalculator
 from src_physics.value_converter import ValueConverter

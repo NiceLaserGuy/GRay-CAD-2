@@ -103,7 +103,7 @@ class OptimizationWorker(QObject):
                 waist_sag, waist_tan, position_sag, position_tan = self.optimizer.calculate_beam_parameters(best_individual)
 
                 result = {
-                    'lenses': [(lens['name'], lens['focal_length'], pos) for lens, pos in best_individual],
+                    'lenses': [(lens, pos) for lens, pos in best_individual],
                     'waist_sag': waist_sag,
                     'waist_tan': waist_tan,
                     'position_sag': position_sag,
@@ -139,74 +139,163 @@ class LensSystemOptimizer:
         self.get_beam_parameters()
 
     def _load_lens_library_from_temp_file(self):
-        """Lade Linsenbibliothek aus der temporären Datei"""
+        """Lade Linsenbibliothek aus der temporären Datei und füge für zylindrische Linsen auch die gedrehte Variante hinzu"""
         try:
+            import copy
             temp_file_path = config.get_temp_file_path()
             if not temp_file_path:
                 QMessageBox.critical(None, "Error", "Warning: No temp file path found, using default lens library")
                 self._use_default_lens_library()
                 return
-            
+
             with open(temp_file_path, 'r') as file:
                 data = json.load(file)
-            
+
             components = data.get("components", [])
             self.lens_library = []
-            
+
             for component in components:
                 if component.get("type", "").upper() == "LENS":
-                    # Extrahiere Linsendaten
                     properties = component.get("properties", {})
-                    name = component.get("name", "Unknown Lens")
-                    
-                    # Bestimme Linsentyp basierend auf IS_ROUND
                     is_round = properties.get("IS_ROUND", True)
-                    lens_type = "spherical" if is_round else "cylindrical"
-                    
-                    # Extrahiere Brennweiten für beide Achsen
-                    f_sag = None
-                    f_tan = None
-                    
-                    # Extrahiere sagittale und tangentiale Brennweite direkt
-                    for key in ["Focal length sagittal", "focal length sagittal"]:
-                        if key in properties:
-                            f_sag = float(properties[key])
-                            break
-                    
-                    for key in ["Focal length tangential", "focal length tangential"]:
-                        if key in properties:
-                            f_tan = float(properties[key])
-                            break
-                    
-                    # Wenn keine spezifischen Brennweiten gefunden wurden, suche nach allgemeiner Brennweite
-                    if f_sag is None and f_tan is None:
-                        for key in ["Focal length", "focal length"]:
-                            if key in properties:
-                                f_sag = f_tan = float(properties[key])
-                                break
-                    
-                    # Wenn wir eine Brennweite haben, füge die Linse zur Bibliothek hinzu
-                    if f_sag is not None or f_tan is not None:
-                        # Prüfe auf unendliche oder sehr große Brennweiten (zylindrische Linsen)
-                        if f_sag is not None and (f_sag > 1e20 or f_sag == float('inf')):
-                            f_sag = float('inf')  # Standardisiere auf unendlich
-                        
-                        if f_tan is not None and (f_tan > 1e20 or f_tan == float('inf')):
-                            f_tan = float('inf')  # Standardisiere auf unendlich
-                        
-                        lens_entry = {
-                            'name': name,
-                            'focal_length': f_sag if f_sag is not None and f_sag != float('inf') else f_tan,  # Für Abwärtskompatibilität
-                            'focal_length_sag': f_sag,
-                            'focal_length_tan': f_tan,
-                            'lens_type': lens_type,
-                            'is_round': is_round,
-                            'component_data': component  # Vollständige Komponentendaten
-                        }
-                        self.lens_library.append(lens_entry)
+
+                    # Original hinzufügen
+                    self.lens_library.append(component)
+
+                    # Für zylindrische Linsen: gedrehte Variante hinzufügen
+                    if not is_round:
+                        swapped_component = copy.deepcopy(component)
+                        swapped_properties = swapped_component["properties"]
+
+                        # Vertausche sagittal/tangential für Focal length
+                        if ("Focal length sagittal" in swapped_properties and
+                            "Focal length tangential" in swapped_properties):
+                            swapped_properties["Focal length sagittal"], swapped_properties["Focal length tangential"] = \
+                                swapped_properties["Focal length tangential"], swapped_properties["Focal length sagittal"]
+
+                        # Vertausche sagittal/tangential für Radius of curvature
+                        if ("Radius of curvature sagittal" in swapped_properties and
+                            "Radius of curvature tangential" in swapped_properties):
+                            swapped_properties["Radius of curvature sagittal"], swapped_properties["Radius of curvature tangential"] = \
+                                swapped_properties["Radius of curvature tangential"], swapped_properties["Radius of curvature sagittal"]
+
+                        # Name anpassen
+                        swapped_component["name"] = swapped_component.get("name", "") + " (rotated)"
+                        self.lens_library.append(swapped_component)
 
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Error loading lens library: {str(e)}")
+
+    def _transfer_setup_to_mainwindow(self, setup_components):
+        """
+        Überträgt das Setup an das Hauptfenster über globale Widget-Suche.
+        """
+        try:
+            from PyQt5.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app:
+                for widget in app.allWidgets():
+                    if hasattr(widget, 'receive_setup') and hasattr(widget, 'setupList'):
+                        widget.receive_setup(setup_components)
+                        return
+            # Falls keine Methode funktioniert
+            raise Exception("Could not find MainWindow instance to transfer setup")
+        except Exception as e:
+            raise Exception(f"Failed to transfer setup: {e}")
+        
+    def plot_setup(self):
+        """
+        Erstellt eine Komponentenliste für das aktuelle Linsensystem und sendet sie an das Hauptfenster.
+        Implementiert die korrekte Propagation zwischen Komponenten.
+        """
+        try:
+            # Hole die aktuellen Strahlparameter
+            wavelength = self.wavelength
+            waist_sag = self.waist_input_sag
+            waist_tan = self.waist_input_tan
+            waist_pos_sag = self.waist_position_sag
+            waist_pos_tan = self.waist_position_tan
+            
+            setup_components = []
+            
+            # 1. Beam-Komponente
+            beam_component = {
+                "type": "BEAM",
+                "name": "Beam",
+                "properties": {
+                    "Wavelength": wavelength,
+                    "Waist radius sagittal": waist_sag,
+                    "Waist radius tangential": waist_tan,
+                    "Waist position sagittal": waist_pos_sag,
+                    "Waist position tangential": waist_pos_tan,
+                    "Rayleigh range sagittal": np.pi * waist_sag**2 / wavelength,
+                    "Rayleigh range tangential": np.pi * waist_tan**2 / wavelength,
+                    "IS_ROUND": False
+                }
+            }
+            setup_components.append(beam_component)
+
+            # 2. Linsen-Komponenten mit korrekter Propagation
+            if hasattr(self, "last_optimization_results") and self.last_optimization_results:
+                best_result = self.last_optimization_results[0]
+                # Sortiere Linsen nach Position
+                sorted_lenses = sorted(best_result.get('lenses', []), key=lambda x: x[1])
+                
+                # Startposition für erste Propagation
+                last_position = 0
+                
+                # Füge Propagationen und Linsen abwechselnd hinzu
+                for lens, position in sorted_lenses:
+                    # Berechne Propagationsdistanz zur nächsten Linse
+                    prop_distance = position - last_position
+                    
+                    # Propagation zur Linsenposition
+                    if prop_distance > 0:
+                        prop_component = {
+                            "type": "PROPAGATION",
+                            "name": f"Propagation {last_position:.3f}m to {position:.3f}m",
+                            "properties": {
+                                "Distance": prop_distance,
+                                "Refractive index": 1.0
+                            }
+                        }
+                        setup_components.append(prop_component)
+                    
+                    # Linse hinzufügen (ohne Position als Property)
+                    lens_component = dict(lens)  # Kopiere die Komponente
+                    setup_components.append(lens_component)
+                    
+                    # Aktualisiere letzte Position
+                    last_position = position
+                
+                # Abschließende Propagation bis zum Ziel
+                final_distance = self.distance - last_position
+                if final_distance > 0:
+                    final_prop = {
+                        "type": "PROPAGATION",
+                        "name": f"Propagation {last_position:.3f}m to {self.distance:.3f}m",
+                        "properties": {
+                            "Distance": final_distance,
+                            "Refractive index": 1.0
+                        }
+                    }
+                    setup_components.append(final_prop)
+                    
+                # Falls zusätzlich eine Anzeige des Strahls am Zielort gewünscht ist
+                # Hier könntest du eine Beam-out Komponente hinzufügen
+            else:
+                # Fallback: Keine Optimierungsergebnisse vorhanden
+                QMessageBox.warning(None, "No Setup", "No optimized lens system available for plotting.")
+                return
+
+            # Übertrage das Setup an das Hauptfenster
+            self._transfer_setup_to_mainwindow(setup_components)
+            
+            QMessageBox.information(None, "Setup Generated", f"Generated lens system setup with {len(setup_components)} components.")
+
+        except Exception as e:
+            print(f"Error in plot_setup: {e}")
+            QMessageBox.critical(None, "Error", f"Error generating setup: {str(e)}")
 
     def get_beam_parameters(self):
         """Lade Strahlparameter aus der temporären Datei"""
@@ -376,42 +465,30 @@ class LensSystemOptimizer:
         return waist_sag, waist_tan, position_sag, position_tan
     
     def _get_lens_focal_lengths(self, lens):
-        """Extrahiere sagittale und tangentiale Brennweite einer Linse"""
-        # Wenn bereits spezifische Brennweiten in der Linse gespeichert sind, verwende diese
-        f_sag = lens.get('focal_length_sag')
-        f_tan = lens.get('focal_length_tan')
-        
-        if f_sag is None or f_tan is None:
-            # Alternativ schaue in den Komponentendaten nach
-            component_data = lens.get('component_data', {})
-            properties = component_data.get('properties', {})
-            
-            # Extrahiere Brennweiten aus den Eigenschaften
-            if f_sag is None:
-                f_sag = properties.get('Focal length sagittal', lens.get('focal_length'))
-            
-            if f_tan is None:
-                f_tan = properties.get('Focal length tangential', lens.get('focal_length'))
-            
-            # Wenn immer noch nicht gefunden, verwende die generische Brennweite
-            if f_sag is None and f_tan is None:
-                f_default = lens.get('focal_length')
-                f_sag = f_tan = f_default
-        
-        # Konvertiere in float wenn möglich
+        """Extrahiere sagittale und tangentiale Brennweite einer Linse aus JSON-Komponente"""
+        properties = lens.get('properties', {})
+        f_sag = properties.get('Focal length sagittal')
+        f_tan = properties.get('Focal length tangential')
+
+        # Fallback: Wenn nur eine Brennweite existiert, beide gleich setzen
+        if f_sag is None and f_tan is not None:
+            f_sag = f_tan
+        if f_tan is None and f_sag is not None:
+            f_tan = f_sag
+
+        # Konvertiere zu float, falls möglich
         try:
             f_sag = float(f_sag) if f_sag is not None else None
             f_tan = float(f_tan) if f_tan is not None else None
         except (ValueError, TypeError):
-            f_sag = f_tan = lens.get('focal_length')
-        
+            f_sag = f_tan = None
+
         # Prüfe auf unendliche oder sehr große Werte
         if f_sag is not None and (f_sag > 1e20 or f_sag == float('inf')):
             f_sag = float('inf')
-        
         if f_tan is not None and (f_tan > 1e20 or f_tan == float('inf')):
             f_tan = float('inf')
-        
+
         return f_sag, f_tan
     
     def fitness_function(self, individual):
@@ -602,6 +679,7 @@ class LensSystemOptimizer:
 
         # Speichere alle Ergebnisse für spätere Verwendung
         self.last_optimization_results = results
+        self.plot_setup()  # Optional: Plot Setup nach Optimierung
     
     def _on_optimization_error(self, error_message):
         """Wird aufgerufen, wenn ein Fehler während der Optimierung auftritt"""

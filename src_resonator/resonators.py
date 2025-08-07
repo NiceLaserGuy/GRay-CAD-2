@@ -191,8 +191,8 @@ class Resonator(QObject):
         try:
             # Methode 1: Standard Qt-Signal (falls Parent verfügbar)
             parent = self.parent()
-            if parent and hasattr(parent, 'receive_resonator_setup'):
-                parent.receive_resonator_setup(setup_components)
+            if parent and hasattr(parent, 'receive_setup'):
+                parent.receive_setup(setup_components)
                 return
             
             # Methode 2: Globale Widget-Suche (Fallback)
@@ -200,8 +200,8 @@ class Resonator(QObject):
             app = QApplication.instance()
             if app:
                 for widget in app.allWidgets():
-                    if hasattr(widget, 'receive_resonator_setup') and hasattr(widget, 'setupList'):
-                        widget.receive_resonator_setup(setup_components)
+                    if hasattr(widget, 'receive_setup') and hasattr(widget, 'setupList'):
+                        widget.receive_setup(setup_components)
                         return
             
             # Falls keine Methode funktioniert

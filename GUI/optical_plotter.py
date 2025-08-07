@@ -117,10 +117,16 @@ class OpticalSystemPlotter:
             self.curve_tan = None
             self.plotWidget.clear()
 
-            # ViewBox-Signale temporär blockieren
+            # ViewBox holen
             vb = self.plotWidget.getViewBox()
-            vb.sigXRangeChanged.disconnect()
             
+            # Wenn ein Signal bereits verbunden ist, trenne NUR dieses eine
+            try:
+                vb.sigXRangeChanged.disconnect(self.update_plot_for_visible_range)
+            except (TypeError, RuntimeError):
+                # Signal war nicht verbunden, ignorieren
+                pass
+        
             # Bestimme initialen Bereich aus optischem System
             z_max = sum([p[1][0] for p in optical_system_sag 
                         if hasattr(p[0], "__func__") and p[0].__func__ is self.matrices.free_space.__func__])
@@ -138,20 +144,20 @@ class OpticalSystemPlotter:
         finally:
             self._updating_plot = False
 
-    def update_plot_for_visible_range(self, *args, **kwargs):
+    def update_plot_for_visible_range(self, view_box, view_range):
         """Update plot for the currently visible range"""
         # KORRIGIERT: Verhindere Rekursion
         if self._updating_plot:
             return
-            
+        
         if not hasattr(self, 'optical_system_sag') or self.optical_system_sag is None:
             return
-        
+    
         self._updating_plot = True
-        
+    
         try:
             # Aktueller sichtbarer Bereich
-            z_min, z_max = self.plotWidget.getViewBox().viewRange()[0]
+            z_min, z_max = view_range
             
             # Begrenze auf positiven Bereich
             z_min = max(0, z_min)

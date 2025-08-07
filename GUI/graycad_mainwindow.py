@@ -99,7 +99,7 @@ class MainWindow(QMainWindow, PropertiesHandler):
         self._last_component_item = None
 
         # Signal verbinden
-        self.res.setup_generated.connect(self.receive_resonator_setup)
+        self.res.setup_generated.connect(self.receive_setup)
         
         # Set application window icon
         self.setWindowIcon(QIcon(path.abspath(path.join(path.dirname(__file__), 
@@ -126,7 +126,7 @@ class MainWindow(QMainWindow, PropertiesHandler):
         self.ui.action_Library.triggered.connect(self.lib.open_library_window)
         
         # Plot from resonator setup
-        self.res.setup_generated.connect(self.receive_resonator_setup)
+        self.res.setup_generated.connect(self.receive_setup)
         
         # Connect buttons to their respective handlers
         self.ui.action_Cavity_Designer.triggered.connect(lambda: self.action.handle_build_resonator(self))
@@ -698,7 +698,7 @@ class MainWindow(QMainWindow, PropertiesHandler):
             # Initial anwenden
             self.update_plane_lens_fields()
     
-    def receive_resonator_setup(self, setup_components):
+    def receive_setup(self, setup_components):
         """
         Empfängt ein Setup vom Resonator und fügt es zur Setup-Liste hinzu
         """
