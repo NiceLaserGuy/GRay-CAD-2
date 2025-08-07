@@ -288,7 +288,7 @@ class MainWindow(QMainWindow, PropertiesHandler):
         # Verwende den berechneten Namen statt "new setup {count}"
         self.setups.insert(0, {"name": new_setup_name, "components": new_setup})
         self.update_setup_names_and_combobox()
-        self.ui.comboBoxSetup.setCurrentIndex(0)
+        self.ui.comboBoxSetup.setCurrentIndex(len(self.setups) - 1)
 
     def update_setup_names_and_combobox(self):
         self.ui.comboBoxSetup.blockSignals(True)
