@@ -40,25 +40,24 @@ class OpticalSystemPlotter:
             return
         main_window._plot_busy = True
         try:
-            # EINFACH: Stumme Prüfung ohne Debug-Ausgabe
-            if main_window.setupList.count() == 0:
-                return  # Stiller Return ohne Meldung
-                
-            beam_item = main_window.setupList.currentItem()
+            # Suche explizit den Beam in der setupList
+            beam_item = None
+            for i in range(main_window.setupList.count()):
+                item = main_window.setupList.item(i)
+                comp = item.data(QtCore.Qt.UserRole)
+                if isinstance(comp, dict) and comp.get("type", "").upper() == "BEAM":
+                    beam_item = item
+                    break
             if beam_item is None:
-                beam_item = main_window.setupList.item(0)
-                
-            if beam_item is None:
-                return  # Stiller Return
-                
-            # KORRIGIERT: Prüfe UserRole-Daten
+                return  # Kein Beam gefunden
+
             beam_data = beam_item.data(QtCore.Qt.UserRole)
             if beam_data is None:
                 QMessageBox.warning(self, "Error", "No data found in beam item")
                 return
-                
+
+            # Properties speichern (wie gehabt)
             if hasattr(main_window, '_property_fields'):
-                # KORRIGIERT: Verwende die geerbte Methode aus PropertiesHandler
                 updated_beam = main_window.save_properties_to_component(beam_data)
                 if updated_beam is not None:
                     beam_item.setData(QtCore.Qt.UserRole, updated_beam)

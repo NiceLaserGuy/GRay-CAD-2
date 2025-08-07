@@ -254,8 +254,9 @@ class LensSystemOptimizer:
                         prop_component = {
                             "type": "PROPAGATION",
                             "name": f"Propagation {last_position:.3f}m to {position:.3f}m",
+                            "manufacturer": "",
                             "properties": {
-                                "Distance": prop_distance,
+                                "Length": prop_distance,
                                 "Refractive index": 1.0
                             }
                         }
