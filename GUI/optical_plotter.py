@@ -87,9 +87,9 @@ class OpticalSystemPlotter:
                     optical_system_tan=optical_system_tan
                 )
             except Exception as e:
-                print(f"Error in plot_optical_system: {e}")
+                QMessageBox.critical(main_window, "Error", f"Error in plot_optical_system: {e}")
         except Exception as e:
-            print(f"Error in update_live_plot: {e}")
+            QMessageBox.critical(main_window, "Error", f"Error in update_live_plot: {e}")
         finally:
             main_window._plot_busy = False
 

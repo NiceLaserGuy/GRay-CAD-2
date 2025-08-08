@@ -332,8 +332,6 @@ class PropertiesHandler:
                         # Für THICK LENS: Immer entsperren
                         field_tan.setReadOnly(False)
                         field_tan.setStyleSheet("")
-
-        self.update_live_plot_delayed()
         
     def make_field_slot(self, key, component):
         def slot():

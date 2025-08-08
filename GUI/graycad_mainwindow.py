@@ -686,32 +686,15 @@ class MainWindow(QMainWindow, PropertiesHandler):
         
     def update_live_plot(self):
         """Update live plot with proper saving"""
-        print(f"DEBUG update_live_plot: Plot-Update gestartet")
         
         # Führe das Plot-Update durch
         self.optical_plotter.update_live_plot(self)
-        
-        # NACH dem Plot-Update: Speichere die aktuellen Änderungen
-        # Aber nur wenn wir nicht gerade zwischen Setups wechseln
-        if hasattr(self, '_switching_setups') and self._switching_setups:
-            print(f"DEBUG update_live_plot: Überspringe Speicherung während Setup-Wechsel")
-            return
-        
-        print(f"DEBUG update_live_plot: Plane verzögerte Speicherung")
         # Verzögerte Speicherung um Race Conditions zu vermeiden
         QtCore.QTimer.singleShot(10, self.save_current_setup)
 
     def save_properties_to_component(self, component):
         """Debug-erweiterte Version"""
         if not component or not hasattr(self, '_property_fields'):
-            return component
-        
-        comp_type = component.get("type", "UNKNOWN")
-        comp_name = component.get("name", "UNNAMED")
-        print(f"DEBUG save_properties_to_component: Speichere Properties für {comp_type} '{comp_name}'")
-        
-        if self._saving_properties:
-            print(f"DEBUG save_properties_to_component: Bereits am Speichern, überspringe")
             return component
         
         self._saving_properties = True
@@ -725,26 +708,18 @@ class MainWindow(QMainWindow, PropertiesHandler):
                 if isinstance(field, QtWidgets.QLineEdit):
                     old_value = updated["properties"].get(key, "N/A")
                     new_value = self.vc.convert_to_float(field.text())
-                    if old_value != new_value:
-                        print(f"DEBUG save_properties_to_component: {key}: {old_value} -> {new_value}")
                     updated["properties"][key] = new_value
                 elif isinstance(field, QtWidgets.QCheckBox):
                     old_value = updated["properties"].get(key, "N/A")
                     new_value = field.isChecked()
-                    if old_value != new_value:
-                        print(f"DEBUG save_properties_to_component: {key}: {old_value} -> {new_value}")
                     updated["properties"][key] = new_value
             
             # Synchronisiere Beam-Properties in der gesamten setupList
             if updated.get("type", "").upper() == "BEAM" and hasattr(self, "setupList"):
-                print(f"DEBUG save_properties_to_component: Synchronisiere Beam-Properties in setupList")
                 for i in range(self.setupList.count()):
                     item = self.setupList.item(i)
                     comp = item.data(QtCore.Qt.UserRole)
                     if isinstance(comp, dict) and comp.get("type", "").upper() == "BEAM":
-                        old_waist = comp.get("properties", {}).get("Waist radius sagittal", "N/A")
-                        new_waist = updated["properties"].get("Waist radius sagittal", "N/A")
-                        print(f"DEBUG save_properties_to_component: Beam sync {i}: {old_waist} -> {new_waist}")
                         comp["properties"] = copy.deepcopy(updated["properties"])
                         item.setData(QtCore.Qt.UserRole, comp)
         
@@ -872,4 +847,3 @@ class MainWindow(QMainWindow, PropertiesHandler):
                 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error receiving optimized system: {str(e)}")
-            print(f"Error in receive_optimized_system: {e}")
