@@ -86,7 +86,7 @@ class Action:
             setup_data = {
                 "name": parent.ui.comboBoxSetup.currentText(),
                 "created": datetime.now().isoformat(),
-                "version": "2.0",
+                "version": "0.1",
                 "type": "GRAYCAD_SETUP",
                 "components": components,
                 "metadata": {
@@ -200,7 +200,7 @@ class Action:
         QMessageBox.information(
             parent, 
             "About", 
-            "GRay-CAD 2\nVersion 1.0\nDeveloped by Jens Gumm, TU Darmstadt, LQO-Group"
+            "GRay-CAD 2\nVersion 0.1 the forever development release\nDeveloped by Jens Gumm, TU Darmstadt, LQO-Group"
         )
 
     def action_tips_and_tricks(self, parent):
