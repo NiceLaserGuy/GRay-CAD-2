@@ -30,7 +30,7 @@ class Beam():
             QMessageBox.critical(None, "Error", "Beam radius must be greater than zero.")
             return None
         zr = (np.pi * beam_radius**2) / (wavelength)
-        return - z + (1j * zr)
+        return z + (1j * zr)
 
     def beam_radius(self, q, wavelength, n):
         """
@@ -70,9 +70,26 @@ class Beam():
         Returns:
         float: Radius of curvature of the beam.
         """
-        
-        zr = self.rayleigh_length(wavelength, waist, n)
-        return z*(1+(zr/z)**2) if z != 0 else np.inf
+        q = self.q_value(z, waist, wavelength, n)
+        if q is None or np.real(q) == 0:
+            return np.inf  # Wellenfront ist planar
+        return abs(q)**2 / np.real(q)
+    
+    def radius_of_curvature_system(self, z, q_initial, elements, wavelength, n=1):
+        """
+        Berechnet den Radius of Curvature an Position z unter Berücksichtigung des gesamten optischen Systems.
+        - z: Position im System (z.B. absoluter Abstand vom Start)
+        - q_initial: Start-q-Parameter (z.B. am Strahlaustritt)
+        - elements: Liste der optischen Elemente [(matrix_func, params), ...]
+        - wavelength: Wellenlänge
+        - n: Brechungsindex
+        """
+        # Propagiere q bis zur gewünschten Position z
+        q_at_z = self._propagate_q_to_position(q_initial, elements, z, n)
+        # Berechne Radius of Curvature aus q
+        if q_at_z is None or np.real(q_at_z) == 0:
+            return np.inf
+        return abs(q_at_z)**2 / np.real(q_at_z)
     
     def propagate_q(self, q_in, ABCD):
         A, B, C, D = ABCD.flatten()
