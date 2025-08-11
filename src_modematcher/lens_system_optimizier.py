@@ -61,7 +61,7 @@ class OptimizationWorker(QObject):
         results = []
         best_result = None
         best_fitness = float('inf')
-        total_generations = 25
+        total_generations = 50
 
         self.optimizer.max_lenses = max_lenses
         self.optimizer.problem()
@@ -71,7 +71,7 @@ class OptimizationWorker(QObject):
                 break
 
             self.progress.emit(run * total_generations)
-            pop_size = 70
+            pop_size = 100
             population = self.optimizer.toolbox.population(n=pop_size)
             stats = tools.Statistics(lambda ind: ind.fitness.values)
             stats.register("avg", np.mean)
@@ -276,7 +276,7 @@ class LensSystemOptimizer:
                         "type": "PROPAGATION",
                         "name": f"Propagation {last_position:.3f}m to {self.distance:.3f}m",
                         "properties": {
-                            "Distance": final_distance,
+                            "Length": final_distance,
                             "Refractive index": 1.0
                         }
                     }
@@ -458,13 +458,14 @@ class LensSystemOptimizer:
         # Berechne Strahlparameter aus q-Parametern
         waist_sag = beam.beam_radius(q_sag_final, self.wavelength, n)
         waist_tan = beam.beam_radius(q_tan_final, self.wavelength, n)
-        
-        # Berechne Waist-Positionen
-        position_sag = self.distance - q_sag_final.real
-        position_tan = self.distance - q_tan_final.real
-        
-        return waist_sag, waist_tan, position_sag, position_tan
-    
+
+        w0_sag = beam.beam_radius(q_sag_final, self.wavelength, n)
+        w0_tan = beam.beam_radius(q_tan_final, self.wavelength, n)
+        focus_pos_sag = self.distance - q_sag_final.real
+        focus_pos_tan = self.distance - q_tan_final.real
+
+        return w0_sag, w0_tan, focus_pos_sag, focus_pos_tan
+
     def _get_lens_focal_lengths(self, lens):
         """Extrahiere sagittale und tangentiale Brennweite einer Linse aus JSON-Komponente"""
         properties = lens.get('properties', {})
@@ -495,33 +496,32 @@ class LensSystemOptimizer:
     def fitness_function(self, individual):
         """Berechne Fitness für ein gegebenes Individuum"""
         # Berechne resultierende Strahlparameter
-        waist_sag, waist_tan, position_sag, position_tan = self.calculate_beam_parameters(individual)
-        
-        # Berechne Abweichung von Zielparametern
-        rel_waist_error_sag = ((self.waist_goal_sag - waist_sag)/self.waist_goal_sag)**2
-        rel_waist_error_tan = ((self.waist_goal_tan - waist_tan)/self.waist_goal_tan)**2
+        w0_sag, w0_tan, focus_pos_sag, focus_pos_tan = self.calculate_beam_parameters(individual)
+
+        # Berechne Abweichung von Zielparametern (jetzt auf w0!)
+        rel_waist_error_sag = ((self.waist_goal_sag - w0_sag)/self.waist_goal_sag)**2
+        rel_waist_error_tan = ((self.waist_goal_tan - w0_tan)/self.waist_goal_tan)**2
         fitness_waist = rel_waist_error_sag + rel_waist_error_tan
-        
-        # Normalisierte Positionsabweichung
+
+        # Normalisierte Positionsabweichung (Fokusposition)
         target_pos_sag = self.distance + self.waist_position_goal_sag
         target_pos_tan = self.distance + self.waist_position_goal_tan
-        
-        rel_pos_error_sag = ((target_pos_sag - position_sag)/target_pos_sag)**2
-        rel_pos_error_tan = ((target_pos_tan - position_tan)/target_pos_tan)**2
+
+        rel_pos_error_sag = ((target_pos_sag - focus_pos_sag)/target_pos_sag)**2
+        rel_pos_error_tan = ((target_pos_tan - focus_pos_tan)/target_pos_tan)**2
         fitness_position = rel_pos_error_sag + rel_pos_error_tan
-        
+
         # Gewichtung zwischen Strahlgröße und Position
         try:
             weight = self.ui.modematcher_calculation.weight_slider.value() / 100.0
         except AttributeError:
-            # Fallback wenn UI nicht verfügbar
             weight = 0.5
-            
+
         fitness = (1 - weight) * fitness_waist + weight * fitness_position
-        
+
         return (fitness,)
     
-    def optimize_lens_system(self, max_lenses, num_runs=50):
+    def optimize_lens_system(self, max_lenses, num_runs=70):
         """Startet die Multi-Run-Optimierung in einem separaten Thread"""
         try:
             # Validierungen
@@ -546,7 +546,7 @@ class LensSystemOptimizer:
                     ui_obj = getattr(self, attr_name)
                     if hasattr(ui_obj, 'progressBar'):
                         # Setze progressBar in der UI
-                        total_steps = num_runs * 25
+                        total_steps = num_runs * 50  # 50 Generationen pro Run
                         ui_obj.progressBar.setMinimum(0)
                         ui_obj.progressBar.setMaximum(total_steps)
                         ui_obj.progressBar.setValue(0)

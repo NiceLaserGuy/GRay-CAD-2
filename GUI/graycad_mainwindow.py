@@ -179,6 +179,10 @@ class MainWindow(QMainWindow, PropertiesHandler):
         self.ui.buttonMoveDown.clicked.connect(lambda: self.action.move_selected_setup_item_down(self))
         self.ui.buttonAddComponent.clicked.connect(lambda: self.action.move_selected_component_to_setupList(self))
         self.ui.buttonScaleToSetup.clicked.connect(lambda: self.optical_plotter.scale_visible_setup())
+
+        self.cursor_vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('k', width=1, style=Qt.DashLine))
+        self.plotWidget.addItem(self.cursor_vline, ignoreBounds=True)
+        self.cursor_vline.setZValue(100)
         self.update_live_plot()
         
         # Live update for the optical system plot
@@ -691,6 +695,9 @@ class MainWindow(QMainWindow, PropertiesHandler):
         self.optical_plotter.update_live_plot(self)
         # Verzögerte Speicherung um Race Conditions zu vermeiden
         QtCore.QTimer.singleShot(10, self.save_current_setup)
+        if self.cursor_vline not in self.plotWidget.items():
+            self.plotWidget.addItem(self.cursor_vline, ignoreBounds=True)
+            self.cursor_vline.setZValue(100)
 
     def save_properties_to_component(self, component):
         """Debug-erweiterte Version"""

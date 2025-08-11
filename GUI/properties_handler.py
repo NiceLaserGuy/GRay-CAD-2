@@ -109,6 +109,8 @@ class PropertiesHandler:
                 layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
                 field.stateChanged.connect(self.make_checkbox_slot(key, component))
+                # Beispiel für QCheckBox
+                field.stateChanged.connect(lambda: self.on_property_field_changed(component))
                 row += 1  # Zeile erhöhen nach Erstellen des Felds
                 continue
                 
@@ -140,6 +142,8 @@ class PropertiesHandler:
                     self.update_live_plot_delayed()
                     
                 field.currentIndexChanged.connect(on_lens_material_changed)
+                # Beispiel für QComboBox
+                field.currentIndexChanged.connect(lambda: self.on_property_field_changed(component))
              
             # Ausgrauen der nicht benötigten Felder       
             elif key == "Variable parameter":
@@ -154,6 +158,8 @@ class PropertiesHandler:
                     self.update_field_states()
                     self.update_live_plot_delayed()
                 field.currentIndexChanged.connect(on_index_changed)
+                # Beispiel für QComboBox
+                field.currentIndexChanged.connect(lambda: self.on_property_field_changed(component))
                 
             # Standard: QLineEdit
             else:
@@ -176,6 +182,9 @@ class PropertiesHandler:
                 field.textChanged.connect(self.make_field_slot(key, component))
                 # NEU: Enter-Handler mit Validierung
                 field.returnPressed.connect(self.make_enter_slot(key, component))
+                # Beispiel für SpinBox
+                if isinstance(field, (QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox)):
+                    field.valueChanged.connect(lambda: self.on_property_field_changed(component))
             row += 1
         # Spacer am Ende
         spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
@@ -403,6 +412,10 @@ class PropertiesHandler:
                     updated["properties"][key] = self.vc.convert_to_float(field.text())
                 elif isinstance(field, QtWidgets.QCheckBox):
                     updated["properties"][key] = field.isChecked()
+                elif isinstance(field, QtWidgets.QComboBox):
+                    updated["properties"][key] = field.currentText()
+                elif isinstance(field, (QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox)):
+                    updated["properties"][key] = field.value()
             
             # Synchronisiere Beam-Properties in der gesamten setupList
             if updated.get("type", "").upper() == "BEAM" and hasattr(self, "setupList"):
@@ -441,3 +454,9 @@ class PropertiesHandler:
         """Direkter Rayleigh-Update ohne Timer"""
         if hasattr(self, 'update_rayleigh'):
             self.update_rayleigh()
+
+    def on_property_field_changed(self, component):
+        updated = self.save_properties_to_component(component)
+        if updated and hasattr(self, "_last_component_item") and self._last_component_item:
+            self._last_component_item.setData(QtCore.Qt.UserRole, updated)
+        self.update_live_plot_delayed()
