@@ -43,7 +43,7 @@ class Beam():
         Returns:
         float: Beam radius.
         """
-        return np.sqrt(-wavelength / (np.pi *  np.imag(1/q)))
+        return np.sqrt(-wavelength / (np.pi * n * np.imag(1/q)))
 
     def rayleigh_length(self, wavelength, beam_radius, n=1):
         """
