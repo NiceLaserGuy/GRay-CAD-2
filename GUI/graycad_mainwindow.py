@@ -227,13 +227,15 @@ class MainWindow(QMainWindow, PropertiesHandler):
                 optical_system_tan = self.build_optical_system_from_setup_list(mode="tangential")
                 q_initial_sag = self.beam.q_value(0, self.optical_plotter.w_sag_data[0], self.wavelength, 1)
                 q_initial_tan = self.beam.q_value(0, self.optical_plotter.w_tan_data[0], self.wavelength, 1)
+                self.ui.label_z_position.setText(f"{self.vc.convert_to_nearest_string(z_val, self)}")
+                self.ui.label_w_sag.setText(f"{self.vc.convert_to_nearest_string(w_sag_val, self)}")
+                self.ui.label_w_tan.setText(f"{self.vc.convert_to_nearest_string(w_tan_val, self)}")
                 self.ui.label_roc_sag.setText(
                     f"{self.vc.convert_to_nearest_string(self.beam.radius_of_curvature_system(z_val, q_initial_sag, optical_system_sag, self.wavelength))}"
                 )
                 self.ui.label_roc_tan.setText(
                     f"{self.vc.convert_to_nearest_string(self.beam.radius_of_curvature_system(z_val, q_initial_tan, optical_system_tan, self.wavelength))}"
                 )
-                
         # Connect signal to function
         self.plotWidget.scene().sigMouseMoved.connect(mouseMoved)
         self.plotWidget.getViewBox().sigXRangeChanged.connect(self.optical_plotter.update_plot_for_visible_range)
@@ -724,6 +726,14 @@ class MainWindow(QMainWindow, PropertiesHandler):
                 elif isinstance(field, QtWidgets.QCheckBox):
                     old_value = updated["properties"].get(key, "N/A")
                     new_value = field.isChecked()
+                    updated["properties"][key] = new_value
+                elif isinstance(field, QtWidgets.QComboBox):
+                    old_value = updated["properties"].get(key, "N/A")
+                    new_value = field.currentText()
+                    updated["properties"][key] = new_value
+                elif isinstance(field, (QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox)):
+                    old_value = updated["properties"].get(key, "N/A")
+                    new_value = field.value()
                     updated["properties"][key] = new_value
             
             # Synchronisiere Beam-Properties in der gesamten setupList

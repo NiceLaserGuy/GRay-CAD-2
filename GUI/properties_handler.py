@@ -71,6 +71,7 @@ class PropertiesHandler:
                     self._property_fields[sag_key] = field_sag
                     field_sag.textChanged.connect(self.make_field_slot(sag_key, component))
                     field_sag.returnPressed.connect(self.make_enter_slot(sag_key, component))
+                    field_sag.editingFinished.connect(lambda: self.on_property_field_changed(component))
                 else:
                     layout.addWidget(QtWidgets.QLabel(""), row, 1)
                 # Tangential
@@ -81,6 +82,7 @@ class PropertiesHandler:
                     self._property_fields[tan_key] = field_tan
                     field_tan.textChanged.connect(self.make_field_slot(tan_key, component))
                     field_tan.returnPressed.connect(self.make_enter_slot(tan_key, component))
+                    field_tan.editingFinished.connect(lambda: self.on_property_field_changed(component))
                 else:
                     layout.addWidget(QtWidgets.QLabel(""), row, 2)
                 row += 1
@@ -136,13 +138,6 @@ class PropertiesHandler:
                     field.setCurrentText(value)
                 layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
-                
-                def on_lens_material_changed():
-                    self.save_properties_to_component(component)
-                    self.update_live_plot_delayed()
-                    
-                field.currentIndexChanged.connect(on_lens_material_changed)
-                # Beispiel für QComboBox
                 field.currentIndexChanged.connect(lambda: self.on_property_field_changed(component))
              
             # Ausgrauen der nicht benötigten Felder       

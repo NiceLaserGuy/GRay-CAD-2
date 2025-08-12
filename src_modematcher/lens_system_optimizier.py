@@ -469,6 +469,8 @@ class LensSystemOptimizer:
     def _get_lens_focal_lengths(self, lens):
         """Extrahiere sagittale und tangentiale Brennweite einer Linse aus JSON-Komponente"""
         properties = lens.get('properties', {})
+        design_wavelength = properties.get('Design wavelength')
+        lens_material = properties.get('Lens material')
         f_sag = properties.get('Focal length sagittal')
         f_tan = properties.get('Focal length tangential')
 
