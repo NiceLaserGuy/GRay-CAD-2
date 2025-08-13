@@ -32,7 +32,7 @@ class Beam():
         zr = (np.pi * beam_radius**2) / (wavelength)
         return z + (1j * zr)
 
-    def beam_radius(self, q, wavelength, n):
+    def beam_radius(self, q, wavelength, n=1):
         """
         Calculate the beam radius from the q parameter.
 

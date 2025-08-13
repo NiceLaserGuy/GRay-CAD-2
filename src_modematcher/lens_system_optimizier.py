@@ -402,8 +402,8 @@ class LensSystemOptimizer:
         n = 1.0  # Brechungsindex von Luft
         
         # Berechne q-Parameter für sagittal und tangential
-        q_sag = beam.q_value(0, self.waist_input_sag, self.wavelength, n)
-        q_tan = beam.q_value(0, self.waist_input_tan, self.wavelength, n)
+        q_sag = beam.q_value(self.waist_position_sag, self.waist_input_sag, self.wavelength, n)
+        q_tan = beam.q_value(self.waist_position_tan, self.waist_input_tan, self.wavelength, n)
         
         # Sortiere Linsensystem nach Position
         sorted_system = sorted(individual, key=lambda x: x[1])
@@ -454,12 +454,31 @@ class LensSystemOptimizer:
                 abcd_matrix = element(*params)
                 q_tan_final = beam.propagate_q(q_tan_final, abcd_matrix)
         
-        # Berechne Strahlparameter aus q-Parametern
-        w0_sag = beam.beam_radius(q_sag_final, self.wavelength, n)
-        w0_tan = beam.beam_radius(q_tan_final, self.wavelength, n)
-        focus_pos_sag = self.distance - q_sag_final.real
-        focus_pos_tan = self.distance - q_tan_final.real
-
+        def get_w0_and_focus(q_final):
+            """Berechnet die minimale Strahltaille w₀ und Fokusposition"""
+            # Rayleigh-Länge ist der Imaginärteil von q
+            zR = np.imag(q_final)
+            
+            # Prüfe auf physikalisch sinnvolle Werte
+            if zR <= 0:
+                return float('inf'), float('nan')
+            
+            # Korrekte w₀-Berechnung (minimale Strahltaille)
+            w0 = np.sqrt(self.wavelength * zR / (np.pi * n))
+            
+            # Fokusposition: z₀ = z - Re(q)
+            focus_position = self.distance - q_final.real
+            
+            return w0, focus_position
+        
+        # Berechne echte w₀-Werte
+        w0_sag, focus_pos_sag = get_w0_and_focus(q_sag_final)
+        w0_tan, focus_pos_tan = get_w0_and_focus(q_tan_final)
+        
+        # Debug entfernen:
+        # print(f"imaginary part of q_sag_final: {q_sag_final.imag}")
+        # print(f"real part of q_sag_final: {q_sag_final.real}")
+        
         return w0_sag, w0_tan, focus_pos_sag, focus_pos_tan
 
     def _get_lens_focal_lengths(self, lens):
@@ -497,16 +516,17 @@ class LensSystemOptimizer:
         w0_sag, w0_tan, focus_pos_sag, focus_pos_tan = self.calculate_beam_parameters(individual)
 
         # Berechne Abweichung von Zielparametern (jetzt auf w0!)
-        rel_waist_error_sag = ((self.waist_goal_sag - w0_sag)/self.waist_goal_sag)**2
-        rel_waist_error_tan = ((self.waist_goal_tan - w0_tan)/self.waist_goal_tan)**2
+        rel_waist_error_sag = abs(self.waist_goal_sag - w0_sag)/(abs(self.waist_goal_sag) + abs(w0_sag))
+        rel_waist_error_tan = abs(self.waist_goal_tan - w0_tan)/(abs(self.waist_goal_tan) + abs(w0_tan))
         fitness_waist = rel_waist_error_sag + rel_waist_error_tan
 
         # Normalisierte Positionsabweichung (Fokusposition)
-        target_pos_sag = self.distance + self.waist_position_goal_sag
+        target_pos_sag = self.distance + self.waist_position_goal_sag 
         target_pos_tan = self.distance + self.waist_position_goal_tan
 
-        rel_pos_error_sag = ((target_pos_sag - focus_pos_sag)/target_pos_sag)**2
-        rel_pos_error_tan = ((target_pos_tan - focus_pos_tan)/target_pos_tan)**2
+        rel_pos_error_sag = abs(target_pos_sag - focus_pos_sag)/(abs(target_pos_sag) + abs(focus_pos_sag))
+        rel_pos_error_tan = abs(target_pos_tan - focus_pos_tan)/(abs(target_pos_tan) + abs(focus_pos_tan))
+
         fitness_position = rel_pos_error_sag + rel_pos_error_tan
 
         # Gewichtung zwischen Strahlgröße und Position
