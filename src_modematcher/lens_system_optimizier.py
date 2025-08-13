@@ -134,9 +134,6 @@ class LensSystemOptimizer:
         
         # Lade Linsenbibliothek aus temporärer Datei
         self._load_lens_library_from_temp_file()
-        
-        # Lade Beam-Parameter
-        self.get_beam_parameters()
 
     def _load_lens_library_from_temp_file(self):
         """Lade Linsenbibliothek aus der temporären Datei und füge für zylindrische Linsen auch die gedrehte Variante hinzu"""
@@ -541,6 +538,9 @@ class LensSystemOptimizer:
     
     def optimize_lens_system(self, max_lenses, num_runs=70):
         """Startet die Multi-Run-Optimierung in einem separaten Thread"""
+        self.get_beam_parameters()
+        self._load_lens_library_from_temp_file()
+        
         try:
             # Validierungen
             if not self.lens_library:

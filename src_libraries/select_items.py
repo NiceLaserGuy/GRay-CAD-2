@@ -92,6 +92,7 @@ class ItemSelector(QObject, PropertiesHandler):
         Saves the temporary file and performs actions based on context.
         Creates a new window on first call, shows hidden window on subsequent calls.
         """
+        self._save_current_component_properties()
         # Save temporary file und prüfe Rückgabewert
         if not self.save_temporary_file():
             return  # Abbrechen, wenn nichts gespeichert wurde
@@ -124,7 +125,25 @@ class ItemSelector(QObject, PropertiesHandler):
                 "Unknown Context",
                 "No valid context recognized."
             )
-        
+            
+    def _save_current_component_properties(self):
+        """
+        Speichert die aktuell bearbeiteten Properties in die temporäre Liste
+        """
+        if (hasattr(self, '_current_temp_component_index') and 
+            hasattr(self, '_current_temp_component') and
+            hasattr(self, '_property_fields') and
+            self._property_fields):
+            
+            # Aktualisiere die Komponente mit den aktuellen Property-Werten
+            updated_component = self.save_properties_to_component(self._current_temp_component)
+            if updated_component and hasattr(self, 'temporary_components'):
+                # Ersetze die Komponente in der temporären Liste
+                self.temporary_components[self._current_temp_component_index] = updated_component
+                
+                # Aktualisiere die temporäre Datei
+                self.update_temporary_file()
+
     def close_library_window(self):
         """
         Closes the library window.

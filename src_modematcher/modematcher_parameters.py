@@ -46,6 +46,7 @@ class ModematcherParameters(QObject):
         """
         Creates and shows the modematcher configuration window.
         """
+
         self.modematcher_parameter_window = QMainWindow()
         # Load the modematcher UI
         self.ui_modematcher = uic.loadUi(
@@ -74,7 +75,7 @@ class ModematcherParameters(QObject):
             self.ui_modematcher.CheckBox_spherical_input_beam.isChecked())
         self.handle_spherical_output_beam_changed(
             self.ui_modematcher.CheckBox_spherical_output_beam.isChecked())
-    
+
     def handle_spherical_input_beam_changed(self, state):
         """
         Handler für Änderungen an der CheckBox für sphärischen Eingabestrahl.
