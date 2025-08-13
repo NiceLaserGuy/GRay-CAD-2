@@ -61,7 +61,7 @@ class OptimizationWorker(QObject):
         results = []
         best_result = None
         best_fitness = float('inf')
-        total_generations = 50
+        total_generations = 30
 
         self.optimizer.max_lenses = max_lenses
         self.optimizer.problem()
@@ -71,7 +71,7 @@ class OptimizationWorker(QObject):
                 break
 
             self.progress.emit(run * total_generations)
-            pop_size = 100
+            pop_size = 50
             population = self.optimizer.toolbox.population(n=pop_size)
             stats = tools.Statistics(lambda ind: ind.fitness.values)
             stats.register("avg", np.mean)
@@ -97,7 +97,7 @@ class OptimizationWorker(QObject):
                     if self.optimizer.fitness_function(optimized_individual)[0] < self.optimizer.fitness_function(best_individual)[0]:
                         best_individual = optimized_individual
                 except Exception as e:
-                    print(f"Lokale Optimierung fehlgeschlagen: {str(e)}")
+                    pass
 
                 current_fitness = best_individual.fitness.values[0]
                 waist_sag, waist_tan, position_sag, position_tan = self.optimizer.calculate_beam_parameters(best_individual)
@@ -295,7 +295,6 @@ class LensSystemOptimizer:
             QMessageBox.information(None, "Setup Generated", f"Generated lens system setup with {len(setup_components)} components.")
 
         except Exception as e:
-            print(f"Error in plot_setup: {e}")
             QMessageBox.critical(None, "Error", f"Error generating setup: {str(e)}")
 
     def get_beam_parameters(self):
@@ -456,9 +455,6 @@ class LensSystemOptimizer:
                 q_tan_final = beam.propagate_q(q_tan_final, abcd_matrix)
         
         # Berechne Strahlparameter aus q-Parametern
-        waist_sag = beam.beam_radius(q_sag_final, self.wavelength, n)
-        waist_tan = beam.beam_radius(q_tan_final, self.wavelength, n)
-
         w0_sag = beam.beam_radius(q_sag_final, self.wavelength, n)
         w0_tan = beam.beam_radius(q_tan_final, self.wavelength, n)
         focus_pos_sag = self.distance - q_sag_final.real
@@ -548,7 +544,7 @@ class LensSystemOptimizer:
                     ui_obj = getattr(self, attr_name)
                     if hasattr(ui_obj, 'progressBar'):
                         # Setze progressBar in der UI
-                        total_steps = num_runs * 50  # 50 Generationen pro Run
+                        total_steps = num_runs * 30  # 50 Generationen pro Run
                         ui_obj.progressBar.setMinimum(0)
                         ui_obj.progressBar.setMaximum(total_steps)
                         ui_obj.progressBar.setValue(0)
