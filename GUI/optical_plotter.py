@@ -1,26 +1,28 @@
 import numpy as np
 import pyqtgraph as pg
 from pyqtgraph import LinearRegionItem
-import copy
+from bisect import bisect_right
 from PyQt5.QtWidgets import QMessageBox
-
 from PyQt5 import QtCore
 
 class OpticalSystemPlotter:
     def __init__(self, plotWidget, beam, matrices, vc):
+        # Basis-Referenzen
         self.plotWidget = plotWidget
         self.beam = beam
         self.matrices = matrices
         self.vc = vc
+
+        # Plot-Objekte
         self.curve_sag = None
         self.curve_tan = None
         self.vlines = []
         self.z_setup = 0
-        
-        # NEU: Flag für Update-Schutz
-        self._updating_plot = False
-        
-        # Gespeicherte Parameter
+
+        # Status
+        self._updating_plot = False  # Reentrancy-Schutz
+
+        # Parameter des aktuellen Systems
         self.wavelength = None
         self.waist_sag = None
         self.waist_tan = None
@@ -29,10 +31,130 @@ class OpticalSystemPlotter:
         self.n = None
         self.optical_system_sag = None
         self.optical_system_tan = None
+
+        # Sichtbare Plot-Daten
         self.z_data = None
         self.w_sag_data = None
         self.w_tan_data = None
         self.z_visible = None
+
+        # Segment-Caches für schnelle q-Abfrage
+        self._segments_sag = None
+        self._segments_tan = None
+
+        # Globale Profile (vollständiger Systemverlauf)
+        self.z_global = None
+        self.w_sag_global = None
+        self.w_tan_global = None
+        self.q_sag_global = None
+        self.q_tan_global = None
+
+    # -------------------------
+    # Interne Cache-Helfer
+    # -------------------------
+    def _build_q_segments(self, optical_system, q_initial):
+        """Erzeuge Segmentliste für schnelle q-Bestimmung.
+        Segment-Dict Felder:
+          z_start, z_end, type ('FS'|'EL'), n_medium (bei FS), q_in, q_out
+        """
+        segments = []
+        z_current = 0.0
+        q = q_initial
+        segments.append({
+            'z_start': 0.0,
+            'z_end': 0.0,
+            'type': 'START',
+            'n': None,
+            'q_in': q,
+            'q_out': q
+        })
+        for element, params in optical_system:
+            # Freiraum
+            if hasattr(element, "__func__") and element.__func__ is self.matrices.free_space.__func__:
+                length = params[0]
+                n_medium = params[1]
+                try:
+                    length_val = float(length)
+                    n_val = float(n_medium)
+                except Exception:
+                    continue
+                if length_val <= 0 or n_val <= 0:
+                    continue
+                q_in = q
+                q_out = q + length_val / n_val  # da ABCD=[1, L/n;0,1]
+                seg = {
+                    'z_start': z_current,
+                    'z_end': z_current + length_val,
+                    'type': 'FS',
+                    'n': n_val,
+                    'q_in': q_in,
+                    'q_out': q_out
+                }
+                segments.append(seg)
+                z_current += length_val
+                q = q_out
+            else:
+                # Optisches Element ohne Ausdehnung in z
+                if isinstance(params, tuple):
+                    ABCD = element(*params)
+                else:
+                    ABCD = element(params)
+                q_in = q
+                A, B, C, D = ABCD.flatten()
+                q_out = (A * q + B) / (C * q + D)
+                seg = {
+                    'z_start': z_current,
+                    'z_end': z_current,  # kein z-Inkrement
+                    'type': 'EL',
+                    'n': None,
+                    'q_in': q_in,
+                    'q_out': q_out
+                }
+                segments.append(seg)
+                q = q_out
+        self._system_length = z_current
+        # Für schnellen Binär-Suche: separate Liste der z_end Werte
+        z_index = [s['z_end'] for s in segments]
+        return segments, z_index
+
+    def _ensure_segment_caches(self):
+        """Stellt sicher, dass Segment-Caches existieren."""
+        if self._segments_sag is None or self._segments_tan is None:
+            # Falls noch nicht gebaut (z.B. erster MouseMove vor Plot), versuchen neu zu bauen
+            if self.optical_system_sag is not None and self.wavelength is not None:
+                q_sag0 = self.beam.q_value(self.waist_pos_sag, self.waist_sag, self.wavelength, self.n)
+                q_tan0 = self.beam.q_value(self.waist_pos_tan, self.waist_tan, self.wavelength, self.n)
+                self._segments_sag, self._segments_sag_index = self._build_q_segments(self.optical_system_sag, q_sag0)
+                self._segments_tan, self._segments_tan_index = self._build_q_segments(self.optical_system_tan, q_tan0)
+
+    def get_q_at(self, z, mode="sagittal"):
+        """Schnelle q-Abfrage an Position z mittels Segment-Cache."""
+        self._ensure_segment_caches()
+        if mode == "sagittal":
+            segments = self._segments_sag
+            z_index = getattr(self, '_segments_sag_index', [])
+        else:
+            segments = self._segments_tan
+            z_index = getattr(self, '_segments_tan_index', [])
+        if not segments:
+            return None
+        if z <= 0:
+            return segments[0]['q_in']
+        # Binärsuche nach erstem Segment mit z_end >= z
+        pos = bisect_right(z_index, z)
+        if pos >= len(segments):
+            # hinter letztem Segment -> freie Ausbreitung nach System
+            last = segments[-1]
+            # freie Ausbreitung: q = q_out + (z - system_length)/n (n≈1 hier)
+            return last['q_out'] + (z - last['z_end']) / (self.n if self.n else 1)
+        seg = segments[pos]
+        if seg['type'] == 'FS':
+            # innerhalb Freiraumsegment
+            dz = min(max(0.0, z - seg['z_start']), seg['z_end'] - seg['z_start'])
+            return seg['q_in'] + dz / seg['n']
+        else:
+            # Element oder Start -> q_out repräsentiert Zustand NACH Element; bei punktuellen Elementen ist z exakt an z_start==z_end
+            return seg['q_out']
 
     def update_live_plot(self, main_window):
         """Update the live plot based on current setup"""
@@ -134,7 +256,16 @@ class OpticalSystemPlotter:
             # Setze ViewBox-Range ohne Signal
             vb.setXRange(z_min, z_max, padding=0.02)
             
-            # Initiale Plot-Berechnung
+            # Segment-Caches vor erster Plot-Berechnung anlegen
+            q_sag0 = self.beam.q_value(self.waist_pos_sag, self.waist_sag, self.wavelength, self.n)
+            q_tan0 = self.beam.q_value(self.waist_pos_tan, self.waist_tan, self.wavelength, self.n)
+            self._segments_sag, self._segments_sag_index = self._build_q_segments(self.optical_system_sag, q_sag0)
+            self._segments_tan, self._segments_tan_index = self._build_q_segments(self.optical_system_tan, q_tan0)
+
+            # Globale Profile berechnen (gesamtes System)
+            self._build_global_profiles(q_sag0, q_tan0)
+
+            # Initiale Plot-Berechnung (sichtbarer Bereich)
             self._update_plot_internal(z_min, z_max)
             
             # Signal wieder verbinden NACH der Initialisierung
@@ -173,21 +304,56 @@ class OpticalSystemPlotter:
 
     def _update_plot_internal(self, z_min, z_max):
         """Interne Plot-Update-Funktion ohne Signal-Behandlung"""
-        FIXED_RESOLUTION = 1000
+        FIXED_RESOLUTION = 800  # Sichtbereich-Auflösung
         z_visible = np.linspace(z_min, z_max, FIXED_RESOLUTION)
-        
-        # q-Werte berechnen
-        q_sag = self.beam.q_value(self.waist_pos_sag, self.waist_sag, self.wavelength, self.n)
-        q_tan = self.beam.q_value(self.waist_pos_tan, self.waist_tan, self.wavelength, self.n)
-        
+
         try:
-            # Beam-Propagation berechnen
-            self.z_data, self.w_sag_data, z_setup = self.beam.propagate_through_system(
-                self.wavelength, q_sag, self.optical_system_sag, z_visible, FIXED_RESOLUTION, n=self.n)
-            _, self.w_tan_data, _ = self.beam.propagate_through_system(
-                self.wavelength, q_tan, self.optical_system_tan, z_visible, FIXED_RESOLUTION, n=self.n)
-            
-            self.z_setup = z_setup
+            if self.z_global is None:
+                # Fallback: falls globale Profile fehlen (sollte nicht passieren)
+                w_sag_vals = []
+                w_tan_vals = []
+                for z in z_visible:
+                    qz_sag = self.get_q_at(z, mode="sagittal")
+                    qz_tan = self.get_q_at(z, mode="tangential")
+                    if qz_sag is None or qz_tan is None:
+                        continue
+                    w_sag_vals.append(self.beam.beam_radius(qz_sag, self.wavelength, self.n))
+                    w_tan_vals.append(self.beam.beam_radius(qz_tan, self.wavelength, self.n))
+                self.z_data = z_visible
+                self.w_sag_data = np.array(w_sag_vals)
+                self.w_tan_data = np.array(w_tan_vals)
+            else:
+                # Interpolation + analytische Fortsetzung hinter letztem Element
+                z0 = self.z_global[0]
+                z1 = self.z_global[-1]
+                self.z_data = z_visible
+                w_sag = np.empty_like(z_visible)
+                w_tan = np.empty_like(z_visible)
+                q_last_sag = self.q_sag_global[-1]
+                q_last_tan = self.q_tan_global[-1]
+                # Bereich innerhalb globaler Daten
+                inside_mask = (z_visible <= z1) & (z_visible >= z0)
+                if inside_mask.any():
+                    z_inside = np.clip(z_visible[inside_mask], z0, z1)
+                    w_sag[inside_mask] = np.interp(z_inside, self.z_global, self.w_sag_global)
+                    w_tan[inside_mask] = np.interp(z_inside, self.z_global, self.w_tan_global)
+                # Hinter System: freie Ausbreitung ab q_last
+                after_mask = z_visible > z1
+                if after_mask.any():
+                    dz = z_visible[after_mask] - z1
+                    # freie Ausbreitung: q_new = q_last + dz/n
+                    q_prop_sag = q_last_sag + dz / (self.n if self.n else 1)
+                    q_prop_tan = q_last_tan + dz / (self.n if self.n else 1)
+                    w_sag[after_mask] = np.array([self.beam.beam_radius(qv, self.wavelength, self.n) for qv in q_prop_sag])
+                    w_tan[after_mask] = np.array([self.beam.beam_radius(qv, self.wavelength, self.n) for qv in q_prop_tan])
+                # Vor System (z < 0) theoretisch nicht sichtbar, aber falls doch: konstant erster Wert
+                before_mask = z_visible < z0
+                if before_mask.any():
+                    w_sag[before_mask] = self.w_sag_global[0]
+                    w_tan[before_mask] = self.w_tan_global[0]
+                self.w_sag_data = w_sag
+                self.w_tan_data = w_tan
+            self.z_setup = getattr(self, '_system_length', 0)
             
             # Plot aktualisieren oder erstellen
             if hasattr(self, "curve_sag") and self.curve_sag is not None:
@@ -300,3 +466,63 @@ class OpticalSystemPlotter:
         for vline in getattr(self, "vlines", []):
             self.plotWidget.removeItem(vline)
         self.vlines = []
+
+    # -------------------------
+    # Globale Profil-Berechnung
+    # -------------------------
+    def _build_global_profiles(self, q_sag0, q_tan0):
+        """Berechnet vollständige q- und w-Verläufe entlang des Systems für effizientes Slicing."""
+        if self._segments_sag is None or self._segments_tan is None:
+            return
+        # Ziel: max. Punkte begrenzen (z.B. 5000) proportional zu Segmentlängen
+        max_points = 5000
+        system_length = getattr(self, '_system_length', 0.0)
+        if system_length <= 0:
+            # Nur Startpunkt
+            self.z_global = np.array([0.0])
+            self.q_sag_global = np.array([q_sag0])
+            self.q_tan_global = np.array([q_tan0])
+            self.w_sag_global = np.array([self.beam.beam_radius(q_sag0, self.wavelength, self.n)])
+            self.w_tan_global = np.array([self.beam.beam_radius(q_tan0, self.wavelength, self.n)])
+            return
+        # Sammle Freiraumsegmente für Verteilung
+        free_segments = [s for s in self._segments_sag if s['type'] == 'FS']
+        total_free_length = sum((s['z_end'] - s['z_start']) for s in free_segments)
+        # Mindestens Punkte an jedem Element/Segment-Übergang
+        z_points = set()
+        for s in self._segments_sag:
+            z_points.add(s['z_start'])
+            z_points.add(s['z_end'])
+        # Restliche Punkte auf freie Segmente verteilen
+        base_points = len(z_points)
+        remaining = max(max_points - base_points, 0)
+        z_extra = []
+        for s in free_segments:
+            length = s['z_end'] - s['z_start']
+            if length <= 0:
+                continue
+            share = remaining * (length / total_free_length) if total_free_length > 0 else 0
+            pts = int(max(2, share))  # mindestens 2 pro Segment
+            local = np.linspace(s['z_start'], s['z_end'], pts)
+            z_extra.extend(local.tolist())
+        # Kombinieren
+        for z in z_extra:
+            z_points.add(float(z))
+        z_global = np.array(sorted(z_points))
+        # q-Profile berechnen durch Cache-Abfrage
+        q_sag_list = []
+        q_tan_list = []
+        w_sag_list = []
+        w_tan_list = []
+        for z in z_global:
+            qs = self.get_q_at(z, mode="sagittal")
+            qt = self.get_q_at(z, mode="tangential")
+            q_sag_list.append(qs)
+            q_tan_list.append(qt)
+            w_sag_list.append(self.beam.beam_radius(qs, self.wavelength, self.n))
+            w_tan_list.append(self.beam.beam_radius(qt, self.wavelength, self.n))
+        self.z_global = z_global
+        self.q_sag_global = np.array(q_sag_list, dtype=complex)
+        self.q_tan_global = np.array(q_tan_list, dtype=complex)
+        self.w_sag_global = np.array(w_sag_list)
+        self.w_tan_global = np.array(w_tan_list)
