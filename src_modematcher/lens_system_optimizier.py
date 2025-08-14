@@ -234,7 +234,7 @@ class LensSystemOptimizer:
 
             # 2. Linsen-Komponenten mit korrekter Propagation
             if hasattr(self, "last_optimization_results") and self.last_optimization_results:
-                best_result = self.last_optimization_results[0]
+                best_result = min(self.last_optimization_results, key=lambda r: r['fitness'])
                 # Sortiere Linsen nach Position
                 sorted_lenses = sorted(best_result.get('lenses', []), key=lambda x: x[1])
                 
@@ -288,8 +288,8 @@ class LensSystemOptimizer:
 
             # Übertrage das Setup an das Hauptfenster
             self._transfer_setup_to_mainwindow(setup_components)
-            
-            QMessageBox.information(None, "Setup Generated", f"Generated lens system setup with {len(setup_components)} components.")
+
+            QMessageBox.information(None, "Setup Generated", f"Generated lens system setup with {len(setup_components)} components and fitness {best_result.get('fitness', 0):.4f}")
 
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Error generating setup: {str(e)}")
@@ -451,27 +451,25 @@ class LensSystemOptimizer:
                 abcd_matrix = element(*params)
                 q_tan_final = beam.propagate_q(q_tan_final, abcd_matrix)
         
-        def get_w0_and_focus(q_final):
-            """Berechnet die minimale Strahltaille w₀ und Fokusposition"""
-            # Rayleigh-Länge ist der Imaginärteil von q
+        def get_w0_and_focus(q_final, z_out):
+            """
+            Berechnet die minimale Strahltaille w₀ und Fokusposition nach einer ABCD-Kette.
+            q_final: q-Parameter am Systemende
+            z_out: absolute Position am Systemende (z.B. self.distance)
+            """
+            n = 1.0
             zR = np.imag(q_final)
-            
-            # Prüfe auf physikalisch sinnvolle Werte
             if zR <= 0:
                 return float('inf'), float('nan')
-            
-            # Korrekte w₀-Berechnung (minimale Strahltaille)
             w0 = np.sqrt(self.wavelength * zR / (np.pi * n))
-            
-            # Fokusposition: z₀ = z - Re(q)
-            focus_position = self.distance - q_final.real
-            
+            # Fokusposition relativ zum Systemstart:
+            focus_position = z_out - np.real(q_final)
             return w0, focus_position
         
         # Berechne echte w₀-Werte
-        w0_sag, focus_pos_sag = get_w0_and_focus(q_sag_final)
-        w0_tan, focus_pos_tan = get_w0_and_focus(q_tan_final)
-        
+        w0_sag, focus_pos_sag = get_w0_and_focus(q_sag_final, self.distance)
+        w0_tan, focus_pos_tan = get_w0_and_focus(q_tan_final, self.distance)
+
         # Debug entfernen:
         # print(f"imaginary part of q_sag_final: {q_sag_final.imag}")
         # print(f"real part of q_sag_final: {q_sag_final.real}")
@@ -515,6 +513,7 @@ class LensSystemOptimizer:
         # Berechne Abweichung von Zielparametern (jetzt auf w0!)
         rel_waist_error_sag = abs(self.waist_goal_sag - w0_sag)/(abs(self.waist_goal_sag) + abs(w0_sag))
         rel_waist_error_tan = abs(self.waist_goal_tan - w0_tan)/(abs(self.waist_goal_tan) + abs(w0_tan))
+        
         fitness_waist = rel_waist_error_sag + rel_waist_error_tan
 
         # Normalisierte Positionsabweichung (Fokusposition)
@@ -532,7 +531,7 @@ class LensSystemOptimizer:
         except AttributeError:
             weight = 0.5
 
-        fitness = (1 - weight) * fitness_waist + weight * fitness_position
+        fitness = ((1 - weight) * fitness_waist) + (weight * fitness_position)
 
         return (fitness,)
     
