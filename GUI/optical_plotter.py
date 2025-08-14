@@ -6,9 +6,9 @@ from PyQt5.QtWidgets import QMessageBox
 from PyQt5 import QtCore
 
 class OpticalSystemPlotter:
-    def __init__(self, plotWidget, beam, matrices, vc):
+    def __init__(self, plot_widget, beam, matrices, vc):
         # Basis-Referenzen
-        self.plotWidget = plotWidget
+        self.plotWidget = plot_widget
         self.beam = beam
         self.matrices = matrices
         self.vc = vc
@@ -48,6 +48,10 @@ class OpticalSystemPlotter:
         self.w_tan_global = None
         self.q_sag_global = None
         self.q_tan_global = None
+
+        # System-Status
+        self._system_dirty = True
+        self._global_profiles_dirty = True
 
     # -------------------------
     # Interne Cache-Helfer
@@ -526,3 +530,16 @@ class OpticalSystemPlotter:
         self.q_tan_global = np.array(q_tan_list, dtype=complex)
         self.w_sag_global = np.array(w_sag_list)
         self.w_tan_global = np.array(w_tan_list)
+
+    def mark_system_dirty(self):
+        """Extern aufrufbar: erzwingt Neuaufbau des optischen Systems und globaler Profile."""
+        self._system_dirty = True
+        self._global_profiles_dirty = True
+        # Cache-Arrays leeren
+        self.z_global = None
+        self.w_sag_global = None
+        self.w_tan_global = None
+        self.q_sag_global = None
+        self.q_tan_global = None
+        self._segments_sag = None
+        self._segments_tan = None

@@ -138,6 +138,17 @@ class PropertiesHandler:
                     field.setCurrentText(value)
                 layout.addWidget(field, row, 1)
                 self._property_fields[key] = field
+
+                def on_lens_material_changed():
+                    # Properties speichern
+                    self.save_properties_to_component(component)
+                    # System/Cache invalidieren falls Plotter vorhanden
+                    if hasattr(self, 'optical_plotter') and hasattr(self.optical_plotter, 'mark_system_dirty'):
+                        self.optical_plotter.mark_system_dirty()
+                    # Live-Plot neu aufbauen
+                    self.update_live_plot_delayed()
+                field.currentIndexChanged.connect(on_lens_material_changed)
+                # Weiterhin generische Behandlung (falls zusätzliche Logik greift)
                 field.currentIndexChanged.connect(lambda: self.on_property_field_changed(component))
              
             # Ausgrauen der nicht benötigten Felder       
