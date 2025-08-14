@@ -58,8 +58,10 @@ class ModematcherCalculator:
         
         # Button-Verbindungen
         self.ui_modematcher_calculation.button_optimize.clicked.connect(self.run_optimization)
+        self.ui_modematcher_calculation.button_stop_optimization.clicked.connect(self.stop_optimization)
         # NEU: Back-Button verbinden
         self.ui_modematcher_calculation.button_back.clicked.connect(self.handle_back_button)
+    
         
         # Optional: Lens-Selection Button falls vorhanden
         if hasattr(self.ui_modematcher_calculation, 'button_select_lenses'):
@@ -136,6 +138,13 @@ class ModematcherCalculator:
         # Starte Optimierung mit der aktuellen Anzahl an Linsen
         self.optimizer.optimize_lens_system(
             max_lenses=self.ui_modematcher_calculation.lensNumber.value())
+
+    def stop_optimization(self):
+        """Stoppe die Optimierung"""
+        try:
+            self.optimizer.stop_optimization()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", "Error stopping optimization: " + str(e))
 
     def calculate_optimal_system(self):
         """Berechne optimales Linsensystem mit geladenen Parametern"""

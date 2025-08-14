@@ -743,3 +743,22 @@ class LensSystemOptimizer:
         optimized_individual.fitness.values = fitness_value
         
         return optimized_individual
+    
+    def stop_optimization(self):
+        """Stoppe die Optimierung"""
+        try:
+            # Stoppe den Worker im Optimizer, falls vorhanden
+            if hasattr(self, 'worker') and self.worker is not None:
+                self.worker.stop()
+            # Beende ggf. den Thread
+            if hasattr(self, 'thread') and self.thread is not None:
+                self.thread.quit()
+                self.thread.wait()
+            # Setze UI zurück, falls möglich
+            if hasattr(self, 'ui_modematcher_calculation') and hasattr(self.ui_modematcher_calculation, 'progressBar'):
+                self.ui_modematcher_calculation.progressBar.setValue(0)
+                if hasattr(self.ui_modematcher_calculation, 'button_optimize'):
+                    self.ui_modematcher_calculation.button_optimize.setEnabled(True)
+        except Exception as e:
+            # QMessageBox braucht als erstes Argument ein QWidget oder None!
+            QMessageBox.critical(None, "Error", "Error stopping optimization: " + str(e))
