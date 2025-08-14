@@ -225,17 +225,38 @@ class MainWindow(QMainWindow, PropertiesHandler):
                     w_tan_val = w0_tan + t * (w1_tan - w0_tan)
                 optical_system_sag = self.build_optical_system_from_setup_list(mode="sagittal")
                 optical_system_tan = self.build_optical_system_from_setup_list(mode="tangential")
-                q_initial_sag = self.beam.q_value(0, self.optical_plotter.w_sag_data[0], self.wavelength, 1)
-                q_initial_tan = self.beam.q_value(0, self.optical_plotter.w_tan_data[0], self.wavelength, 1)
+                # Start-/Waist-Parameter verwenden, identisch zu plot-Berechnung.
+                if self.wavelength is None:
+                    # Fallback: versuche aus Beam-Komponente zu lesen
+                    for i in range(self.setupList.count()):
+                        comp_item = self.setupList.item(i)
+                        comp = comp_item.data(QtCore.Qt.UserRole)
+                        if isinstance(comp, dict) and comp.get("type", "").upper() == "BEAM":
+                            self.wavelength = comp.get("properties", {}).get("Wavelength", 514e-9)
+                            break
+                try:
+                    q_initial_sag = self.beam.q_value(self.optical_plotter.waist_pos_sag or 0,
+                                                      self.optical_plotter.waist_sag or self.optical_plotter.w_sag_data[0],
+                                                      self.wavelength, 1)
+                except Exception:
+                    q_initial_sag = None
+                try:
+                    q_initial_tan = self.beam.q_value(self.optical_plotter.waist_pos_tan or 0,
+                                                      self.optical_plotter.waist_tan or self.optical_plotter.w_tan_data[0],
+                                                      self.wavelength, 1)
+                except Exception:
+                    q_initial_tan = None
                 self.ui.label_z_position.setText(f"{self.vc.convert_to_nearest_string(z_val, self)}")
                 self.ui.label_w_sag.setText(f"{self.vc.convert_to_nearest_string(w_sag_val, self)}")
                 self.ui.label_w_tan.setText(f"{self.vc.convert_to_nearest_string(w_tan_val, self)}")
-                self.ui.label_roc_sag.setText(
-                    f"{self.vc.convert_to_nearest_string(self.beam.radius_of_curvature_system(z_val, q_initial_sag, optical_system_sag, self.wavelength))}"
-                )
-                self.ui.label_roc_tan.setText(
-                    f"{self.vc.convert_to_nearest_string(self.beam.radius_of_curvature_system(z_val, q_initial_tan, optical_system_tan, self.wavelength))}"
-                )
+                if q_initial_sag is not None:
+                    self.ui.label_roc_sag.setText(
+                        f"{self.vc.convert_to_nearest_string(self.beam.radius_of_curvature_system(z_val, q_initial_sag, optical_system_sag, self.wavelength))}"
+                    )
+                if q_initial_tan is not None:
+                    self.ui.label_roc_tan.setText(
+                        f"{self.vc.convert_to_nearest_string(self.beam.radius_of_curvature_system(z_val, q_initial_tan, optical_system_tan, self.wavelength))}"
+                    )
         # Connect signal to function
         self.plotWidget.scene().sigMouseMoved.connect(mouseMoved)
         self.plotWidget.getViewBox().sigXRangeChanged.connect(self.optical_plotter.update_plot_for_visible_range)

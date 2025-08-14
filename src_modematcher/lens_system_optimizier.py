@@ -289,7 +289,7 @@ class LensSystemOptimizer:
             # Übertrage das Setup an das Hauptfenster
             self._transfer_setup_to_mainwindow(setup_components)
 
-            QMessageBox.information(None, "Setup Generated", f"Generated lens system setup with {len(setup_components)} components and fitness {best_result.get('fitness', 0):.4f}")
+            QMessageBox.information(None, "Setup Generated", f"Generated lens system setup with {len(setup_components)} components and fitness {best_result.get('fitness', 0):.4e}")
 
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Error generating setup: {str(e)}")
