@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>821</width>
+    <width>954</width>
     <height>600</height>
    </rect>
   </property>
@@ -135,6 +135,12 @@
       <property name="sizeAdjustPolicy">
        <enum>QAbstractScrollArea::AdjustToContentsOnFirstShow</enum>
       </property>
+      <property name="editTriggers">
+       <set>QAbstractItemView::AnyKeyPressed|QAbstractItemView::DoubleClicked</set>
+      </property>
+      <property name="dragDropOverwriteMode">
+       <bool>false</bool>
+      </property>
       <property name="alternatingRowColors">
        <bool>true</bool>
       </property>
@@ -187,22 +193,27 @@
       </column>
       <column>
        <property name="text">
-        <string>w₀, sag</string>
+        <string>Lenses</string>
        </property>
       </column>
       <column>
        <property name="text">
-        <string>Δw₀, sag</string>
+        <string>w₀ (sag/tan)</string>
        </property>
       </column>
       <column>
        <property name="text">
-        <string>z₀, sag</string>
+        <string>Δw₀ (sag/tan)</string>
        </property>
       </column>
       <column>
        <property name="text">
-        <string>Δz₀, sag</string>
+        <string>z₀ (sag/tan)</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Δz₀ (sag/tan)</string>
        </property>
       </column>
      </widget>

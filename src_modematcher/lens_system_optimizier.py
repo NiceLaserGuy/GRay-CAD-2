@@ -637,68 +637,179 @@ class LensSystemOptimizer:
                     break
     
     def _on_multi_optimization_finished(self, results):
-        """
-        Befüllt das QTableWidget tableResults mit allen Optimierungsergebnissen.
-        Jeder Eintrag in results ist ein Dictionary mit den Keys:
-        'fitness', 'waist_sag', 'position_sag', 'run'
-        """
-        if not results:
-            QMessageBox.warning(None, "Optimization Result", "No valid solution found in any run.")
-            return
+            """
+            Befüllt das QTableWidget tableResults mit allen Optimierungsergebnissen.
+            Zeigt jetzt sagittale UND tangentiale Werte (zweizeilig pro Zelle).
+            Klick auf eine Zeile erzeugt eine temporäre Plot-Vorschau dieses Setups.
+            """
+            if not results:
+                QMessageBox.warning(None, "Optimization Result", "No valid solution found in any run.")
+                return
 
-        # Zielwerte aus den geladenen Parametern
-        w0_sag_goal = self.waist_goal_sag
-        z0_sag_goal = self.distance + self.waist_position_goal_sag
+            self.last_optimization_results = results # Speichern für Preview
 
-        # UI finden
-        ui = None
-        for attr_name in ['ui', 'modematcher_calculation', 'ui_modematcher_calculation']:
-            if hasattr(self, attr_name):
-                ui = getattr(self, attr_name)
-                break
+            # Zielwerte
+            w0_sag_goal = self.waist_goal_sag
+            w0_tan_goal = self.waist_goal_tan
+            z0_sag_goal = self.distance + self.waist_position_goal_sag
+            z0_tan_goal = self.distance + self.waist_position_goal_tan
 
-        if ui and hasattr(ui, 'tableResults'):
+            # UI finden
+            ui = None
+            for attr_name in ['ui', 'modematcher_calculation', 'ui_modematcher_calculation']:
+                if hasattr(self, attr_name):
+                    ui = getattr(self, attr_name)
+                    break
+
+            if ui and hasattr(ui, 'tableResults'):
+                table = ui.tableResults
+                table.clearSelection()
+                table.setSortingEnabled(False)  # Temporär aus beim Füllen
+                table.setRowCount(len(results))
+                table.setColumnCount(6)
+
+                def fmt(v): 
+                    return self.vc.convert_to_nearest_string(v)
+
+                RESULT_ROLE = Qt.UserRole + 99  # eigener Role-Key
+
+                for row, result in enumerate(results):
+                    waist_sag = result['waist_sag']
+                    waist_tan = result.get('waist_tan', float('nan'))
+                    position_sag = result['position_sag']
+                    position_tan = result.get('position_tan', float('nan'))
+                    fitness = result['fitness']
+                    lens_count = len(result['lenses'])
+
+                    delta_w0_sag = waist_sag - w0_sag_goal
+                    delta_w0_tan = waist_tan - w0_tan_goal
+                    delta_z0_sag = position_sag - z0_sag_goal
+                    delta_z0_tan = position_tan - z0_tan_goal
+
+                    item_fitness = NumericTableWidgetItem(f"{fitness:.3e}", fitness)
+                    item_fitness.setData(RESULT_ROLE, result)  # result an erster Spalte hinterlegen
+                    item_lenses = NumericTableWidgetItem(f"{lens_count}", lens_count)
+                    item_waist = NumericTableWidgetItem(f"{fmt(waist_sag)}\n{fmt(waist_tan)}", waist_sag)
+                    item_delta_waist = NumericTableWidgetItem(f"{fmt(delta_w0_sag)}\n{fmt(delta_w0_tan)}", abs(delta_w0_sag))
+                    item_position = NumericTableWidgetItem(f"{fmt(position_sag)}\n{fmt(position_tan)}", position_sag)
+                    item_delta_position = NumericTableWidgetItem(f"{fmt(delta_z0_sag)}\n{fmt(delta_z0_tan)}", abs(delta_z0_sag))
+
+                    item_waist.setToolTip(f"Sagittal: {waist_sag:.6g}\nTangential: {waist_tan:.6g}")
+                    item_delta_waist.setToolTip(f"ΔSag: {delta_w0_sag:.6g}\nΔTan: {delta_w0_tan:.6g}")
+                    item_position.setToolTip(f"Sagittal focus pos: {position_sag:.6g}\nTangential focus pos: {position_tan:.6g}")
+                    item_delta_position.setToolTip(f"ΔSag pos: {delta_z0_sag:.6g}\nΔTan pos: {delta_z0_tan:.6g}")
+
+                    table.setItem(row, 0, item_fitness)
+                    table.setItem(row, 1, item_lenses)
+                    table.setItem(row, 2, item_waist)
+                    table.setItem(row, 3, item_delta_waist)
+                    table.setItem(row, 4, item_position)
+                    table.setItem(row, 5, item_delta_position)
+
+                table.setSortingEnabled(True)
+                table.sortItems(0, Qt.AscendingOrder)
+
+                # Nur einmal verbinden
+                if not getattr(table, "_preview_connected", False):
+                    table.itemSelectionChanged.connect(self._on_table_selection_changed)
+                    table._preview_connected = True
+
+    def _on_table_selection_changed(self):
+        """Handler: Auswahl im Ergebnis-Table -> dazugehöriges Setup temporär plotten."""
+        try:
+            ui = None
+            for attr_name in ['ui', 'modematcher_calculation', 'ui_modematcher_calculation']:
+                if hasattr(self, attr_name):
+                    ui = getattr(self, attr_name)
+                    break
+            if not ui or not hasattr(ui, 'tableResults'):
+                return
             table = ui.tableResults
-            table.setRowCount(len(results))
-            for row, result in enumerate(results):
-                waist_sag = result['waist_sag']
-                position_sag = result['position_sag']
-                fitness = result['fitness']
-                delta_w0_sag = waist_sag - w0_sag_goal
-                delta_z0_sag = position_sag - z0_sag_goal
+            selected_ranges = table.selectedRanges()
+            if not selected_ranges:
+                return
+            # Nimm erste ausgewählte Zeile
+            row = selected_ranges[0].topRow()
+            first_item = table.item(row, 0)
+            if first_item is None:
+                return
+            RESULT_ROLE = Qt.UserRole + 99
+            result = first_item.data(RESULT_ROLE)
+            if result:
+                self._preview_result(result)
+        except Exception as e:
+            # Silent fail (kein QMessageBox Spam bei schneller Auswahl)
+            pass
 
-                # Fitness mit numerischem Wert für Sortierung
-                item_fitness = NumericTableWidgetItem(f"{fitness:.3e}", fitness)
-                
-                # Waist mit NumericTableWidgetItem
-                item_waist = NumericTableWidgetItem(f"{self.vc.convert_to_nearest_string(waist_sag)}", waist_sag)
-                
-                # Delta Waist mit NumericTableWidgetItem
-                item_delta_waist = NumericTableWidgetItem(f"{self.vc.convert_to_nearest_string(delta_w0_sag)}", delta_w0_sag)
-                
-                # Position mit NumericTableWidgetItem
-                item_position = NumericTableWidgetItem(f"{self.vc.convert_to_nearest_string(position_sag)}", position_sag)
-                
-                # Delta Position mit NumericTableWidgetItem
-                item_delta_position = NumericTableWidgetItem(f"{self.vc.convert_to_nearest_string(delta_z0_sag)}", delta_z0_sag)
-                
-                # Setze Items in Tabelle
-                table.setItem(row, 0, item_fitness)
-                table.setItem(row, 1, item_waist)
-                table.setItem(row, 2, item_delta_waist)
-                table.setItem(row, 3, item_position)
-                table.setItem(row, 4, item_delta_position)
+    def _preview_result(self, result):
+        """
+        Erzeugt ein temporäres Setup für das angeklickte Optimierungsergebnis
+        und sendet es an das Hauptfenster (ersetzt vorherige Vorschau).
+        """
+        try:
+            # Sicherstellen, dass Beam-Parameter vorhanden sind
+            if not hasattr(self, 'wavelength'):
+                self.get_beam_parameters()
 
-            # Aktiviere Sortierung für die Tabelle
-            table.setSortingEnabled(True)
-            
-            # Sortiere nach Fitness (Spalte 0)
-            table.sortItems(0, Qt.AscendingOrder)
+            wavelength = self.wavelength
+            waist_sag = self.waist_input_sag
+            waist_tan = self.waist_input_tan
+            waist_pos_sag = self.waist_position_sag
+            waist_pos_tan = self.waist_position_tan
 
-        # Speichere alle Ergebnisse für spätere Verwendung
-        self.last_optimization_results = results
-        self.plot_setup()  # Optional: Plot Setup nach Optimierung
-    
+            setup_components = []
+
+            # Beam
+            setup_components.append({
+                "type": "BEAM",
+                "name": "Beam",
+                "properties": {
+                    "Wavelength": wavelength,
+                    "Waist radius sagittal": waist_sag,
+                    "Waist radius tangential": waist_tan,
+                    "Waist position sagittal": waist_pos_sag,
+                    "Waist position tangential": waist_pos_tan,
+                    "Rayleigh range sagittal": np.pi * waist_sag**2 / wavelength,
+                    "Rayleigh range tangential": np.pi * waist_tan**2 / wavelength,
+                    "IS_ROUND": False
+                }
+            })
+
+            # Linsen sortieren
+            sorted_lenses = sorted(result.get('lenses', []), key=lambda x: x[1])
+            last_position = 0.0
+
+            for lens, position in sorted_lenses:
+                distance = position - last_position
+                if distance > 0:
+                    setup_components.append({
+                        "type": "PROPAGATION",
+                        "name": f"Propagation {last_position:.3f}m to {position:.3f}m",
+                        "properties": {
+                            "Length": distance,
+                            "Refractive index": 1.0
+                        }
+                    })
+                setup_components.append(dict(lens))
+                last_position = position
+
+            final_distance = self.distance - last_position
+            if final_distance > 0:
+                setup_components.append({
+                    "type": "PROPAGATION",
+                    "name": f"Propagation {last_position:.3f}m to {self.distance:.3f}m",
+                    "properties": {
+                        "Length": final_distance,
+                        "Refractive index": 1.0
+                    }
+                })
+
+            # Transfer an MainWindow
+            self._transfer_setup_to_mainwindow(setup_components)
+            self._current_preview_result = result  # Merken falls später übernehmen möchte
+        except Exception as e:
+            QMessageBox.critical(None, "Preview Error", f"Failed to preview setup: {str(e)}")
+
     def _on_optimization_error(self, error_message):
         """Wird aufgerufen, wenn ein Fehler während der Optimierung auftritt"""
         QMessageBox.critical(None, "Optimization Error", error_message)

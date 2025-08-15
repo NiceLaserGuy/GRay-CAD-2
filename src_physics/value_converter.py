@@ -80,7 +80,7 @@ class ValueConverter:
             try:
                 q = value * self.ureg.meter
                 q = q.to_compact()
-                return f"{q:.3f#~P}"
+                return f"{q:.3f~#P}"
             except Exception:
                 return f"{value:.3f}"
     

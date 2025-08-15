@@ -54,7 +54,6 @@ class PlotWorker(QObject):
 class MainWindow(QMainWindow, PropertiesHandler):
     """
     Main application window class.
-    Handles the primary user interface and window management.
     """
     
     def __init__(self, *args, **kwargs):
@@ -327,7 +326,10 @@ class MainWindow(QMainWindow, PropertiesHandler):
             self.ui.comboBoxSetup.setItemText(idx, new_name)
 
     def save_current_setup(self, target_index=None):
-        """Speichert die aktuelle setupList in das angegebene Setup."""
+        """Speichert die aktuelle setupList in das angegebene Setup (nicht während Preview)."""
+        if getattr(self, '_preview_active', False):
+            return  # Preview nicht persistieren
+        
         if target_index is None:
             target_index = self.ui.comboBoxSetup.currentIndex()
         
@@ -347,7 +349,11 @@ class MainWindow(QMainWindow, PropertiesHandler):
         self.setups[target_index]["components"] = current_setup
 
     def on_setup_selection_changed(self, index):
-        """Wechselt zwischen Setups mit vollständiger Isolation"""
+        """Wechselt zwischen Setups mit vollständiger Isolation (bricht Preview ab)."""
+        # Beende ggf. Preview vor Wechsel
+        if getattr(self, '_preview_active', False):
+            self.cancel_temporary_setup()
+        
         if index < 0 or index >= len(self.setups):
             return
     

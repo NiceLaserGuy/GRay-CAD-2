@@ -30,7 +30,7 @@ class Beam():
             QMessageBox.critical(None, "Error", "Beam radius must be greater than zero.")
             return None
         zr = (np.pi * beam_radius**2) / (wavelength)
-        return z + (1j * zr)
+        return - z + (1j * zr)
 
     def beam_radius(self, q, wavelength, n=1):
         """
