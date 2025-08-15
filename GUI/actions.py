@@ -100,13 +100,6 @@ class Action:
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(setup_data, f, indent=2, ensure_ascii=False)
 
-            QMessageBox.information(
-                parent, 
-                "Success", 
-                f"Setup saved successfully to:\n{file_path}"
-            )
-            return True
-
         except Exception as e:
             QMessageBox.critical(
                 parent, 
@@ -116,20 +109,19 @@ class Action:
             return False
 
     def _load_from_file(self, parent, file_path):
-        """Lädt ein Setup aus der angegebenen Datei."""
+        """Lädt ein Setup aus Datei und fügt es als neues Setup hinzu (löscht bestehende nicht)."""
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 setup_data = json.load(f)
 
-            # Validiere Datenstruktur
             if not isinstance(setup_data, dict) or "components" not in setup_data:
                 raise ValueError("Invalid setup file format")
 
             components = setup_data.get("components", [])
-            setup_name = setup_data.get("name", os.path.basename(file_path))
+            base_name = setup_data.get("name", os.path.basename(file_path))
 
-            # Prüfe ob Beam vorhanden ist
-            has_beam = any(comp.get("name", "").strip().lower() == "beam" for comp in components)
+            # Beam-Prüfung
+            has_beam = any(comp.get("type", "").strip().lower() == "beam" for comp in components)
             if not has_beam:
                 reply = QMessageBox.question(
                     parent,
@@ -141,37 +133,71 @@ class Action:
                 if reply != QMessageBox.Yes:
                     return False
 
-            # Lade Komponenten in setupList
+            # Stelle sicher, dass parent eine Setup-Verwaltung hat
+            if not hasattr(parent, 'setups'):
+                parent.setups = []  # Fallback: einfache Liste
+
+            # Sicher aktuellen sichtbaren Setup-Zustand speichern (falls nötig)
+            if hasattr(parent, 'ui') and hasattr(parent.ui, 'comboBoxSetup'):
+                current_index = parent.ui.comboBoxSetup.currentIndex()
+                if 0 <= current_index < len(getattr(parent, 'setups', [])):
+                    # Updates des aktuellen Setups (falls user vorher geändert hat)
+                    current_components = []
+                    for i in range(parent.setupList.count()):
+                        item = parent.setupList.item(i)
+                        comp = item.data(QtCore.Qt.UserRole)
+                        if isinstance(comp, dict):
+                            current_components.append(copy.deepcopy(comp))
+                    try:
+                        parent.setups[current_index]['components'] = current_components
+                    except Exception:
+                        pass
+
+            # Eindeutigen Namen erzeugen
+            existing_names = {s.get("name", "") for s in parent.setups}
+            name = base_name
+            if name in existing_names:
+                k = 2
+                while f"{base_name} ({k})" in existing_names:
+                    k += 1
+                name = f"{base_name} ({k})"
+
+            new_setup = {
+                "name": name,
+                "components": copy.deepcopy(components)
+            }
+            parent.setups.append(new_setup)
+
+            # ComboBox aktualisieren
+            if hasattr(parent.ui, 'comboBoxSetup'):
+                parent.ui.comboBoxSetup.addItem(name)
+                new_index = parent.ui.comboBoxSetup.count() - 1
+                parent.ui.comboBoxSetup.setCurrentIndex(new_index)
+
+            # Sicht aktualisieren: nur das neue Setup anzeigen
             parent.setupList.clear()
             parent._last_component_item = None
             if hasattr(parent, '_property_fields'):
                 parent._property_fields.clear()
+
             for comp in components:
                 item = QtWidgets.QListWidgetItem(comp.get("name", "Unnamed"))
                 item.setData(QtCore.Qt.UserRole, copy.deepcopy(comp))
                 parent.setupList.addItem(item)
 
-            # Aktualisiere Setup-Name
-            parent.ui.comboBoxSetup.setCurrentText(setup_name)
+            # Plot aktualisieren
+            parent.update_live_plot()
+            if hasattr(parent, 'scale_visible_setup'):
+                parent.scale_visible_setup()
 
-            # Setze aktuellen Dateipfad
+            # Dateipfad setzen nur für dieses zuletzt geladene Setup
             self.current_file_path = file_path
             parent.setWindowTitle(f"GRay-CAD 2 - {os.path.basename(file_path)}")
 
-            # Aktualisiere Plot
-            parent.update_live_plot()
-
-            QMessageBox.information(
-                parent, 
-                "Success", 
-                f"Setup loaded successfully from:\n{file_path}"
-            )
-            return True
-
         except Exception as e:
             QMessageBox.critical(
-                parent, 
-                "Error", 
+                parent,
+                "Error",
                 f"Failed to load setup:\n{str(e)}"
             )
             return False

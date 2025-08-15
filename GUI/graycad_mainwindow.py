@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import QMainWindow, QMessageBox
 import json
 import pyqtgraph as pg
 import numpy as np
-import copy, time
+import copy, traceback
 
 # Custom module imports
 from src_resonator.resonators import Resonator
@@ -824,7 +824,6 @@ class MainWindow(QMainWindow, PropertiesHandler):
             self.update_live_plot()
             
         except Exception as e:
-            import traceback
             traceback.print_exc()
             QMessageBox.critical(
                 self,
