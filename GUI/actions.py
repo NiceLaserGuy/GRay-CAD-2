@@ -72,7 +72,7 @@ class Action:
         return False
 
     def _save_to_file(self, parent, file_path):
-        """Speichert das aktuelle Setup in die angegebene Datei."""
+        """Speichert das aktuelle Setup in die angegebene Datei. Rückgabe: bool."""
         try:
             # Sammle alle Komponenten aus der setupList
             components = []
@@ -82,7 +82,6 @@ class Action:
                 if isinstance(component, dict):
                     components.append(copy.deepcopy(component))
 
-            # Erstelle Setup-Datenstruktur
             setup_data = {
                 "name": parent.ui.comboBoxSetup.currentText(),
                 "created": datetime.now().isoformat(),
@@ -96,52 +95,36 @@ class Action:
                 }
             }
 
-            # Speichere in JSON-Format
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(setup_data, f, indent=2, ensure_ascii=False)
-
+            return True
         except Exception as e:
-            QMessageBox.critical(
-                parent, 
-                "Error", 
-                f"Failed to save setup:\n{str(e)}"
-            )
+            QMessageBox.critical(parent, "Error", f"Failed to save setup:\n{str(e)}")
             return False
 
     def _load_from_file(self, parent, file_path):
-        """Lädt ein Setup aus Datei und fügt es als neues Setup hinzu (löscht bestehende nicht)."""
+        """Lädt ein Setup aus Datei und fügt es als neues Setup hinzu (löscht bestehende nicht). Rückgabe: bool."""
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 setup_data = json.load(f)
-
             if not isinstance(setup_data, dict) or "components" not in setup_data:
                 raise ValueError("Invalid setup file format")
-
             components = setup_data.get("components", [])
             base_name = setup_data.get("name", os.path.basename(file_path))
-
-            # Beam-Prüfung
             has_beam = any(comp.get("type", "").strip().lower() == "beam" for comp in components)
             if not has_beam:
                 reply = QMessageBox.question(
-                    parent,
-                    "No Beam Found",
+                    parent, "No Beam Found",
                     "The loaded setup contains no beam component. Continue anyway?",
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.No
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No
                 )
                 if reply != QMessageBox.Yes:
                     return False
-
-            # Stelle sicher, dass parent eine Setup-Verwaltung hat
             if not hasattr(parent, 'setups'):
-                parent.setups = []  # Fallback: einfache Liste
-
-            # Sicher aktuellen sichtbaren Setup-Zustand speichern (falls nötig)
+                parent.setups = []
             if hasattr(parent, 'ui') and hasattr(parent.ui, 'comboBoxSetup'):
                 current_index = parent.ui.comboBoxSetup.currentIndex()
                 if 0 <= current_index < len(getattr(parent, 'setups', [])):
-                    # Updates des aktuellen Setups (falls user vorher geändert hat)
                     current_components = []
                     for i in range(parent.setupList.count()):
                         item = parent.setupList.item(i)
@@ -152,8 +135,6 @@ class Action:
                         parent.setups[current_index]['components'] = current_components
                     except Exception:
                         pass
-
-            # Eindeutigen Namen erzeugen
             existing_names = {s.get("name", "") for s in parent.setups}
             name = base_name
             if name in existing_names:
@@ -161,45 +142,27 @@ class Action:
                 while f"{base_name} ({k})" in existing_names:
                     k += 1
                 name = f"{base_name} ({k})"
-
-            new_setup = {
-                "name": name,
-                "components": copy.deepcopy(components)
-            }
+            new_setup = {"name": name, "components": copy.deepcopy(components)}
             parent.setups.append(new_setup)
-
-            # ComboBox aktualisieren
             if hasattr(parent.ui, 'comboBoxSetup'):
                 parent.ui.comboBoxSetup.addItem(name)
-                new_index = parent.ui.comboBoxSetup.count() - 1
-                parent.ui.comboBoxSetup.setCurrentIndex(new_index)
-
-            # Sicht aktualisieren: nur das neue Setup anzeigen
+                parent.ui.comboBoxSetup.setCurrentIndex(parent.ui.comboBoxSetup.count() - 1)
             parent.setupList.clear()
             parent._last_component_item = None
             if hasattr(parent, '_property_fields'):
                 parent._property_fields.clear()
-
             for comp in components:
                 item = QtWidgets.QListWidgetItem(comp.get("name", "Unnamed"))
                 item.setData(QtCore.Qt.UserRole, copy.deepcopy(comp))
                 parent.setupList.addItem(item)
-
-            # Plot aktualisieren
             parent.update_live_plot()
             if hasattr(parent, 'scale_visible_setup'):
                 parent.scale_visible_setup()
-
-            # Dateipfad setzen nur für dieses zuletzt geladene Setup
             self.current_file_path = file_path
             parent.setWindowTitle(f"GRay-CAD 2 - {os.path.basename(file_path)}")
-
+            return True
         except Exception as e:
-            QMessageBox.critical(
-                parent,
-                "Error",
-                f"Failed to load setup:\n{str(e)}"
-            )
+            QMessageBox.critical(parent, "Error", f"Failed to load setup:\n{str(e)}")
             return False
 
     def action_new(self, parent):

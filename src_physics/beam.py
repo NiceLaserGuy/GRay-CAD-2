@@ -3,7 +3,6 @@ from src_physics.matrices import Matrices
 from PyQt5.QtWidgets import QMessageBox
 import pyqtgraph as pg
 from numba import njit
-import time
 
 @njit
 def beam_radius_numba(q, wavelength, n):
